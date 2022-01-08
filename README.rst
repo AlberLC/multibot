@@ -20,7 +20,9 @@ Python 3.10 or higher is required.
     :alt: License
 
 .. |project_version| image:: https://img.shields.io/pypi/v/multibot
+    :target: https://pypi.org/project/multibot/
     :alt: PyPI
 
 .. |python_version| image:: https://img.shields.io/pypi/pyversions/multibot
+    :target: https://www.python.org/downloads/
     :alt: PyPI - Python Version
