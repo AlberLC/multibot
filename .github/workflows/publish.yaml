@@ -1,0 +1,41 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish-pip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone and checkout branch
+        uses: actions/checkout@v1
+
+      - name: Set up Python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+
+      - name: Install build and twine
+        run: pip install -U build twine
+
+      - name: Update setup.cfg
+        run: |
+          sed -i "
+            s/{project_name}/${{ github.event.repository.name }}/g;
+            s/{project_version}/${{ github.ref_name }}/g;
+            s/{author}/${{ github.repository_owner }}/g;
+            s/{description}/${{ github.event.repository.description }}/g
+          " setup.cfg
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check binaries
+        run: twine check dist/*
+
+      - name: Publish a Python distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
