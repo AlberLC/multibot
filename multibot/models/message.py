@@ -2,7 +2,8 @@ from __future__ import annotations  # todo0 remove in 3.11
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Iterable
+from enum import Enum
+from typing import AbstractSet, Iterable
 
 from multibot import constants
 from multibot.models.chat import Chat
@@ -31,6 +32,6 @@ class Message(EventComponent):
     original_object: constants.ORIGINAL_MESSAGE = None
     original_event: constants.MESSAGE_EVENT = None
 
-    def save(self, pull_exclude: Iterable[str] = (), pull_database_priority=False, references=True):
+    def save(self, pickle_types: tuple | list = (Enum, AbstractSet), pull_exclude: Iterable[str] = (), pull_database_priority=False, references=True):
         self.last_update = datetime.datetime.now()
-        super().save(pull_exclude, pull_database_priority, references)
+        super().save(pickle_types, pull_exclude, pull_database_priority, references)

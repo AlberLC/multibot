@@ -158,6 +158,8 @@ def parse_arguments(func: Callable) -> Callable:
                     buttons = list(buttons)
                     for i, buttons_row in enumerate(buttons):
                         buttons[i] = list(buttons_row)
+                case Chat() as chat:
+                    message = Message(chat=chat)
                 case Message() as message:
                     pass
 
@@ -220,6 +222,10 @@ class MultiBot(Generic[T]):
 
         self.register(self._on_unban, constants.KEYWORDS['unban'])
 
+    # noinspection PyMethodMayBeStatic
+    async def _create_empty_message(self) -> Message:
+        return Message()
+
     @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_author(self, original_message: constants.ORIGINAL_MESSAGE) -> User | None:
@@ -246,18 +252,19 @@ class MultiBot(Generic[T]):
     async def _get_message(self, event: constants.MESSAGE_EVENT) -> Message:
         original_message = event if isinstance(event, constants.ORIGINAL_MESSAGE) else await self._get_original_message(event)
 
-        message = Message(
-            id=await self._get_message_id(original_message),
-            author=await self._get_author(original_message),
-            text=await self._get_text(original_message),
-            button_text=await self._get_button_text(event),
-            mentions=await self._get_mentions(original_message),
-            chat=await self._get_chat(original_message),
-            replied_message=await self._get_replied_message(original_message),
-            is_inline=isinstance(event, telethon.events.InlineQuery.Event) if isinstance(event, constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) else None,
-            original_object=original_message,
-            original_event=event
-        )
+        message = await self._create_empty_message()
+        message = message.from_dict({
+            'id': await self._get_message_id(original_message),
+            'author': await self._get_author(original_message),
+            'text': await self._get_text(original_message),
+            'button_text': await self._get_button_text(event),
+            'mentions': await self._get_mentions(original_message),
+            'chat': await self._get_chat(original_message),
+            'replied_message': await self._get_replied_message(original_message),
+            'is_inline': isinstance(event, telethon.events.InlineQuery.Event) if isinstance(event, constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) else None,
+            'original_object': original_message,
+            'original_event': event
+        })
         message.resolve()
         message.save(pull_exclude=('author', 'button_text', 'chat', 'mentions', 'replied_message'), pull_database_priority=True)
 
@@ -387,6 +394,11 @@ class MultiBot(Generic[T]):
     @admin(send_negative=True)
     async def _on_ban(self, message: Message):
         await self._update_punishment(self.ban, message, time=flanautils.words_to_time(message.text))
+
+    @find_message
+    async def _on_button_press_raw(self, message: Message):
+        for registered_button_callback in self._registered_button_callbacks:
+            await registered_button_callback(message)
 
     @inline(False)
     async def _on_delete(self, message: Message):

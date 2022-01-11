@@ -91,12 +91,12 @@ class TelegramBot(MultiBot[TelegramClient]):
         )
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _create_bot_message_from_telegram_bot_message(self, original_message: constants.TELEGRAM_MESSAGE, message: Message, content: Any = None) -> Message | None:
-        content = content or {}
+    async def _create_bot_message_from_telegram_bot_message(self, original_message: constants.TELEGRAM_MESSAGE, message: Message, contents: Any = None) -> Message | None:
         original_message._sender = await self.bot_client.get_entity(self.bot_id)
         original_message._chat = message.chat.original_object
         bot_message = await self._get_message(original_message)
-        bot_message.contents = [content]
+        bot_message.contents = contents or []
+        bot_message.save()
         return bot_message
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
@@ -203,11 +203,6 @@ class TelegramBot(MultiBot[TelegramClient]):
     # ---------------------------------------------- #
     #                    HANDLERS                    #
     # ---------------------------------------------- #
-    @find_message
-    async def _on_button_press_raw(self, message: Message):
-        for registered_button_callback in self._registered_button_callbacks:
-            await registered_button_callback(message)
-
     @find_message
     async def _on_inline_query_raw(self, message: Message):
         await super()._on_new_message_raw(message)
@@ -338,7 +333,8 @@ class TelegramBot(MultiBot[TelegramClient]):
         kwargs = {
             'file': file,
             'force_document': send_as_file,
-            'buttons': buttons or None
+            'buttons': buttons or None,
+            'parse_mode': 'html'
         }
 
         if message.is_inline and media:
@@ -354,8 +350,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                     bot_message.contents.clear()
                     bot_message.save()
                     original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
-                    bot_message = await self._create_bot_message_from_telegram_bot_message(original_message, message, content=getattr(media, 'content', None))
-                    bot_message.save()
+                    await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=[getattr(media, 'content', None)])
             elif media.type_ is MediaType.IMAGE:
                 message.contents.append(message.original_event.builder.photo(file))
             else:
@@ -370,7 +365,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             return message
         else:
             original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
-            return await self._create_bot_message_from_telegram_bot_message(original_message, message, content=getattr(media, 'content', None))
+            return await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=[getattr(media, 'content', None)])
 
     @inline
     async def send_inline_results(self, message: Message):
