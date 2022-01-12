@@ -75,6 +75,15 @@ class TelegramBot(MultiBot[TelegramClient]):
         self.bot_client.add_event_handler(self._on_new_message_raw, telethon.events.NewMessage)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def _create_bot_message_from_telegram_bot_message(self, original_message: constants.TELEGRAM_MESSAGE, message: Message, contents: Any = None) -> Message | None:
+        original_message._sender = await self.bot_client.get_entity(self.bot_id)
+        original_message._chat = message.chat.original_object
+        bot_message = await self._get_message(original_message)
+        bot_message.contents = contents or []
+        bot_message.save()
+        return bot_message
+
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _create_chat_from_telegram_chat(self, telegram_chat: constants.TELEGRAM_CHAT) -> Chat | None:
         if is_group := not isinstance(telegram_chat, constants.TELEGRAM_USER):
             users = [await self._create_user_from_telegram_user(participant, telegram_chat.id) for participant in await self.bot_client.get_participants(telegram_chat)]
@@ -89,15 +98,6 @@ class TelegramBot(MultiBot[TelegramClient]):
             group_id=telegram_chat.id,
             original_object=telegram_chat
         )
-
-    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _create_bot_message_from_telegram_bot_message(self, original_message: constants.TELEGRAM_MESSAGE, message: Message, contents: Any = None) -> Message | None:
-        original_message._sender = await self.bot_client.get_entity(self.bot_id)
-        original_message._chat = message.chat.original_object
-        bot_message = await self._get_message(original_message)
-        bot_message.contents = contents or []
-        bot_message.save()
-        return bot_message
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _create_user_from_telegram_user(self, original_user: constants.TELEGRAM_USER, group_id: int = None) -> User | None:
@@ -320,6 +320,8 @@ class TelegramBot(MultiBot[TelegramClient]):
         edit=False,
     ) -> Message | None:
         file = await self._prepare_media_to_send(media)
+        if not text and not file:
+            return
 
         if send_as_file is None:
             word_matches = flanautils.cartesian_product_string_matching(message.text, constants.KEYWORDS['send_as_file'], min_ratio=0.65)
