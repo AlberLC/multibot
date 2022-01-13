@@ -351,7 +351,10 @@ class TelegramBot(MultiBot[TelegramClient]):
                     bot_message = await self.send(phrase, message)
                     bot_message.contents.clear()
                     bot_message.save()
-                    original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
+                    try:
+                        original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
+                    except telethon.errors.rpcerrorlist.UserIsBlockedError:
+                        return
                     await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=[getattr(media, 'content', None)])
             elif media.type_ is MediaType.IMAGE:
                 message.contents.append(message.original_event.builder.photo(file))
@@ -366,7 +369,10 @@ class TelegramBot(MultiBot[TelegramClient]):
             message.save()
             return message
         else:
-            original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
+            try:
+                original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
+            except telethon.errors.rpcerrorlist.UserIsBlockedError:
+                return
             return await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=[getattr(media, 'content', None)])
 
     @inline
