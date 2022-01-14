@@ -5,14 +5,356 @@ MultiBot
 
 Platform agnostic high-level bot infrastructure.
 
+|
+
 Installation
 ------------
 
 Python 3.10 or higher is required.
 
-.. code-block:: python
+.. code-block::
 
     pip install multibot
+
+|
+
+Quick start
+----------------------
+
+Discord
+~~~~~~~
+
+    The Discord bot is on beta, waiting for the Discord company to agree to develop a healthy api that does not break every two months and inform the developers in advance.
+
+|
+
+Telegram
+~~~~~~~~
+
+.. code-block:: python
+
+    import os
+
+    from multibot import Message, TelegramBot
+
+    telegram_bot = TelegramBot(
+        api_id=os.environ['TELEGRAM_API_ID'],
+        api_hash=os.environ['TELEGRAM_API_HASH'],
+        bot_token=os.environ['TELEGRAM_BOT_TOKEN']
+    )
+
+
+    @telegram_bot.register('hello')
+    async def function_name_1(message: Message):
+        await telegram_bot.send('Hi!', message)  # response in same chat of received message context
+
+
+    telegram_bot.start()
+
+The session will be saved locally using SQLite.
+
+|
+
+You can save the session in a string. This serves to facilitate the use of sessions when hosting the application in cloud services with ephemeral file systems:
+
+.. code-block:: python
+
+    from telethon.sessions import StringSession
+
+    ...
+    session_string = StringSession.save(telegram_bot.bot_client.session)
+
+|
+
+If you have a session in string you can provide it instead of the bot token:
+
+.. code-block:: python
+
+    telegram_bot = TelegramBot(
+        api_id=os.environ['TELEGRAM_API_ID'],
+        api_hash=os.environ['TELEGRAM_API_HASH'],
+        bot_session=os.environ['TELEGRAM_BOT_SESSION']  # <----- instead of bot_token
+    )
+
+|
+
+Adding an user bot
+..................
+
+You can add a user bot to your telegram bot to extend certain functionalities such as accessing the message history (useful if you have not been registering the messages in a database or similar), accessing the user's contacts to make whitelists, etc.
+
+.. code-block:: python
+
+    telegram_bot = TelegramBot(
+        api_id=os.environ['TELEGRAM_API_ID'],
+        api_hash=os.environ['TELEGRAM_API_HASH'],
+        bot_session=os.environ['TELEGRAM_BOT_SESSION'],
+        phone='+00123456789'
+    )
+
+|
+
+Or provide user session instead of phone:
+
+.. code-block:: python
+
+    telegram_bot = TelegramBot(
+        api_id=os.environ['TELEGRAM_API_ID'],
+        api_hash=os.environ['TELEGRAM_API_HASH'],
+        bot_session=os.environ['TELEGRAM_BOT_SESSION'],
+        user_session=os.environ['TELEGRAM_USER_SESSION'],
+    )
+
+|
+
+Twitch
+~~~~~~
+
+.. code-block:: python
+
+    import os
+
+    from multibot import Message, TwitchBot
+
+    twitch_bot = TwitchBot(
+        bot_token=os.environ['TWITCH_ACCESS_TOKEN'],
+        initial_channels=['channel_name'],  # Optional. You can later make the bot join a chat with join() method
+        owner_name='owner_name'  # Optional. So the bot knows who to respect. Although keep in mind that the streamer cannot be punished
+    )
+
+
+    @twitch_bot.register('hello')
+    async def function_name_1(message: Message):
+        await twitch_bot.send('Hi!', message)
+
+
+    twitch_bot.start()
+
+|
+
+Run multiple bots
+-----------------
+
+.. code-block:: python
+
+    import asyncio
+    import os
+
+    from multibot import TelegramBot, TwitchBot
+
+
+    async def main():
+        tele_bot = TelegramBot(
+            api_id=os.environ['TELEGRAM_API_ID'],
+            api_hash=os.environ['TELEGRAM_API_HASH'],
+            bot_token=os.environ['TELEGRAM_BOT_TOKEN']
+        )
+
+        # If you run a TwitchBot in an asyncio loop you must create it inside the loop like below.
+        # Other bots like TelegramBot or DiscordBot don't have this need and can be created at the module level.
+        twitch_bot = TwitchBot(
+            bot_token=os.environ['TWITCH_ACCESS_TOKEN'],
+            initial_channels=['channel_name'],
+            owner_name='owner_name'
+        )
+
+        await asyncio.gather(
+            tele_bot.start(),
+            twitch_bot.start()
+        )
+
+
+    asyncio.run(main())
+
+|
+
+Extended tutorial
+-----------------
+
+For the examples we are going to use the telegram bot. But remember that all bots work the same they all work the same since they use the same objects and logic. "They speak the same language".
+
+A) Simple form
+~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    import os
+    import random
+
+    import flanautils
+    from multibot import Message, TelegramBot
+
+    bot = TelegramBot(
+        api_id=os.environ['TELEGRAM_API_ID'],
+        api_hash=os.environ['TELEGRAM_API_HASH'],
+        bot_token=os.environ['TELEGRAM_BOT_TOKEN']
+    )
+
+    @bot.register('hello')
+    async def function_name_1(message: Message):
+        """
+        This function will be executed when someone types something like "hello".
+
+        Functions names are irrelevant.
+        """
+
+        await bot.send('Hi!', message)  # response in same chat of received message context
+
+
+    @bot.register('multibot', min_ratio=1)
+    async def function_name_2(message: Message):
+        """
+        This function will be executed when someone types exactly "multibot".
+
+        min_ratio=0.8 by default.
+        """
+
+        await bot.delete_message(message)  # deletes the received message
+        bot_message = await bot.send('Message deleted.', message)  # keep the response message
+
+        await flanautils.do_later(10, bot.delete_message, bot_message)  # delete the response message after 10 seconds
+
+
+    @bot.register(('house', 'home'))
+    # @telegram_bot.register(['house', 'home'])  <-- same
+    # @telegram_bot.register('house home')       <-- same
+    async def function_name_3(message: Message):
+        """This function will be executed when someone types "house" or/and "home"."""
+
+        await bot.clear(5, message)  # delete last 5 message (only works if a user_bot is activated in current chat)
+
+
+    @bot.register((('hello', 'hi'), ('world',)))  # <-- note that is Iterable[Iterable[str]]
+    # @telegram_bot.register([('hello', 'hi'), ('world',)])  <-- same
+    # @telegram_bot.register(['hello hi', ['world']])        <-- same
+    # @telegram_bot.register(['hello hi', 'world'])          !!! NOT same, this is "or" logic (like previous case)
+    async def function_name_4(message: Message):
+        """This function will be executed when someone types ("hello" or/and "hi") and "world"."""
+
+        message.chat = await bot.get_chat('@user_name')  # get chat object from id or user_name and insert it to message context
+        await bot.send('I <3 to kill you.', message)
+
+
+    @bot.register('troll')
+    async def function_name_5(message: Message):
+        """This function will be executed when someone types troll" but returns if he isn't an admin."""
+
+        if not message.author.is_admin:
+            return
+
+        await bot.ban('@user_name', message)
+
+
+    @bot.register(always=True)
+    async def function_name_6(message: Message):
+        """This function will be executed always but returns if bot isn't mentioned."""
+
+        if not bot.is_bot_mentioned(message):
+            return
+
+        await bot.send('shut up.', message)
+
+
+    @bot.register(default=True)
+    async def function_name_7(message: Message):
+        """
+        This function will be executed if no other function is determined by provided keywords.
+
+        always=True functions don't affect to determine if default=True functions are called.
+        """
+
+        phrases = ["I don't understand u mate", '?', '???????']
+        await bot.send(random.choice(phrases), message)
+
+
+    bot.start()
+
+|
+
+B) Extensible form
+~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    import os
+    import random
+
+    import flanautils
+    from multibot import Message, TelegramBot, admin, bot_mentioned
+
+
+    class MyBot(TelegramBot):
+        def __init__(self):
+            super().__init__(api_id=os.environ['TELEGRAM_API_ID'],
+                             api_hash=os.environ['TELEGRAM_API_HASH'],
+                             bot_token=os.environ['TELEGRAM_BOT_TOKEN'])
+
+        def _add_handlers(self):
+            super()._add_handlers()
+            self.register(self.function_name_1, 'hello')
+            self.register(self.function_name_2, 'multibot', min_ratio=1)
+            self.register(self.function_name_3, ('house', 'home'))
+            self.register(self.function_name_4, (('hello', 'hi'), ('world',)))  # <-- note that is Iterable[Iterable[str]]
+            self.register(self.function_name_5, 'troll')
+            self.register(self.function_name_6, always=True)
+            self.register(self.function_name_7, default=True)
+
+        async def function_name_1(self, message: Message):
+            """
+            This function will be executed when someone types something like "hello".
+
+            Functions names are irrelevant.
+            """
+
+            await self.send('Hi!', message)  # response in same chat of received message context
+
+        async def function_name_2(self, message: Message):
+            """
+            This function will be executed when someone types exactly "multibot".
+
+            min_ratio=0.8 by default.
+            """
+
+            await self.delete_message(message)  # deletes the received message
+            bot_message = await self.send('Message deleted.', message)  # keep the response message
+
+            await flanautils.do_later(10, self.delete_message, bot_message)  # delete the response message after 10 seconds
+
+        async def function_name_3(self, message: Message):
+            """This function will be executed when someone types "house" or/and "home"."""
+
+            await self.clear(5, message)  # delete last 5 message (only works if a user_bot is activated in current chat)
+
+        async def function_name_4(self, message: Message):
+            """This function will be executed when someone types ("hello" or/and "hi") and "world"."""
+
+            message.chat = await self.get_chat('@user_name')  # get chat object from id or user_name and insert it to message context
+            await self.send('I <3 to kill you.', message)
+
+        @admin
+        async def function_name_5(self, message: Message):
+            """This function will be executed when someone types "troll" but returns if he isn't an admin."""
+
+            await self.ban('@user_name', message)
+
+        @bot_mentioned
+        async def function_name_6(self, message: Message):
+            """This function will be executed always but returns if bot isn't mentioned."""
+
+            await self.send('shut up.', message)
+
+        async def function_name_7(self, message: Message):
+            """
+            This function will be executed if no other function is determined by provided keywords.
+
+            always=True functions don't affect to determine if default=True functions are called.
+            """
+
+            phrases = ["I don't understand u mate", '?', '???????']
+            await self.send(random.choice(phrases), message)
+
+
+    MyBot().start()
 
 
 .. |license| image:: https://img.shields.io/github/license/AlberLC/multibot?style=flat
