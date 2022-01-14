@@ -24,12 +24,12 @@ class RegisteredCallback(FlanaBase):
     ):
         self.callback = callback
         match keywords:
-            case str(phrase):
-                self.keywords = (tuple(phrase.split()),)
+            case str(keyword):
+                self.keywords = (tuple(keyword.strip().split()),)
             case [*_, [*_]]:
                 self.keywords = tuple((keywords_group,) if isinstance(keywords_group, str) else keywords_group for keywords_group in keywords)
             case [*_, str()]:
-                self.keywords = (keywords,)
+                self.keywords = tuple(keyword.strip().split() for keyword in keywords)
             case _:
                 self.keywords = tuple(keywords)
         self.min_ratio = min_ratio

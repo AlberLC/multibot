@@ -51,16 +51,19 @@ class TelegramBot(MultiBot[TelegramClient]):
         self.phone = phone
         self.bot_session = bot_session
         self.user_session = user_session
-        if bot_session:
+
+        if self.bot_session:
             bot_client = TelegramClient(StringSession(bot_session), self.api_id, self.api_hash)
         else:
             bot_client = TelegramClient('bot_session', self.api_id, self.api_hash)
-        if user_session:
+
+        if self.user_session:
             self.user_client = TelegramClient(StringSession(user_session), self.api_id, self.api_hash)
-        elif input('Do you want to add an user-bot too? (you will need a phone number later) [y/n]: ').strip().lower() in ('y', 'yes', 's', 'si', 'sí', '1', 'true', 'ok', 'vale'):
+        elif self.phone:
             self.user_client = TelegramClient('user_session', self.api_id, self.api_hash)
         else:
             self.user_client = None
+
         super().__init__(bot_token=bot_token,
                          bot_client=bot_client)
 
@@ -353,7 +356,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                     bot_message.save()
                     try:
                         original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
-                    except telethon.errors.rpcerrorlist.UserIsBlockedError:
+                    except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                         return
                     await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=[getattr(media, 'content', None)])
             elif media.type_ is MediaType.IMAGE:
@@ -363,7 +366,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         elif edit:
             try:
                 await message.original_object.edit(text, **kwargs)
-            except telethon.errors.rpcerrorlist.MessageNotModifiedError:
+            except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                 pass
             message.contents = [getattr(media, 'content', None)]
             message.save()
@@ -371,7 +374,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         else:
             try:
                 original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
-            except telethon.errors.rpcerrorlist.UserIsBlockedError:
+            except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                 return
             return await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=[getattr(media, 'content', None)])
 

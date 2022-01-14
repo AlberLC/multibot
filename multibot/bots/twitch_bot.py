@@ -19,9 +19,9 @@ from multibot.models import BotPlatform, Chat, Message, User
 # ------------------------------------------- DISCORD_BOT ------------------------------------------- #
 # --------------------------------------------------------------------------------------------------- #
 class TwitchBot(MultiBot[twitchio.Client]):
-    def __init__(self, bot_token: str, initial_channels: Iterable[str] = None, loop: asyncio.AbstractEventLoop = None, owner_name: str = None):
+    def __init__(self, bot_token: str, initial_channels: Iterable[str] = None, owner_name: str = None):
         super().__init__(bot_token=bot_token,
-                         bot_client=twitchio.Client(token=bot_token, initial_channels=initial_channels, loop=loop))
+                         bot_client=twitchio.Client(token=bot_token, initial_channels=initial_channels))
         self.owner_name = owner_name
 
     # ----------------------------------------------------------- #
