@@ -31,7 +31,7 @@ Discord
 Telegram
 ~~~~~~~~
 
-TelegramBot connects directly to Telegram servers using its own protocol (MTProto), so you are not limited by the http bots api. Anything you can do with the official mobile app, desktop or web is possible with this bot. To get **API_ID** and **API_HASH** see `Native Telegram app & MTProto configuration`_.
+To get your own **API_ID** and **API_HASH** see `Native Telegram app & MTProto configuration`_.
 
 .. code-block:: python
 
@@ -173,7 +173,7 @@ Run multiple bots
 Extended tutorial
 -----------------
 
-For the examples we are going to use the telegram bot. But remember that all bots work the same they all work the same since they use the same objects and logic. "They speak the same language".
+For the examples we are going to use the TelegramBot. But remember that all bots work the same since they use the same objects and logic. "They speak the same language".
 
 A) Simple form
 ~~~~~~~~~~~~~~
@@ -366,9 +366,11 @@ Annex
 Native Telegram app & MTProto configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+TelegramBot connects directly to Telegram servers using its own protocol (MTProto), so you are not limited by the http bots api. Anything you can do with the official mobile app, desktop or web is possible with this bot.
+
 MTProto also allows the creation of user bots, bots that automate tasks with your own human account for which you would need to create a new session as when you open a session for the first time on a new device. Keep in mind that you will be asked for the security code that Telegram sends you by private chat when someone wants to log in with your account.
 
-To get the **API_ID** and **API_HASH** you will have to go to https://my.telegram.org, log in and create an app.
+For both a normal bot and a user bot (bot using your "human" account) you will need the **API_ID** and **API_HASH**. To get them you will have to go to https://my.telegram.org, log in and create an app.
 
     **WARNING!**
         The **my.telegram.org** security code is **NOT** like a session code, do not give it to anyone, it is only to enter this website. If you have doubts: the code that :code:`MultiBot.TelegramBot` may ask you for is **NOT** the same. :code:`MultiBot.TelegramBot` would only need a different code in case of a new session when you run it for the first time.
