@@ -19,7 +19,7 @@ Python 3.10 or higher is required.
 |
 
 Quick start
-----------------------
+-----------
 
 Discord
 ~~~~~~~
@@ -30,6 +30,8 @@ Discord
 
 Telegram
 ~~~~~~~~
+
+TelegramBot connects directly to Telegram servers using its own protocol (MTProto), so you are not limited by the http bots api. Anything you can do with the official mobile app, desktop or web is possible with this bot. To get **API_ID** and **API_HASH** see `Native Telegram app & MTProto configuration`_.
 
 .. code-block:: python
 
@@ -46,7 +48,7 @@ Telegram
 
     @telegram_bot.register('hello')
     async def function_name_1(message: Message):
-        await telegram_bot.send('Hi!', message)  # response in same chat of received message context
+        await telegram_bot.send('Hi!', message)
 
 
     telegram_bot.start()
@@ -237,7 +239,7 @@ A) Simple form
 
     @bot.register('troll')
     async def function_name_5(message: Message):
-        """This function will be executed when someone types troll" but returns if he isn't an admin."""
+        """This function will be executed when someone types "troll" but returns if he isn't an admin."""
 
         if not message.author.is_admin:
             return
@@ -356,6 +358,23 @@ B) Extensible form
 
     MyBot().start()
 
+|
+
+Annex
+-----
+
+Native Telegram app & MTProto configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+MTProto also allows the creation of user bots, bots that automate tasks with your own human account for which you would need to create a new session as when you open a session for the first time on a new device. Keep in mind that you will be asked for the security code that Telegram sends you by private chat when someone wants to log in with your account.
+
+To get the **API_ID** and **API_HASH** you will have to go to https://my.telegram.org, log in and create an app.
+
+    **WARNING!**
+        The **my.telegram.org** security code is **NOT** like a session code, do not give it to anyone, it is only to enter this website. If you have doubts: the code that :code:`MultiBot.TelegramBot` may ask you for is **NOT** the same. :code:`MultiBot.TelegramBot` would only need a different code in case of a new session when you run it for the first time.
+
+|my.telegram.org_app|
+
 
 .. |license| image:: https://img.shields.io/github/license/AlberLC/multibot?style=flat
     :target: https://github.com/AlberLC/multibot/blob/main/LICENSE
@@ -368,3 +387,7 @@ B) Extensible form
 .. |python_version| image:: https://img.shields.io/pypi/pyversions/multibot
     :target: https://www.python.org/downloads/
     :alt: PyPI - Python Version
+
+.. |my.telegram.org_app| image:: https://user-images.githubusercontent.com/37489786/149607226-36b0e3d6-6e21-4852-a08f-16ce52d3a7dc.png
+    :target: https://my.telegram.org/
+    :alt: my.telegram.org
