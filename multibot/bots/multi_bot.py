@@ -306,7 +306,8 @@ class MultiBot(Generic[T]):
             except (SendError, NotFoundError) as e:
                 await self.send_error(str(e), message)
             except AmbiguityError:
-                pass  # await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más?  {random.choice(constants.SAD_EMOJIS)}', message)
+                if constants.RAISE_AMBIGUITY_ERROR:
+                    await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más?  {random.choice(constants.SAD_EMOJIS)}', message)
 
     def _parse_callbacks(
         self,
@@ -369,7 +370,7 @@ class MultiBot(Generic[T]):
 
     async def _update_punishment(self, func_: callable, message: Message, **kwargs):
         bot_user = await self._get_me(message.chat.group_id)
-        users: OrderedSet[User] = OrderedSet(message.mentions) - bot_user
+        users: OrderedSet[User] = OrderedSet(message.mentions)
         if message.replied_message:
             users.add(message.replied_message.author)
 
@@ -381,6 +382,7 @@ class MultiBot(Generic[T]):
                 await self.send_negative(message)
                 return
 
+        users -= bot_user
         for user in users:
             await func_(user.id, message.chat.group_id, message=message, **kwargs)
 
@@ -437,24 +439,58 @@ class MultiBot(Generic[T]):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def ban(self, user: int | str | User, chat: int | str | Chat, seconds: int | datetime.timedelta = None, message: Message = None):
+    async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):
         pass
 
-    async def clear(self, n_messages: int, chat: int | str | Chat = None, message: Message = None):
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def clear(self, n_messages: int, chat: int | str | Chat | Message):
         pass
 
-    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat = None, message: Message = None):
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
         pass
 
     @overload
-    async def get_user(self, user_id: int, group_id: int | str | str = None) -> User | None:
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_chat(self, chat_id: int) -> Chat | None:
         pass
 
     @overload
-    async def get_user(self, user_name: str, group_id: int | str | str = None) -> User | None:
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_chat(self, chat_name: str) -> Chat | None:
         pass
 
-    async def get_user(self, user_id: int, group_id: int | str | str = None) -> User | None:
+    @overload
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_chat(self, chat: Chat) -> Chat | None:
+        pass
+
+    @overload
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_chat(self, message: Message) -> Chat | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_chat(self, chat: int | str | Chat | Message) -> Chat | None:
+        pass
+
+    @overload
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_user(self, user_id: int, group_id: int | str = None) -> User | None:
+        pass
+
+    @overload
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_user(self, user_name: str, group_id: int | str = None) -> User | None:
+        pass
+
+    @overload
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_user(self, user: User, group_id: int | str = None) -> User | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_user(self, user: int | str | User, group_id: int | str = None) -> User | None:
         pass
 
     @overload
