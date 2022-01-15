@@ -31,7 +31,7 @@ Discord
 Telegram
 ~~~~~~~~
 
-To get your own **API_ID** and **API_HASH** see `Native Telegram app & MTProto configuration`_.
+You will need your own **API_ID** and **API_HASH** see `Native Telegram app & MTProto configuration`_.
 
 .. code-block:: python
 
@@ -111,6 +111,8 @@ Or provide user session instead of phone:
 
 Twitch
 ~~~~~~
+
+You will need your own **BOT_TOKEN** which you can generate on: https://twitchapps.com/tmi/. For more information see https://dev.twitch.tv/docs/irc.
 
 .. code-block:: python
 
