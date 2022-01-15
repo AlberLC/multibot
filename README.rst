@@ -31,7 +31,7 @@ Discord
 Telegram
 ~~~~~~~~
 
-You will need your own **API_ID** and **API_HASH** see `Native Telegram app & MTProto configuration`_.
+You will need your own **API_ID** and **API_HASH**. To get them see `Native Telegram app & MTProto configuration`_.
 
 .. code-block:: python
 
