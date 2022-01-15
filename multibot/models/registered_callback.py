@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Callable, Iterable
 
+import flanautils
 from flanautils import FlanaBase
 
 from multibot import constants
@@ -29,7 +30,7 @@ class RegisteredCallback(FlanaBase):
             case [*_, [*_]]:
                 self.keywords = tuple((keywords_group,) if isinstance(keywords_group, str) else keywords_group for keywords_group in keywords)
             case [*_, str()]:
-                self.keywords = tuple(keyword.strip().split() for keyword in keywords)
+                self.keywords = (tuple(flanautils.flatten_iterator(keyword.strip().split() for keyword in keywords)),)
             case _:
                 self.keywords = tuple(keywords)
         self.min_ratio = min_ratio
