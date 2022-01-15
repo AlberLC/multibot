@@ -163,61 +163,62 @@ class DiscordBot(MultiBot[Bot]):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def ban(self, user: int | str | User, chat: int | str | Chat, seconds: int | datetime.timedelta = None, message: Message = None):  # todo2
+    async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):  # todo2
         pass
 
-    async def clear(self, n_messages: int, chat: int | str | Chat = None, message: Message = None):  # todo2 test
-        match chat, message:
-            case None, Message():
-                chat = message.chat
-            case Message(), _:
-                chat = chat.chat
-            case _:
-                chat = await self.get_chat(chat)
-
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def clear(self, n_messages: int, chat: int | str | Chat | Message):  # todo2 test
+        chat = await self.get_chat(chat)
         n_messages += 1
+
         try:
-            messages = await chat.original_object.history(limit=n_messages + 1).flatten()
+            messages = await chat.original_object.history(limit=n_messages).flatten()
         except discord.ClientException:
-            await self._manage_exceptions(LimitError('El máximo es 99.'), message or Message(chat=chat))
+            await self._manage_exceptions(LimitError('El máximo es 99.'), Message(chat=chat))
         else:
             await chat.original_object.delete_messages(messages)
 
-    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat = None, message: Message = None):  # todo2 test
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):  # todo2 test
+        chat = await self.get_chat(chat)
         match message_to_delete:
             case int() | str():
-                message_to_delete = Message.find_one({'id': int(message_to_delete)})
-        match chat, message:
-            case None, Message():
-                chat = message.chat
-            case Message(), _:
-                chat = chat.chat
-            case _:
-                chat = await self.get_chat(chat)
+                message_to_delete = Message.find_one({'id': str(message_to_delete), 'chat': chat.object_id})
+            case Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
+                chat = None
 
-        if message_to_delete.original_object:
+        if chat and chat.original_object:
+            await (await chat.original_object.fetch_message(message_to_delete.id)).delete()
+        elif message_to_delete.original_object:
             await message_to_delete.original_object.delete()
         else:
-            await self.delete_message(await chat.original_object.fetch_message(message_to_delete.id))
+            raise ValueError('The original discord object of the message or chat is needed')
+
         message_to_delete.is_deleted = True
         message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_user(self, user_id: int, group_id: int = None) -> User | None:
+    async def get_user(self, user: int | str | User, group_id: int | str = None) -> User | None:
+        if isinstance(user, User):
+            return user
+
         if group_id is None:
-            discord_user = self.bot_client.get_user(user_id)
+            discord_user = self.bot_client.get_user(user)
         else:
-            discord_user = self.bot_client.get_guild(group_id).get_member(user_id)
+            discord_user = self.bot_client.get_guild(int(group_id)).get_member(user)
 
         return self._create_user_from_discord_user(discord_user)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_chat(self, group_id: int | str | Chat = None) -> Chat | None:
-        if isinstance(group_id, Chat):
-            return group_id
+    async def get_chat(self, chat: int | str | Chat | Message = None) -> Chat | None:
+        match chat:
+            case Chat():
+                return chat
+            case Message() as message:
+                return message.chat
 
         # noinspection PyTypeChecker
-        return await self._create_chat_from_discord_chat(self.bot_client.get_channel(int(group_id)) or await self.bot_client.fetch_channel(int(group_id)))
+        return await self._create_chat_from_discord_chat(self.bot_client.get_channel(int(chat)) or await self.bot_client.fetch_channel(int(chat)))
 
     @parse_arguments
     async def send(

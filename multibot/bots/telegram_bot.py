@@ -223,7 +223,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def ban(self, user: int | str | User, chat: int | str | Chat, seconds: int | datetime.timedelta = None, message: Message = None):  # todo4 test en grupo de pruebas
+    async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):  # todo4 test en grupo de pruebas
         ...
         # if isinstance(user, User):
         #     user = user.original_object
@@ -251,26 +251,19 @@ class TelegramBot(MultiBot[TelegramClient]):
         # await self.bot_client(telethon.tl.functions.channels.EditBannedRequest(chat, user, rights))
 
     @user_client
-    async def clear(self, n_messages: int, chat: int | str | Chat = None, message: Message = None):
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def clear(self, n_messages: int, chat: int | str | Chat | Message):
+        chat = await self.get_chat(chat)
         if n_messages > constants.TELEGRAM_DELETE_MESSAGE_LIMIT:
-            await self._manage_exceptions(LimitError('El máximo es 100.'), message or Message(chat=chat))  # todo4 probar en grupo de pruebas >100 mensajes y <=100 mensajes
+            await self._manage_exceptions(LimitError('El máximo es 100.'), Message(chat=chat))  # todo4 probar en grupo de pruebas >100 mensajes y <=100 mensajes
             return
-        match chat, message:
-            case None, Message():
-                chat = message.chat
-            case Message(), _:
-                chat = chat.chat
-            case _:
-                chat = await self.get_chat(chat)
-
         n_messages += 1
 
         async with self.user_client:
             owner_user = await self._create_user_from_telegram_user(await self.user_client.get_me(), chat.group_id)
-        if owner_user not in chat.users:
-            return
+            if owner_user not in chat.users:
+                return
 
-        async with self.user_client:
             user_chat = await self.user_client.get_entity(chat.id)
             messages_to_delete = await self.user_client.get_messages(user_chat, n_messages)
             await self.user_client.delete_messages(user_chat, messages_to_delete)
@@ -278,37 +271,43 @@ class TelegramBot(MultiBot[TelegramClient]):
                 message_to_delete.is_deleted = True
                 message_to_delete.save()
 
-    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat = None, message: Message = None):
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
+        chat = await self.get_chat(chat)
         match message_to_delete:
             case int() | str():
-                message_to_delete = Message.find_one({'id': str(message_to_delete)})
-        match chat, message:
-            case None, Message():
-                chat = message.chat
-            case Message(), _:
-                chat = chat.chat
-            case _:
-                chat = await self.get_chat(chat)
+                message_to_delete = Message.find_one({'id': str(message_to_delete), 'chat': chat.object_id})
+            case Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
+                chat = None
 
-        if message_to_delete.original_object:
+        if chat and chat.original_object:
+            await self.bot_client.delete_messages(chat.original_object, message_to_delete.id)
+        elif message_to_delete.original_object:
             await message_to_delete.original_object.delete()
         else:
-            await self.bot_client.delete_messages(chat.original_object, message_to_delete.id)
+            raise ValueError('The original telegram object of the message or chat is needed')
+
         message_to_delete.is_deleted = True
         message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def get_chat(self, group_id: int | str | Chat = None) -> Chat | None:
-        if isinstance(group_id, Chat):
-            return group_id
+    async def get_chat(self, chat: int | str | Chat | Message = None) -> Chat | None:
+        match chat:
+            case Chat():
+                return chat
+            case Message() as message:
+                return message.chat
 
-        return await self._create_chat_from_telegram_chat(await self.bot_client.get_entity(group_id))
+        return await self._create_chat_from_telegram_chat(await self.bot_client.get_entity(chat))
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def get_user(self, user_id: int | str, group_id: int = None) -> User | None:
+    async def get_user(self, user: int | str | User, group_id: int | str = None) -> User | None:
+        if isinstance(user, User):
+            return user
+
         try:
             with flanautils.suppress_stderr():
-                return await self._create_user_from_telegram_user(await self.bot_client.get_entity(user_id), group_id)
+                return await self._create_user_from_telegram_user(await self.bot_client.get_entity(user), group_id)
         except struct.error:
             pass
 

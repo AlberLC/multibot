@@ -107,12 +107,8 @@ class TwitchBot(MultiBot[twitchio.Client]):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def ban(self, user: int | str | User, chat: int | str | Chat, seconds: int | datetime.timedelta = None, message: Message = None):
-        match user:
-            case int():
-                user = (await self.get_user(user)).name
-            case User():
-                user = user.name
+    async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):
+        user = (await self.get_user(user)).name
         chat = await self.get_chat(chat)
         if isinstance(seconds, datetime.timedelta):
             seconds = seconds.total_seconds()
@@ -124,20 +120,14 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
     clear_user_messages = functools.partialmethod(ban, seconds=1)
 
-    async def clear(self, n_messages: int, chat: int | str | Chat | Message = None, message: Message = None):
-        match chat, message:
-            case None, Message():
-                chat = message.chat
-            case Message(), _:
-                chat = chat.chat
-            case _:
-                chat = await self.get_chat(chat)
+    @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
+    async def clear(self, n_messages: int, chat: int | str | Chat | Message):
+        chat = await self.get_chat(chat)
 
         owner_user = User.find_one({'name': self.owner_name})
         messages_to_delete: Iterator[Message] = Message.find({'author': {'$ne': owner_user.object_id}, 'chat': chat.object_id, 'is_deleted': False, 'last_update': {'$gt': datetime.datetime.now() - datetime.timedelta(days=1)}}, sort_keys=(('last_update', pymongo.DESCENDING),), lazy=True)
 
         deleted_message_count = 0
-
         while deleted_message_count < n_messages:
             try:
                 message_to_delete = next(messages_to_delete)
@@ -148,41 +138,43 @@ class TwitchBot(MultiBot[twitchio.Client]):
                 await self.delete_message(message_to_delete, chat)
                 deleted_message_count += 1
 
-    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None, message: Message = None):
+    @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
+    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
+        chat = await self.get_chat(chat)
         match message_to_delete:
             case int() | str():
-                message_to_delete = Message.find_one({'id': str(message_to_delete)})
-        if message_to_delete.author.is_admin:
-            return
+                message_to_delete = Message.find_one({'id': str(message_to_delete), 'chat': chat.object_id})
+            case Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
+                chat = None
 
-        match chat, message:
-            case None, Message():
-                chat = message.chat
-            case Message(), _:
-                chat = chat.chat
-            case _:
-                chat = await self.get_chat(chat)
+        if chat and chat.original_object:
+            message = Message(chat=chat)
+        elif message_to_delete.original_object:
+            message = message_to_delete
+        else:
+            raise ValueError('The original twitch object of the message or chat is needed')
 
-        message = message or Message()
-        message.chat = chat
         await self.send(f'/delete {message_to_delete.id}', message)
         message_to_delete.is_deleted = True
         message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def get_chat(self, group_id: int | str | Chat = None) -> Chat | None:
-        if isinstance(group_id, Chat):
-            return group_id
+    async def get_chat(self, chat: int | str | Chat | Message = None) -> Chat | None:
+        match chat:
+            case Chat():
+                return chat
+            case Message() as message:
+                return message.chat
 
-        return await self._create_chat_from_twitch_chat(self.bot_client.get_channel(str(group_id)) or await self.bot_client.fetch_channel(str(group_id)))
+        return await self._create_chat_from_twitch_chat(self.bot_client.get_channel(str(chat)) or await self.bot_client.fetch_channel(str(chat)))
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def get_user(self, user_id: int | str | User, group_id: int | str = None) -> User | None:
-        if isinstance(user_id, User):
-            return user_id
+    async def get_user(self, user: int | str | User, group_id: int | str = None) -> User | None:
+        if isinstance(user, User):
+            return user
 
         twitch_user: twitchio.User | twitchio.Chatter
-        if not (twitch_user := next(iter(await self.bot_client.fetch_users([user_id])), None)):
+        if not (twitch_user := next(iter(await self.bot_client.fetch_users([user])), None)):
             return
 
         if group_id:
@@ -226,10 +218,6 @@ class TwitchBot(MultiBot[twitchio.Client]):
             self.bot_client.run()
 
     async def unban(self, user: int | str | User, chat: int | str | Chat, message: Message = None):
-        match user:
-            case int():
-                user = (await self.get_user(user)).name
-            case User():
-                user = user.name
+        user_name = (await self.get_user(user)).name
         chat = await self.get_chat(chat)
-        await self.send(f'/unban {user}', Message(chat=chat))
+        await self.send(f'/unban {user_name}', Message(chat=chat))

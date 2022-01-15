@@ -24,6 +24,7 @@ ORIGINAL_MESSAGE = DISCORD_MESSAGE | TELEGRAM_MESSAGE | TWITCH_MESSAGE
 ORIGINAL_USER = DISCORD_USER | TELEGRAM_USER | TWITCH_USER
 MESSAGE_EVENT = DISCORD_EVENT | TELEGRAM_EVENT | TWITCH_EVENT | TELEGRAM_MESSAGE
 
+RAISE_AMBIGUITY_ERROR = False
 COMMAND_MESSAGE_DURATION = 5
 DISCORD_COMMAND_PREFIX = '/'
 DISCORD_MEDIA_MAX_BYTES = 8000000
@@ -44,7 +45,7 @@ INTERROGATION_PHRASES = ('?', 'que?', 'que dise', 'no entiendo', 'no entender', 
 KEYWORDS = {
     'ban': ('ban', 'banea', 'banealo'),
     'delete': ('borra', 'borrado', 'borres', 'clear', 'delete', 'elimina', 'limpia', 'remove'),
-    'message': ('message', 'original'),
+    'message': ('mensaje', 'message', 'original'),
     'send_as_file': ('arhivo', 'calidad', 'compress', 'compression', 'comprimir', 'file', 'quality'),
     'unban': ('desbanea', 'unban'),
 }
