@@ -7,7 +7,7 @@ chardet==4.0.0
 charset-normalizer==2.0.10
 cryptg==0.2.post4
 discord.py==1.7.3
-flanautils==1.4.4
+flanautils
 frozenlist==1.2.0
 hachoir==3.1.2
 idna==3.3
