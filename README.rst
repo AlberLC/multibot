@@ -210,7 +210,7 @@ A) Simple form
         """
         This function will be executed when someone types exactly "multibot".
 
-        min_ratio=0.8 by default.
+        min_ratio=0.93 by default.
         """
 
         await bot.delete_message(message)  # deletes the received message
@@ -316,7 +316,7 @@ B) Extensible form
             """
             This function will be executed when someone types exactly "multibot".
 
-            min_ratio=0.8 by default.
+            min_ratio=0.93 by default.
             """
 
             await self.delete_message(message)  # deletes the received message
