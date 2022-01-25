@@ -32,6 +32,6 @@ class Message(EventComponent):
     original_object: constants.ORIGINAL_MESSAGE = None
     original_event: constants.MESSAGE_EVENT = None
 
-    def save(self, pickle_types: tuple | list = (Enum, AbstractSet), pull_exclude: Iterable[str] = (), pull_database_priority=False, references=True):
+    def save(self, pickle_types: tuple | list = (Enum, AbstractSet), pull_overwrite_fields: Iterable[str] = (), references=True):
         self.last_update = datetime.datetime.now()
-        super().save(pickle_types, pull_exclude, pull_database_priority, references)
+        super().save(pickle_types, pull_overwrite_fields, references)

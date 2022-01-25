@@ -111,7 +111,7 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         return User(
             id=original_user.id,
-            name=await self._get_name_from_entity(original_user),
+            name=(await self._get_name_from_entity(original_user)).strip(' @'),
             is_admin=is_admin,
             original_object=original_user
         )
@@ -142,17 +142,19 @@ class TelegramBot(MultiBot[TelegramClient]):
         except AttributeError:
             return list(mentions)
 
-        chat = await self._get_chat(original_message)
         text = await self._get_text(original_message)
-
-        if 'flanabot' in text.lower():
-            mentions.add(await self._get_me(chat.group_id))
+        chat = await self._get_chat(original_message)
 
         for entity in entities:
             try:
                 mentions.add(await self.get_user(text[entity.offset:entity.offset + entity.length], chat.group_id))
             except ValueError:
                 pass
+
+        words = text.lower().split()
+        for user in chat.users:
+            if user.name.lower() in words:
+                mentions.add(user)
 
         return list(mentions - None)
 
@@ -409,7 +411,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         except RuntimeError:
             asyncio.run(start_())
 
-    async def unban(self, user: int | str | User, chat: int | str | Chat, message: Message = None):  # todo4 test en grupo de pruebas
+    async def unban(self, user: int | str | User, chat: int | str | Chat | Message):  # todo4 test en grupo de pruebas
         ...
         # if isinstance(user, User):
         #     user = user.original_object

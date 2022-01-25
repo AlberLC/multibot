@@ -41,7 +41,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
             id=channel_name,
             name=channel_name,
             is_group=True,
-            users=list(OrderedSet(await self._get_me(), [await self._create_user_from_twitch_user(chatter) for chatter in twitch_chat.chatters])),
+            users=list(OrderedSet([await self._create_user_from_twitch_user(chatter) for chatter in twitch_chat.chatters])),
             group_id=channel_name,
             original_object=twitch_chat
         )
@@ -73,7 +73,17 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_mentions(self, original_message: twitchio.Message) -> list[User]:
-        return [user for mention in re.findall(r'@[\d\w]+', original_message.content) if (user := await self.get_user(mention[1:], original_message.channel.name))]
+        mentions = OrderedSet([user for mention in re.findall(r'@[\d\w]+', original_message.content) if (user := await self.get_user(mention[1:], original_message.channel.name))])
+
+        text = await self._get_text(original_message)
+        chat = await self._get_chat(original_message)
+
+        words = text.lower().split()
+        for user in chat.users:
+            if user.name.lower() in words:
+                mentions.add(user)
+
+        return list(mentions)
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_message_id(self, original_message: twitchio.Message) -> str:
@@ -108,15 +118,15 @@ class TwitchBot(MultiBot[twitchio.Client]):
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
     async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):
-        user = (await self.get_user(user)).name
+        user_name = (await self.get_user(user)).name
         chat = await self.get_chat(chat)
         if isinstance(seconds, datetime.timedelta):
             seconds = seconds.total_seconds()
 
         if seconds:
-            await self.send(f'/timeout {user} {seconds}', Message(chat=chat))
+            await self.send(f'/timeout {user_name} {seconds}', Message(chat=chat))
         else:
-            await self.send(f'/ban {user}', Message(chat=chat))
+            await self.send(f'/ban {user_name}', Message(chat=chat))
 
     clear_user_messages = functools.partialmethod(ban, seconds=1)
 
@@ -180,7 +190,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         if group_id:
             if twitch_user.name != str(group_id):
                 chat = await self.get_chat(group_id)
-                twitch_user = chat.original_object.get_chatter(twitch_user.name) or next(iter(list((chatter for chatter in chat.original_object.chatters if chatter.id == twitch_user.id))), None)
+                twitch_user = chat.original_object.get_chatter(twitch_user.name)
                 is_admin = twitch_user.is_mod if twitch_user else None
             elif twitch_user.name == str(group_id):
                 is_admin = True
@@ -217,7 +227,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         except RuntimeError:
             self.bot_client.run()
 
-    async def unban(self, user: int | str | User, chat: int | str | Chat, message: Message = None):
+    async def unban(self, user: int | str | User, chat: int | str | Chat | Message):
         user_name = (await self.get_user(user)).name
         chat = await self.get_chat(chat)
         await self.send(f'/unban {user_name}', Message(chat=chat))

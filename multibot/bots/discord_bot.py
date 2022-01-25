@@ -86,7 +86,17 @@ class DiscordBot(MultiBot[Bot]):
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.DISCORD_EVENT) -> list[User]:
-        return list(OrderedSet(self._create_user_from_discord_user(user) for user in original_message.mentions) - None)
+        mentions = OrderedSet(self._create_user_from_discord_user(user) for user in original_message.mentions)
+
+        text = await self._get_text(original_message)
+        chat = await self._get_chat(original_message)
+
+        words = text.lower().split()
+        for user in chat.users:
+            if user.name.lower() in words:
+                mentions.add(user)
+
+        return list(mentions - None)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_message_id(self, original_message: constants.DISCORD_EVENT) -> int:
@@ -261,5 +271,5 @@ class DiscordBot(MultiBot[Bot]):
 
         return role in user_roles
 
-    async def unban(self, user: int | str | User, chat: int | str | Chat, message: Message = None):  # todo2
+    async def unban(self, user: int | str | User, chat: int | str | Chat | Message):  # todo2
         pass

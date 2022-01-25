@@ -266,7 +266,7 @@ class MultiBot(Generic[T]):
             'original_event': event
         })
         message.resolve()
-        message.save(pull_exclude=('author', 'button_text', 'chat', 'mentions', 'replied_message'), pull_database_priority=True)
+        message.save(pull_overwrite_fields='config')
 
         return message
 
@@ -450,43 +450,8 @@ class MultiBot(Generic[T]):
     async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
         pass
 
-    @overload
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_chat(self, chat_id: int) -> Chat | None:
-        pass
-
-    @overload
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_chat(self, chat_name: str) -> Chat | None:
-        pass
-
-    @overload
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_chat(self, chat: Chat) -> Chat | None:
-        pass
-
-    @overload
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_chat(self, message: Message) -> Chat | None:
-        pass
-
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_chat(self, chat: int | str | Chat | Message) -> Chat | None:
-        pass
-
-    @overload
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_user(self, user_id: int, group_id: int | str = None) -> User | None:
-        pass
-
-    @overload
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_user(self, user_name: str, group_id: int | str = None) -> User | None:
-        pass
-
-    @overload
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_user(self, user: User, group_id: int | str = None) -> User | None:
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
@@ -553,5 +518,5 @@ class MultiBot(Generic[T]):
     async def typing_delay(self, message: Message):
         pass
 
-    async def unban(self, user: int | str | User, chat: int | str | Chat, message: Message = None):
+    async def unban(self, user: int | str | User, chat: int | str | Chat | Message):
         pass
