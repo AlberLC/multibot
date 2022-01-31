@@ -64,7 +64,7 @@ You can save the session data in a string (string session). This serves to facil
     from telethon.sessions import StringSession
 
     ...
-    session_string = StringSession.save(telegram_bot.bot_client.session)
+    string_session = StringSession.save(telegram_bot.bot_client.session)
 
 |
 
@@ -96,7 +96,7 @@ You can add a user bot to your telegram bot to extend certain functionalities su
 
 |
 
-Or provide an user session string instead of phone:
+Or provide an user string session instead of phone:
 
 .. code-block:: python
 
