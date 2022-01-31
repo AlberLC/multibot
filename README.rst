@@ -57,7 +57,7 @@ The session will be saved locally using SQLite.
 
 |
 
-You can save the session in a string. This serves to facilitate the use of sessions when hosting the application in cloud services with ephemeral file systems:
+You can save the session data in a string (string session). This serves to facilitate the use of sessions when hosting the application in cloud services with ephemeral file systems:
 
 .. code-block:: python
 
@@ -68,7 +68,7 @@ You can save the session in a string. This serves to facilitate the use of sessi
 
 |
 
-If you have a session in string you can provide it instead of the bot token:
+If you have a string session you can provide it instead of the bot token:
 
 .. code-block:: python
 
