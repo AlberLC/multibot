@@ -175,10 +175,24 @@ Run multiple bots
 Extended tutorial
 -----------------
 
+How the bot works
+~~~~~~~~~~~~~~~~~
+
+The bot works by registering functions that will be executed later when the user provides an input message that meets the requirements specified in the arguments of :code:`Multibot.register()`.
+
+Each function you have registered in the bot will receive a :code:`Message` object that contains all the necessary information related to the context of said message.
+
+|multiBot_class_diagram|
+
+|
+
+Ways to design your bot
+~~~~~~~~~~~~~~~~~~~~~~~
+
 For the examples we are going to use the TelegramBot. But remember that all bots work the same since they use the same objects and logic. "They speak the same language".
 
 A) Simple form
-~~~~~~~~~~~~~~
+..............
 
 .. code-block:: python
 
@@ -276,7 +290,7 @@ A) Simple form
 |
 
 B) Extensible form
-~~~~~~~~~~~~~~~~~~
+..................
 
 .. code-block:: python
 
@@ -391,6 +405,9 @@ For both a normal bot and a user bot (bot using your "human" account) you will n
 .. |python_version| image:: https://img.shields.io/pypi/pyversions/multibot
     :target: https://www.python.org/downloads/
     :alt: PyPI - Python Version
+
+.. |multiBot_class_diagram| image:: https://user-images.githubusercontent.com/37489786/151752376-27e0b764-cb7a-44be-be6d-aaa7d86225e2.png
+    :alt: multiBot_class_diagram
 
 .. |my.telegram.org_app| image:: https://user-images.githubusercontent.com/37489786/149607226-36b0e3d6-6e21-4852-a08f-16ce52d3a7dc.png
     :target: https://my.telegram.org/
