@@ -96,7 +96,7 @@ You can add a user bot to your telegram bot to extend certain functionalities su
 
 |
 
-Or provide user session string instead of phone:
+Or provide an user session string instead of phone:
 
 .. code-block:: python
 
