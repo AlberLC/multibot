@@ -312,9 +312,9 @@ class MultiBot(Generic[T]):
     def _parse_callbacks(
         self,
         text: str,
-        ratio_reward_exponent: float = 7,
-        keywords_lenght_penalty: float = 0.05,
-        minimum_ratio_to_match: float = 21
+        ratio_reward_exponent: float = constants.RATIO_REWARD_EXPONENT,
+        keywords_lenght_penalty: float = constants.KEYWORDS_LENGHT_PENALTY,
+        minimum_ratio_to_match: float = constants.MINIMUM_RATIO_TO_MATCH
     ) -> OrderedSet[RegisteredCallback]:
         text = text.lower()
         text = flanautils.remove_accents(text)
@@ -420,7 +420,7 @@ class MultiBot(Generic[T]):
     @ignore_self_message
     async def _on_new_message_raw(self, message: Message):
         try:
-            registered_callbacks = self._parse_callbacks(message.text, constants.RATIO_REWARD_EXPONENT, constants.KEYWORDS_LENGHT_PENALTY, constants.MINIMUM_RATIO_TO_MATCH)
+            registered_callbacks = self._parse_callbacks(message.text)
         except AmbiguityError as e:
             await self._manage_exceptions(e, message)
         else:
