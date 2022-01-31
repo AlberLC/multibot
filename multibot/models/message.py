@@ -22,7 +22,7 @@ class Message(EventComponent):
     author: User = None
     text: str = None
     button_text: str = None
-    mentions: Iterable[User] = field(default_factory=list)
+    mentions: list[User] = field(default_factory=list)
     chat: Chat = None
     replied_message: Message = None
     last_update: datetime.datetime = None
