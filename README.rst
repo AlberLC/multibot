@@ -3,7 +3,7 @@ MultiBot
 
 |license| |project_version| |python_version|
 
-Platform agnostic high-level bot infrastructure. Develop one bot and you will have three: one for Discord, another one for Telegram and another for Twitch. All bots use the same objects and logic.
+Platform agnostic high-level bot infrastructure. Develop one bot and you will have three: one for Discord, another one for Telegram and another one for Twitch. All bots use the same objects and logic.
 
 For now there are adapters for three platforms but more may be added in the future.
 
