@@ -150,7 +150,7 @@ Run multiple bots
 
 
     async def main():
-        tele_bot = TelegramBot(
+        telegram_bot = TelegramBot(
             api_id=os.environ['TELEGRAM_API_ID'],
             api_hash=os.environ['TELEGRAM_API_HASH'],
             bot_token=os.environ['TELEGRAM_BOT_TOKEN']
@@ -165,7 +165,7 @@ Run multiple bots
         )
 
         await asyncio.gather(
-            tele_bot.start(),
+            telegram_bot.start(),
             twitch_bot.start()
         )
 
@@ -236,8 +236,8 @@ A) Simple form
 
 
     @bot.register(('house', 'home'))
-    # @telegram_bot.register(['house', 'home'])  <-- same
-    # @telegram_bot.register('house home')       <-- same
+    # @bot.register(['house', 'home'])  <-- same
+    # @bot.register('house home')       <-- same
     async def function_name_3(message: Message):
         """This function will be executed when someone types "house" or/and "home"."""
 
@@ -245,9 +245,9 @@ A) Simple form
 
 
     @bot.register((('hello', 'hi'), ('world',)))  # <-- note that is Iterable[Iterable[str]]
-    # @telegram_bot.register([('hello', 'hi'), ('world',)])  <-- same
-    # @telegram_bot.register(['hello hi', ['world']])        <-- same
-    # @telegram_bot.register(['hello hi', 'world'])          !!! NOT same, this is "or" logic (like previous case)
+    # @bot.register([('hello', 'hi'), ('world',)])  <-- same
+    # @bot.register(['hello hi', ['world']])        <-- same
+    # @bot.register(['hello hi', 'world'])          !!! NOT same, this is "or" logic (like previous case)
     async def function_name_4(message: Message):
         """This function will be executed when someone types ("hello" or/and "hi") and "world"."""
 
