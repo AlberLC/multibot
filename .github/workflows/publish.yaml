@@ -22,10 +22,10 @@ jobs:
       - name: Update setup.cfg
         run: |
           sed -i "
-            s/{project_name}/${{ github.event.repository.name }}/g;
-            s/{project_version}/${{ github.ref_name }}/g;
-            s/{author}/${{ github.repository_owner }}/g;
-            s/{description}/${{ github.event.repository.description }}/g
+            s|{project_name}|${{ github.event.repository.name }}|g;
+            s|{project_version}|${{ github.ref_name }}|g;
+            s|{author}|${{ github.repository_owner }}|g;
+            s|{description}|${{ github.event.repository.description }}|g
           " setup.cfg
 
       - name: Build package
