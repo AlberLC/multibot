@@ -321,7 +321,7 @@ class MultiBot(Generic[T]):
         text = flanautils.translate(text, {'?': ' ', '¿': ' ', '!': ' ', '¡': ' ', '_': ' ', 'auto': 'auto '})
         text = flanautils.translate(text, {'auto': 'automatico', 'matico': None, 'matic': None})
         original_text_words = OrderedSet(text.split())
-        text_words = original_text_words - flanautils.CommonWords.words
+        text_words = original_text_words - flanautils.CommonWords.all_words
 
         matched_callbacks: set[RatioMatch[RegisteredCallback]] = set()
         always_callbacks: set[RegisteredCallback] = set()
