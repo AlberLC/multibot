@@ -328,7 +328,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             return
 
         if send_as_file is None:
-            word_matches = flanautils.cartesian_product_string_matching(message.text, constants.KEYWORDS['send_as_file'], min_ratio=0.65)
+            word_matches = flanautils.cartesian_product_string_matching(message.text, constants.KEYWORDS['send_as_file'], min_ratio=constants.TELEGRAM_SEND_AS_FILE_RATIO_MIN_RATIO)
             send_as_file_ratio = sum(max(matches.values()) for text_word, matches in word_matches.items())
             send_as_file = bool(send_as_file_ratio)
 
