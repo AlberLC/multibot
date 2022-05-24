@@ -8,7 +8,7 @@ class Action(FlanaEnum):
     MESSAGE_DELETED = auto()
 
 
-class BotPlatform(FlanaEnum):
+class Platform(FlanaEnum):
     DISCORD = auto()
     TELEGRAM = auto()
     TWITCH = auto()

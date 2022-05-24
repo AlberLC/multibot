@@ -6,7 +6,7 @@ cffi==1.15.0
 chardet==4.0.0
 charset-normalizer==2.0.10
 cryptg==0.2.post4
-discord.py==1.7.3
+discord.py==2.0.0a4275+g544bb1e2
 flanautils
 frozenlist==1.2.0
 hachoir==3.1.2

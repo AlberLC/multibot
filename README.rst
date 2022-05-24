@@ -26,7 +26,26 @@ Quick start
 Discord
 ~~~~~~~
 
-    The Discord bot is on beta, waiting for the Discord company to agree to develop a healthy api that does not break every two months and inform the developers in advance.
+You will need create an discord application at https://discord.com/developers/applications and generate a **BOT_TOKEN** for your bot.
+
+
+You will have to select the **bot** and **applications.commands** scopes and the **Administrator** permission. And as for the Discord Intents (in the Bot/Build-A-Bot panel) you must activate **PRESENCE INTENT**, **SERVER MEMBERS INTENT** and **MESSAGE CONTENT INTENT**.
+
+.. code-block:: python
+
+    import os
+
+    from multibot import DiscordBot, Message
+
+    discord_bot = DiscordBot(os.environ['DISCORD_BOT_TOKEN'])
+
+
+    @discord_bot.register('hello')
+    async def function_name_1(message: Message):
+        await discord_bot.send('Hi!', message)
+
+
+    discord_bot.start()
 
 |
 
@@ -146,10 +165,12 @@ Run multiple bots
     import asyncio
     import os
 
-    from multibot import TelegramBot, TwitchBot
+    from multibot import DiscordBot, TelegramBot, TwitchBot
 
 
     async def main():
+        discord_bot = DiscordBot(os.environ['DISCORD_BOT_TOKEN'])
+
         telegram_bot = TelegramBot(
             api_id=os.environ['TELEGRAM_API_ID'],
             api_hash=os.environ['TELEGRAM_API_HASH'],
@@ -157,7 +178,7 @@ Run multiple bots
         )
 
         # If you run a TwitchBot in an asyncio loop you must create it inside the loop like below.
-        # Other bots like TelegramBot or DiscordBot don't have this need and can be created at the module level.
+        # Other bots like DiscordBot or TelegramBot don't have this need and can be created at the module level.
         twitch_bot = TwitchBot(
             bot_token=os.environ['TWITCH_ACCESS_TOKEN'],
             initial_channels=['channel_name'],
@@ -165,6 +186,7 @@ Run multiple bots
         )
 
         await asyncio.gather(
+            discord_bot.start(),
             telegram_bot.start(),
             twitch_bot.start()
         )
@@ -408,7 +430,7 @@ For both a normal bot and a user bot (bot using your "human" account) you will n
     :target: https://www.python.org/downloads/
     :alt: PyPI - Python Version
 
-.. |multiBot_class_diagram| image:: https://user-images.githubusercontent.com/37489786/151752376-27e0b764-cb7a-44be-be6d-aaa7d86225e2.png
+.. |multiBot_class_diagram| image:: https://user-images.githubusercontent.com/37489786/170136350-fb04ecb1-02c7-4f1e-923a-b51b88980f91.png
     :alt: multiBot_class_diagram
 
 .. |my.telegram.org_app| image:: https://user-images.githubusercontent.com/37489786/149607226-36b0e3d6-6e21-4852-a08f-16ce52d3a7dc.png

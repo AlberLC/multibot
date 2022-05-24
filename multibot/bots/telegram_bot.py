@@ -5,12 +5,10 @@ import datetime
 import functools
 import io
 import pathlib
-import random
 import struct
 from typing import Any, Callable
 
 import flanautils
-import pymongo
 import telethon.events.common
 import telethon.hints
 import telethon.tl.functions.channels
@@ -22,7 +20,7 @@ from telethon.sessions import StringSession
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, find_message, inline, parse_arguments
 from multibot.exceptions import LimitError
-from multibot.models import BotPlatform, Chat, Message, User
+from multibot.models import Chat, Message, Platform, User
 
 
 # ---------------------------------------------------------- #
@@ -70,6 +68,13 @@ class TelegramBot(MultiBot[TelegramClient]):
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #
     # ----------------------------------------------------------- #
+    async def _accept_button_event(self, event: constants.MESSAGE_EVENT | Message):
+        match event:
+            case Message():
+                event = event.original_event
+
+        await event.answer()
+
     # noinspection PyTypeChecker
     def _add_handlers(self):
         super()._add_handlers()
@@ -88,28 +93,36 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _create_chat_from_telegram_chat(self, telegram_chat: constants.TELEGRAM_CHAT) -> Chat | None:
-        if is_group := not isinstance(telegram_chat, constants.TELEGRAM_USER):
-            users = [await self._create_user_from_telegram_user(participant, telegram_chat.id) for participant in await self.bot_client.get_participants(telegram_chat)]
-        else:
+        chat_name = await self._get_name_from_entity(telegram_chat)
+        if isinstance(telegram_chat, constants.TELEGRAM_USER):
             users = [await self.get_user(self.owner_id), await self.get_user(self.bot_id)]
+            group_id = None
+            group_name = None
+        else:
+            users = [await self._create_user_from_telegram_user(participant, telegram_chat.id) for participant in await self.bot_client.get_participants(telegram_chat)]
+            group_id = telegram_chat.id
+            group_name = chat_name
 
         return Chat(
+            platform=self.bot_platform.value,
             id=telegram_chat.id,
-            name=await self._get_name_from_entity(telegram_chat),
-            is_group=is_group,
+            name=chat_name,
+            group_id=group_id,
+            group_name=group_name,
             users=users,
-            group_id=telegram_chat.id,
             original_object=telegram_chat
         )
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _create_user_from_telegram_user(self, original_user: constants.TELEGRAM_USER, group_id: int = None) -> User | None:
+    async def _create_user_from_telegram_user(self, original_user: constants.TELEGRAM_USER, group_: int | str | Chat = None) -> User | None:
+        group_id = self._get_group_id(group_)
         try:
             is_admin = (await self.bot_client.get_permissions(group_id, original_user)).is_admin
         except (AttributeError, TypeError, ValueError):
             is_admin = None
 
         return User(
+            platform=self.bot_platform.value,
             id=original_user.id,
             name=(await self._get_name_from_entity(original_user)).strip(' @'),
             is_admin=is_admin,
@@ -121,7 +134,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         return await self._create_user_from_telegram_user(original_message.sender, original_message.chat.id)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_button_text(self, event: constants.TELEGRAM_EVENT) -> str | None:
+    async def _get_last_button_pressed(self, event: constants.TELEGRAM_EVENT) -> str | None:
         try:
             return event.data.decode()
         except AttributeError:
@@ -131,8 +144,8 @@ class TelegramBot(MultiBot[TelegramClient]):
     async def _get_chat(self, original_message: constants.TELEGRAM_MESSAGE) -> Chat | None:
         return await self._create_chat_from_telegram_chat(original_message.chat)
 
-    async def _get_me(self, group_id: int = None) -> User | None:
-        return await self._create_user_from_telegram_user(await self.bot_client.get_me(), group_id)
+    async def _get_me(self, group_: int | str | Chat = None):
+        return await self._create_user_from_telegram_user(await self.bot_client.get_me(), group_)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.TELEGRAM_MESSAGE) -> list[User]:
@@ -213,13 +226,13 @@ class TelegramBot(MultiBot[TelegramClient]):
         await super()._on_new_message_raw(message)
 
     async def _on_ready(self):
+        self.bot_platform = Platform.TELEGRAM
         me = await self.bot_client.get_me()
         self.bot_id = me.id
         self.bot_name = me.username
         if self.user_client:
             async with self.user_client:
                 self.owner_id = (await self.user_client.get_me()).id
-        self.bot_platform = BotPlatform.TELEGRAM
         await super()._on_ready()
 
     # -------------------------------------------------------- #
@@ -235,7 +248,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         #     seconds = datetime.timedelta(seconds=seconds)
         #
         # rights = telethon.tl.types.ChatBannedRights(
-        #     until_date=datetime.datetime.now() + seconds if seconds else None,
+        #     until_date=datetime.datetime.now(datetime.timezone.utc) + seconds if seconds else None,
         #     view_messages=True,
         #     send_messages=True,
         #     send_media=True,
@@ -255,10 +268,10 @@ class TelegramBot(MultiBot[TelegramClient]):
     @user_client
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
+        if n_messages > constants.DELETE_MESSAGE_LIMIT:
+            raise LimitError('El máximo es 100.')
+
         chat = await self.get_chat(chat)
-        if n_messages > constants.TELEGRAM_DELETE_MESSAGE_LIMIT:
-            await self._manage_exceptions(LimitError('El máximo es 100.'), Message(chat=chat))  # todo4 probar en grupo de pruebas >100 mensajes y <=100 mensajes
-            return
         n_messages += 1
 
         async with self.user_client:
@@ -278,7 +291,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         chat = await self.get_chat(chat)
         match message_to_delete:
             case int() | str():
-                message_to_delete = Message.find_one({'id': str(message_to_delete), 'chat': chat.object_id})
+                message_to_delete = Message.find_one({'platform': self.bot_platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
             case Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
                 chat = None
 
@@ -303,13 +316,13 @@ class TelegramBot(MultiBot[TelegramClient]):
         return await self._create_chat_from_telegram_chat(await self.bot_client.get_entity(chat))
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def get_user(self, user: int | str | User, group_id: int | str = None) -> User | None:
+    async def get_user(self, user: int | str | User, group_: int | str | Chat = None) -> User | None:
         if isinstance(user, User):
             return user
 
         try:
             with flanautils.suppress_stderr():
-                return await self._create_user_from_telegram_user(await self.bot_client.get_entity(user), group_id)
+                return await self._create_user_from_telegram_user(await self.bot_client.get_entity(user), group_)
         except struct.error:
             pass
 
@@ -320,6 +333,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         media: Media = None,
         buttons: list[str | list[str]] = None,
         message: Message = None,
+        silent: bool = False,
         send_as_file: bool = None,
         edit=False,
     ) -> Message | None:
@@ -332,6 +346,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             send_as_file_ratio = sum(max(matches.values()) for text_word, matches in word_matches.items())
             send_as_file = bool(send_as_file_ratio)
 
+        buttons = buttons or []
         for i, row in enumerate(buttons):
             for j, column in enumerate(row):
                 buttons[i][j] = telethon.Button.inline(buttons[i][j])
@@ -343,41 +358,38 @@ class TelegramBot(MultiBot[TelegramClient]):
             'parse_mode': 'html'
         }
 
-        if message.is_inline and media:
-            if media.source is Source.TIKTOK and isinstance(media.content, bytes):
-                bot_user = User.find_one({'id': self.bot_id})
-                last_bot_message_to_user = Message.find_one({'author': bot_user.object_id, 'chat': message.chat.object_id}, sort_keys=(('last_update', pymongo.DESCENDING),))
-                for content in getattr(last_bot_message_to_user, 'contents', []):
-                    if content == media.content:
-                        break
+        if message.is_inline:
+            if media:
+                if media.type_ is MediaType.IMAGE:
+                    message.contents.append(message.original_event.builder.photo(file))
                 else:
-                    phrase = f"El contenido pesa demasiado, te lo tengo que mandar por aquí. Dame un {random.choice(('minutillo', 'minuto', 'momentito', 'momento'))}."
-                    bot_message = await self.send(phrase, message)
-                    bot_message.contents.clear()
-                    bot_message.save()
-                    try:
-                        original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
-                    except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
-                        return
-                    await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=[getattr(media, 'content', None)])
-            elif media.type_ is MediaType.IMAGE:
-                message.contents.append(message.original_event.builder.photo(file))
-            else:
-                message.contents.append(message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower()))
+                    message.contents.append(message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower()))
         elif edit:
             try:
-                await message.original_object.edit(text, **kwargs)
-            except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
+                edited_message = await message.original_object.edit(text, **kwargs)
+            except (
+                    telethon.errors.rpcerrorlist.PeerIdInvalidError,
+                    telethon.errors.rpcerrorlist.UserIsBlockedError,
+                    telethon.errors.rpcerrorlist.MessageNotModifiedError
+            ):
                 pass
-            message.contents = [getattr(media, 'content', None)]
+            else:
+                message.original_object = edited_message
+            if content := getattr(media, 'content', None):
+                message.contents = [content]
             message.save()
             return message
         else:
+            kwargs['silent'] = silent
             try:
                 original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
             except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                 return
-            return await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=[getattr(media, 'content', None)])
+            if content := getattr(media, 'content', None):
+                contents = [content]
+            else:
+                contents = []
+            return await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=contents)
 
     @inline
     async def send_inline_results(self, message: Message):

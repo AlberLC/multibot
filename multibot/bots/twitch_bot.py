@@ -7,12 +7,13 @@ import re
 from collections import defaultdict
 from typing import Iterable, Iterator
 
+import flanautils
 import pymongo
 import twitchio
 from flanautils import Media, OrderedSet, return_if_first_empty
 
 from multibot.bots.multi_bot import MultiBot, parse_arguments
-from multibot.models import BotPlatform, Chat, Message, User
+from multibot.models import Chat, Message, Platform, User
 
 
 # --------------------------------------------------------------------------------------------------- #
@@ -37,12 +38,18 @@ class TwitchBot(MultiBot[twitchio.Client]):
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _create_chat_from_twitch_chat(self, twitch_chat: twitchio.Channel) -> Chat | None:
         channel_name = twitch_chat.name
+        try:
+            channel_id = int(flanautils.find(twitch_chat.chatters, condition=lambda user: user.name == channel_name).id)
+        except AttributeError:
+            channel_id = int(next(iter(await self.bot_client.fetch_users([channel_name])), None).id)
+
         return Chat(
-            id=channel_name,
+            platform=self.bot_platform.value,
+            id=channel_id,
             name=channel_name,
-            is_group=True,
+            group_id=channel_id,
+            group_name=channel_name,
             users=list(OrderedSet([await self._create_user_from_twitch_user(chatter) for chatter in twitch_chat.chatters])),
-            group_id=channel_name,
             original_object=twitch_chat
         )
 
@@ -52,6 +59,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
             id = next(iter(await self.bot_client.fetch_users([twitch_user.name])), None).id
 
         return User(
+            platform=self.bot_platform.value,
             id=int(id),
             name=twitch_user.name,
             is_admin=getattr(twitch_user, 'is_mod', None) if is_admin is None else is_admin,
@@ -68,8 +76,8 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def _get_chat(self, original_message: twitchio.Message) -> Chat | None:
         return await self._create_chat_from_twitch_chat(original_message.channel)
 
-    async def _get_me(self, group_id: int | str = None) -> User | None:
-        return await self.get_user(self.bot_id, group_id)
+    async def _get_me(self, group_: int | str | Chat = None) -> User | None:
+        return await self.get_user(self.bot_id, group_)
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_mentions(self, original_message: twitchio.Message) -> list[User]:
@@ -96,7 +104,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_replied_message(self, original_message: twitchio.Message) -> Message | None:
         try:
-            return Message.find_one({'id': original_message.tags['reply-parent-msg-id']})
+            return Message.find_one({'platform': self.bot_platform.value, 'id': original_message.tags['reply-parent-msg-id']})
         except KeyError:
             pass
 
@@ -108,10 +116,10 @@ class TwitchBot(MultiBot[twitchio.Client]):
     #                    HANDLERS                    #
     # ---------------------------------------------- #
     async def _on_ready(self):
+        self.bot_platform = Platform.TWITCH
         self.bot_id = (await self.get_user(self.bot_client.nick)).id
         self.bot_name = self.bot_client.nick
         self.owner_id = user.id if (user := await self.get_user(self.owner_name)) else None
-        self.bot_platform = BotPlatform.TWITCH
         await super()._on_ready()
 
     # -------------------------------------------------------- #
@@ -134,8 +142,14 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
         chat = await self.get_chat(chat)
 
-        owner_user = User.find_one({'name': self.owner_name})
-        messages_to_delete: Iterator[Message] = Message.find({'author': {'$ne': owner_user.object_id}, 'chat': chat.object_id, 'is_deleted': False, 'last_update': {'$gt': datetime.datetime.now() - datetime.timedelta(days=1)}}, sort_keys=(('last_update', pymongo.DESCENDING),), lazy=True)
+        owner_user = User.find_one({'platform': self.bot_platform.value, 'name': self.owner_name})
+        messages_to_delete: Iterator[Message] = Message.find({
+            'platform': self.bot_platform.value,
+            'author': {'$ne': owner_user.object_id},
+            'chat': chat.object_id,
+            'is_deleted': False,
+            'last_update': {'$gt': datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)}
+        }, sort_keys=(('last_update', pymongo.DESCENDING),), lazy=True)
 
         deleted_message_count = 0
         while deleted_message_count < n_messages:
@@ -153,7 +167,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         chat = await self.get_chat(chat)
         match message_to_delete:
             case int() | str():
-                message_to_delete = Message.find_one({'id': str(message_to_delete), 'chat': chat.object_id})
+                message_to_delete = Message.find_one({'platform': self.bot_platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
             case Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
                 chat = None
 
@@ -171,15 +185,21 @@ class TwitchBot(MultiBot[twitchio.Client]):
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def get_chat(self, chat: int | str | Chat | Message = None) -> Chat | None:
         match chat:
+            case int():
+                group_name = self._get_group_name(chat)
+            case str(group_name):
+                pass
             case Chat():
                 return chat
             case Message() as message:
                 return message.chat
+            case _:
+                raise TypeError('bad arguments')
 
-        return await self._create_chat_from_twitch_chat(self.bot_client.get_channel(str(chat)) or await self.bot_client.fetch_channel(str(chat)))
+        return await self._create_chat_from_twitch_chat(self.bot_client.get_channel(group_name) or await self.bot_client.fetch_channel(group_name))
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def get_user(self, user: int | str | User, group_id: int | str = None) -> User | None:
+    async def get_user(self, user: int | str | User, group_: int | str | Chat = None) -> User | None:
         if isinstance(user, User):
             return user
 
@@ -187,15 +207,15 @@ class TwitchBot(MultiBot[twitchio.Client]):
         if not (twitch_user := next(iter(await self.bot_client.fetch_users([user])), None)):
             return
 
-        if group_id:
-            if twitch_user.name != str(group_id):
-                chat = await self.get_chat(group_id)
-                twitch_user = chat.original_object.get_chatter(twitch_user.name)
-                is_admin = twitch_user.is_mod if twitch_user else None
-            elif twitch_user.name == str(group_id):
+        group_name = self._get_group_name(group_)
+
+        if group_name:
+            if twitch_user.name == group_name:
                 is_admin = True
             else:
-                is_admin = False
+                chat = await self.get_chat(group_)
+                twitch_user = chat.original_object.get_chatter(twitch_user.name)
+                is_admin = twitch_user.is_mod if twitch_user else None
         else:
             is_admin = None
         return await self._create_user_from_twitch_user(twitch_user, is_admin=is_admin)
@@ -210,6 +230,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         media: Media = None,
         buttons: list[str | list[str]] = None,
         message: Message = None,
+        silent: bool = False,
         send_as_file: bool = None,
         edit=False
     ):
