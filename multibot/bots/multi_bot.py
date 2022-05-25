@@ -171,7 +171,10 @@ def parse_arguments(func: Callable) -> Callable:
                 case Message() as message:
                     pass
 
-        buttons = buttons or message.buttons or []
+        try:
+            buttons = buttons or message.buttons or []
+        except AttributeError:
+            pass
 
         silent = silent if (kw_value := kwargs.get('silent')) is None else kw_value
         send_as_file = send_as_file if (kw_value := kwargs.get('send_as_file')) is None else kw_value

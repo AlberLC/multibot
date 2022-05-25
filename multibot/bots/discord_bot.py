@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import functools
 import io
+import pathlib
 import random
 from typing import Iterable
 
@@ -11,7 +12,7 @@ import discord
 import flanautils
 from discord.ext.commands import Bot
 from discord.ui import Button, View
-from flanautils import Media, MediaType, NotFoundError, OrderedSet, Source, return_if_first_empty
+from flanautils import Media, MediaType, NotFoundError, OrderedSet, return_if_first_empty
 
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
@@ -56,6 +57,7 @@ class DiscordBot(MultiBot[Bot]):
                 chat_name = discord_chat.recipient.name
             except AttributeError:
                 discord_chat = await self.bot_client.fetch_channel(discord_chat.id)
+                # noinspection PyUnresolvedReferences
                 chat_name = discord_chat.recipient.name
             group_id = None
             group_name = None
@@ -195,28 +197,20 @@ class DiscordBot(MultiBot[Bot]):
     async def _prepare_media_to_send(media: Media) -> discord.File | None:
         if not media:
             return
+
         if media.url:
-            if media.source is Source.LOCAL:
-                with open(media.url, 'rb') as file:
-                    bytes_ = file.read()
+            if (path_suffix := pathlib.Path(media.url).suffix) and len(path_suffix) <= constants.MAX_FILE_EXTENSION_LENGHT:
+                file = discord.File(media.url)
             else:
-                bytes_ = await flanautils.get_request(media.url)
-        elif media.bytes_:
-            bytes_ = media.bytes_
+                file = discord.File(media.url, filename=f'bot_media.{media.type_.extension}')
+        elif bytes_ := media.bytes_:
+            if media.type_ is MediaType.GIF:
+                bytes_ = await flanautils.mp4_to_gif(bytes_)
+            file = discord.File(fp=io.BytesIO(bytes_), filename=f'bot_media.{media.type_.extension}')
         else:
             return
 
-        if len(bytes_) > constants.DISCORD_MEDIA_MAX_BYTES:
-            if random.randint(0, 10):
-                error_message = 'El archivo pesa más de 8 MB.'
-            else:
-                error_message = 'El archivo pesa mas que tu madre'
-            raise SendError(error_message)
-
-        if media.type_ is MediaType.GIF:
-            bytes_ = await flanautils.mp4_to_gif(bytes_)
-
-        return discord.File(fp=io.BytesIO(bytes_), filename=f'bot_media.{media.type_.extension}')
+        return file
 
     async def _unmute(self, user: int | str | User, group_: int | str | Chat):
         user = await self.get_user(user, group_)
@@ -375,7 +369,7 @@ class DiscordBot(MultiBot[Bot]):
         silent: bool = False,
         send_as_file: bool = None,
         edit=False
-    ) -> Message:
+    ) -> Message | None:
         def create_view():
             nonlocal buttons
             buttons = buttons or []
@@ -401,7 +395,15 @@ class DiscordBot(MultiBot[Bot]):
             return message
         else:
             view = create_view() if buttons else None
-            bot_message = await self._get_message(await message.chat.original_object.send(text, file=file, view=view))
+            try:
+                bot_message = await self._get_message(await message.chat.original_object.send(text, file=file, view=view))
+            except discord.errors.HTTPException:
+                if random.randint(0, 10):
+                    error_message = 'El archivo pesa más de 8 MB.'
+                else:
+                    error_message = 'El archivo pesa mas que tu madre'
+                await self._manage_exceptions(SendError(error_message), message)
+                return
             bot_message.buttons = buttons
             if content := getattr(media, 'content', None):
                 bot_message.contents = [content]
