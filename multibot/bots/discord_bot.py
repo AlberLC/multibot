@@ -52,7 +52,11 @@ class DiscordBot(MultiBot[Bot]):
             roles = self._create_roles_from_discord_roles(discord_chat.guild.roles)
         except AttributeError:
             users = [await self.get_user(self.owner_id), await self.get_user(self.bot_id)]
-            chat_name = discord_chat.recipient.name
+            try:
+                chat_name = discord_chat.recipient.name
+            except AttributeError:
+                discord_chat = await self.bot_client.fetch_channel(discord_chat.id)
+                chat_name = discord_chat.recipient.name
             group_id = None
             group_name = None
             roles = []
