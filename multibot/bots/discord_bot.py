@@ -2,7 +2,6 @@ from __future__ import annotations  # todo0 remove in 3.11
 
 import asyncio
 import datetime
-import functools
 import io
 import pathlib
 import random
@@ -13,7 +12,6 @@ import flanautils
 from discord.ext.commands import Bot
 from discord.ui import Button, View
 from flanautils import Media, MediaType, NotFoundError, OrderedSet, return_if_first_empty
-
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
 from multibot.exceptions import LimitError, SendError, UserDisconnectedError
@@ -31,7 +29,7 @@ class DiscordBot(MultiBot[Bot]):
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #
     # ----------------------------------------------------------- #
-    async def _accept_button_event(self, event: constants.MESSAGE_EVENT | Message):
+    async def _accept_button_event(self, event: constants.DISCORD_EVENT | Message):
         match event:
             case Message():
                 event = event.original_event
@@ -102,6 +100,26 @@ class DiscordBot(MultiBot[Bot]):
     async def _get_chat(self, original_message: constants.DISCORD_MESSAGE) -> Chat | None:
         # noinspection PyTypeChecker
         return await self._create_chat_from_discord_chat(original_message.channel)
+
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def _get_button_pressed_text(self, event: constants.DISCORD_EVENT) -> str | None:
+        try:
+            button_id = event.data['custom_id']
+        except AttributeError:
+            pass
+        else:
+            original_message = await self._get_original_message(event)
+            for row in original_message.components:
+                for button in row.children:
+                    if button.custom_id == button_id:
+                        return button.label
+
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def _get_button_pressed_user(self, event: constants.DISCORD_EVENT) -> User | None:
+        try:
+            return self._create_user_from_discord_user(event.user)
+        except AttributeError:
+            pass
 
     async def _get_me(self, group_: int | str | Chat = None) -> User | None:
         # noinspection PyTypeChecker
@@ -377,7 +395,7 @@ class DiscordBot(MultiBot[Bot]):
             for i, row in enumerate(buttons):
                 for j, column in enumerate(row):
                     discord_button = Button(label=buttons[i][j], row=i)
-                    discord_button.callback = functools.partial(self._on_button_press_raw, discord_button.label)
+                    discord_button.callback = self._on_button_press_raw
                     view_.add_item(discord_button)
 
             return view_

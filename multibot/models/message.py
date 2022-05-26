@@ -23,7 +23,8 @@ class Message(EventComponent):
     author: User = None
     text: str = None
     buttons: list[list[str]] = None
-    last_button_pressed: str = None
+    button_pressed_text: str = None
+    button_pressed_user: User = None
     mentions: list[User] = field(default_factory=list)
     chat: Chat = None
     replied_message: Message = None

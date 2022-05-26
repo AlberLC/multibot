@@ -68,7 +68,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #
     # ----------------------------------------------------------- #
-    async def _accept_button_event(self, event: constants.MESSAGE_EVENT | Message):
+    async def _accept_button_event(self, event: constants.TELEGRAM_EVENT | Message):
         match event:
             case Message():
                 event = event.original_event
@@ -134,11 +134,15 @@ class TelegramBot(MultiBot[TelegramClient]):
         return await self._create_user_from_telegram_user(original_message.sender, original_message.chat.id)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_last_button_pressed(self, event: constants.TELEGRAM_EVENT) -> str | None:
+    async def _get_button_pressed_text(self, event: constants.TELEGRAM_EVENT) -> str | None:
         try:
             return event.data.decode()
         except AttributeError:
             pass
+
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def _get_button_pressed_user(self, event: constants.TELEGRAM_EVENT) -> User | None:
+        return await self._create_user_from_telegram_user(event.sender)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_chat(self, original_message: constants.TELEGRAM_MESSAGE) -> Chat | None:

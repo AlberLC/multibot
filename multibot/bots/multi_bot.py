@@ -28,10 +28,7 @@ def find_message(func_: Callable = None, /, return_if_not_found=False) -> Callab
         async def wrapper(self: MultiBot, *args, **kwargs):
             args = (*args, *kwargs.values())
             if not (message := flanautils.find(args, Message)):
-                if discord_interaction := flanautils.find(args, discord.Interaction):
-                    message = await self._get_message(discord_interaction)
-                    message.last_button_pressed = flanautils.find(args, str)
-                elif event := flanautils.find(args, constants.MESSAGE_EVENT):
+                if event := flanautils.find(args, constants.MESSAGE_EVENT):
                     message = await self._get_message(event)
                 elif return_if_not_found:
                     return
@@ -313,7 +310,11 @@ class MultiBot(Generic[T], ABC):
         return tuple(((user_id, group_id), list(group_)) for (user_id, group_id), group_ in group_iterator)
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def _get_last_button_pressed(self, original_message: constants.ORIGINAL_MESSAGE) -> str | None:
+    async def _get_button_pressed_text(self, event: constants.MESSAGE_EVENT) -> str | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def _get_button_pressed_user(self, event: constants.MESSAGE_EVENT) -> User | None:
         pass
 
     async def _get_me(self, group_: int | str | Chat = None) -> User | None:
@@ -333,7 +334,8 @@ class MultiBot(Generic[T], ABC):
             id=await self._get_message_id(original_message),
             author=await self._get_author(original_message),
             text=await self._get_text(original_message),
-            last_button_pressed=await self._get_last_button_pressed(event),
+            button_pressed_text=await self._get_button_pressed_text(event),
+            button_pressed_user=await self._get_button_pressed_user(event),
             mentions=await self._get_mentions(original_message),
             chat=await self._get_chat(original_message),
             replied_message=await self._get_replied_message(original_message),
