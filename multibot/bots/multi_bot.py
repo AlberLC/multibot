@@ -2,10 +2,9 @@ from __future__ import annotations  # todo0 remove in 3.11
 
 import datetime
 import functools
-import itertools
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, Iterable, Iterator, Type, TypeVar, overload
+from typing import Any, Callable, Generic, Iterable, Type, TypeVar, overload
 
 import discord
 import flanautils
@@ -14,8 +13,8 @@ import telethon.events.common
 from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, RatioMatch, return_if_first_empty, shift_args_if_called
 
 from multibot import constants
-from multibot.exceptions import LimitError, SendError, UserDisconnectedError
-from multibot.models import Chat, Message, Mute, Platform, RegisteredCallback, Role, User
+from multibot.exceptions import LimitError, SendError
+from multibot.models import Ban, BotAction, Chat, Message, Mute, Platform, RegisteredCallback, Role, User
 
 
 # ---------------------------------------------------------- #
@@ -99,7 +98,7 @@ def ignore_self_message(func: Callable) -> Callable:
     @functools.wraps(func)
     @find_message
     async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
-        if message.author.id != self.bot_id:
+        if message.author.id != self.id:
             return await func(self, message, *args, **kwargs)
 
     return wrapper
@@ -135,7 +134,7 @@ def parse_arguments(func: Callable) -> Callable:
         bot: MultiBot | None = None
         text = ''
         media: Media | None = None
-        buttons: list[str | list[str]] = []
+        buttons: list[str | list[str]] | None = None
         message: Message | None = None
         silent: bool | None = None
         send_as_file: bool | None = None
@@ -167,11 +166,6 @@ def parse_arguments(func: Callable) -> Callable:
                     message = Message(chat=chat)
                 case Message() as message:
                     pass
-
-        try:
-            buttons = buttons or message.buttons or []
-        except AttributeError:
-            pass
 
         silent = silent if (kw_value := kwargs.get('silent')) is None else kw_value
         send_as_file = send_as_file if (kw_value := kwargs.get('send_as_file')) is None else kw_value
@@ -210,17 +204,19 @@ T = TypeVar('T')
 
 
 class MultiBot(Generic[T], ABC):
+    client: T
+
     def __init__(self, bot_token: str, bot_client: T):
         self.Chat = Chat
         self.Message = Message
         self.User = User
 
-        self.bot_platform: Platform | None = None
-        self.bot_id: int | None = None
-        self.bot_name: str | None = None
+        self.platform: Platform | None = None
+        self.id: int | None = None
+        self.name: str | None = None
         self.owner_id: int | None = None
-        self.bot_token: str = bot_token
-        self.bot_client: T = bot_client
+        self.token: str = bot_token
+        self.client: T = bot_client
         self._registered_callbacks: list[RegisteredCallback] = []
         self._registered_button_callbacks: list[Callable] = []
 
@@ -249,65 +245,36 @@ class MultiBot(Generic[T], ABC):
         self.register(self._on_unmute, (constants.KEYWORDS['deactivate'], constants.KEYWORDS['mute']))
         self.register(self._on_unmute, (constants.KEYWORDS['activate'], constants.KEYWORDS['sound']))
 
+    async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
+        pass
+
     @staticmethod
     async def _check_messages():
-        Message.collection.delete_many({'last_update': {'$lte': datetime.datetime.now(datetime.timezone.utc) - constants.MESSAGE_EXPIRATION_TIME}})
+        before_date = datetime.datetime.now(datetime.timezone.utc) - constants.MESSAGE_EXPIRATION_TIME
+        Message.collection.delete_many({'last_update': {'$lte': before_date}})
+        BotAction.collection.delete_many({'date': {'$lte': before_date}})
 
-    async def _check_mutes(self):
-        mute_groups = self._get_grouped_punishments(Mute)
+    async def _find_users_to_punish(self, message: Message) -> OrderedSet[User]:
+        bot_user = await self.get_me(message.chat.group_id)
+        users: OrderedSet[User] = OrderedSet(message.mentions)
+        if message.replied_message:
+            users.add(message.replied_message.author)
 
-        now = datetime.datetime.now(datetime.timezone.utc)
-        for (user_id, group_id), sorted_mutes in mute_groups:
-            if (last_mute := sorted_mutes[-1]).until and last_mute.until <= now:
-                await self.unmute(user_id, group_id)
-                for mute in sorted_mutes:
-                    mute.delete()
+        match users:
+            case []:
+                await self.send_interrogation(message)
+                return OrderedSet()
+            case [single] if single == bot_user:
+                await self.send_negative(message)
+                return OrderedSet()
+
+        await flanautils.do_later(constants.COMMAND_MESSAGE_DURATION, self.delete_message, message)
+        return users - bot_user
 
     @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_author(self, original_message: constants.ORIGINAL_MESSAGE) -> User | None:
         pass
-
-    @abstractmethod
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def _get_chat(self, original_message: constants.ORIGINAL_MESSAGE) -> Chat | None:
-        pass
-
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    def _get_group_id(self, group_: int | str | Chat) -> int | None:
-        match group_:
-            case int():
-                return group_
-            case str():
-                try:
-                    return Chat.find_one({'platform': self.bot_platform.value, 'group_name': group_}).group_id
-                except AttributeError:
-                    pass
-            case Chat():
-                return group_.group_id
-
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    def _get_group_name(self, group_: int | str | Chat) -> str | None:
-        match group_:
-            case int():
-                try:
-                    return Chat.find_one({'platform': self.bot_platform.value, 'group_id': group_}).group_name
-                except AttributeError:
-                    pass
-            case str():
-                return group_
-            case Chat():
-                return group_.group_name
-
-    def _get_grouped_punishments(self, MuteClass: Type[Mute]) -> tuple[tuple[tuple[int, int], list[Mute]]]:
-        sorted_punishments = MuteClass.find({'platform': self.bot_platform.value}, sort_keys=('user_id', 'group_id', 'until'))
-        group_iterator: Iterator[
-            tuple[
-                tuple[int, int],
-                Iterator[MuteClass]
-            ]
-        ] = itertools.groupby(sorted_punishments, key=lambda punishment: (punishment.user_id, punishment.group_id))
-        return tuple(((user_id, group_id), list(group_)) for (user_id, group_id), group_ in group_iterator)
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_button_pressed_text(self, event: constants.MESSAGE_EVENT) -> str | None:
@@ -317,7 +284,9 @@ class MultiBot(Generic[T], ABC):
     async def _get_button_pressed_user(self, event: constants.MESSAGE_EVENT) -> User | None:
         pass
 
-    async def _get_me(self, group_: int | str | Chat = None) -> User | None:
+    @abstractmethod
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def _get_chat(self, original_message: constants.ORIGINAL_MESSAGE) -> Chat | None:
         pass
 
     @abstractmethod
@@ -330,7 +299,7 @@ class MultiBot(Generic[T], ABC):
         original_message = event if isinstance(event, constants.ORIGINAL_MESSAGE) else await self._get_original_message(event)
 
         message = Message(
-            platform=self.bot_platform,
+            platform=self.platform,
             id=await self._get_message_id(original_message),
             author=await self._get_author(original_message),
             text=await self._get_text(original_message),
@@ -343,8 +312,7 @@ class MultiBot(Generic[T], ABC):
             original_object=original_message,
             original_event=event
         )
-        message.resolve()
-        message.save(pull_overwrite_fields='config')
+        message.save(pull_overwrite_fields=('_id', 'config'))
 
         return message
 
@@ -363,27 +331,10 @@ class MultiBot(Generic[T], ABC):
     async def _get_replied_message(self, original_message: constants.ORIGINAL_MESSAGE) -> Message | None:
         pass
 
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def _get_roles_from_group_id(self, group_id: int) -> list[Role]:
-        pass
-
     @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_text(self, original_message: constants.ORIGINAL_MESSAGE) -> str:
         pass
-
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    def _get_user_id(self, user: int | str | User) -> int | None:
-        match user:
-            case int():
-                return user
-            case str():
-                try:
-                    return User.find_one({'platform': self.bot_platform.value, 'name': user}).id
-                except AttributeError:
-                    pass
-            case User():
-                return user.id
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _manage_exceptions(self, exceptions: BaseException | Iterable[BaseException], message: Message):
@@ -404,7 +355,7 @@ class MultiBot(Generic[T], ABC):
                 if constants.RAISE_AMBIGUITY_ERROR:
                     await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más?  {random.choice(constants.SAD_EMOJIS)}', message)
 
-    async def _mute(self, user: int | str | User, group_: int | str | Chat):
+    async def _mute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
 
     def _parse_callbacks(
@@ -466,27 +417,10 @@ class MultiBot(Generic[T], ABC):
 
         return OrderedSet(registered_callback for registered_callback in self._registered_callbacks if registered_callback in determined_callbacks)
 
-    async def _update_punishment(self, func_: callable, message: Message, **kwargs):
-        bot_user = await self._get_me(message.chat.group_id)
-        users: OrderedSet[User] = OrderedSet(message.mentions)
-        if message.replied_message:
-            users.add(message.replied_message.author)
+    async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
+        pass
 
-        match users:
-            case []:
-                await self.send_interrogation(message)
-                return
-            case [single] if single == bot_user:
-                await self.send_negative(message)
-                return
-
-        users -= bot_user
-        for user in users:
-            await func_(user.id, message.chat.group_id, message=message, **kwargs)
-
-        await flanautils.do_later(constants.COMMAND_MESSAGE_DURATION, message.original_object.delete)
-
-    async def _unmute(self, user: int | str | User, group_: int | str | Chat):
+    async def _unmute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
 
     # ---------------------------------------------- #
@@ -496,7 +430,8 @@ class MultiBot(Generic[T], ABC):
     @group
     @admin(send_negative=True)
     async def _on_ban(self, message: Message):
-        await self._update_punishment(self.ban, message, time=flanautils.words_to_time(message.text))
+        for user in await self._find_users_to_punish(message):
+            await self.ban(user, message, flanautils.words_to_time(message.text), message)
 
     @find_message
     async def _on_button_press_raw(self, message: Message):
@@ -506,7 +441,7 @@ class MultiBot(Generic[T], ABC):
     @inline(False)
     async def _on_delete(self, message: Message):
         if message.replied_message:
-            if message.replied_message.author.id == self.bot_id:
+            if message.replied_message.author.id == self.id:
                 await self.delete_message(message.replied_message)
                 await self.delete_message(message)
             elif self.is_bot_mentioned(message):
@@ -525,7 +460,8 @@ class MultiBot(Generic[T], ABC):
     @bot_mentioned
     @admin(send_negative=True)
     async def _on_mute(self, message: Message):
-        await self._update_punishment(self.mute, message, time=flanautils.words_to_time(message.text))
+        for user in await self._find_users_to_punish(message):
+            await self.mute(user, message, flanautils.words_to_time(message.text), message)
 
     @ignore_self_message
     async def _on_new_message_raw(self, message: Message):
@@ -538,27 +474,32 @@ class MultiBot(Generic[T], ABC):
                 await registered_callback(message)
 
     async def _on_ready(self):
-        print(f'{self.bot_name} activado en {self.bot_platform.name} (id: {self.bot_id})')
+        print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
         await flanautils.do_every(constants.CHECK_MESSAGE_EVERY_SECONDS, self._check_messages)
-        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self._check_mutes)
+        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, Mute.check_olds, self._unmute, self.platform)
+        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, Ban.check_olds, self._unban, self.platform)
 
     @bot_mentioned
     @group
     @admin(send_negative=True)
     async def _on_unban(self, message: Message):
-        await self._update_punishment(self.unban, message)
+        for user in await self._find_users_to_punish(message):
+            await self.unban(user, message, message)
 
     @group
     @bot_mentioned
     @admin(send_negative=True)
     async def _on_unmute(self, message: Message):
-        await self._update_punishment(self.unmute, message)
+        for user in await self._find_users_to_punish(message):
+            await self.unmute(user, message, message)
 
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):
-        pass
+    async def ban(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
+        # noinspection PyTypeChecker
+        ban = Ban(self.platform, self.get_user_id(user), self.get_group_id(group_), time)
+        await ban.punish(self._ban, self._unban, message)
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
@@ -578,74 +519,109 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_role(self, role: int | str | Role, group_: int | str | Chat | Message = None, chat: int | str | Chat | Message = None) -> Role | None:
+    def get_group_id(self, group_: int | str | Chat | Message) -> int | None:
+        match group_:
+            case int(group_id):
+                return group_id
+            case str(group_name):
+                try:
+                    return Chat.find_one({'platform': self.platform.value, 'group_name': group_name}).group_id
+                except AttributeError:
+                    return
+            case Chat() as chat:
+                return chat.group_id
+            case Message() as message:
+                return message.chat.group_id
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    def get_group_name(self, group_: int | str | Chat | Message) -> str | None:
+        match group_:
+            case int(group_id):
+                try:
+                    return Chat.find_one({'platform': self.platform.value, 'group_id': group_id}).group_name
+                except AttributeError:
+                    return
+            case str(group_name):
+                return group_name
+            case Chat() as chat:
+                return chat.group_name
+            case Message() as message:
+                return message.chat.group_name
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
+        pass
+
+    @abstractmethod
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_group_users(self, group_: int | str | Chat | Message) -> list[User]:
+        pass
+
+    async def get_me(self, group_: int | str | Chat | Message = None) -> User | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_role(self, role: int | str | Role, group_: int | str | Chat | Message) -> Role | None:
         if isinstance(role, Role):
             return role
 
-        match group_:
-            case int():
-                roles = await self._get_roles_from_group_id(group_)
-            case str():
-                group_id = Chat.find_one({'platform': self.bot_platform.value, 'group_name': group_}).group_id
-                roles = await self._get_roles_from_group_id(group_id)
-            case Chat():
-                roles = group_.roles
-            case Message():
-                roles = group_.chat.roles
-            case _:
-                match chat:
-                    case int() | str() | Chat() | Message():
-                        roles = (await self.get_chat(chat)).roles
-                    case _:
-                        raise TypeError('bad arguments')
+        roles = await self.get_group_roles(group_)
 
         match role:
-            case int():
-                return flanautils.find(roles, condition=lambda role_: role_.id == role)
-            case str():
-                return flanautils.find(roles, condition=lambda role_: role_.name == role)
+            case int(role_id):
+                return flanautils.find(roles, condition=lambda role_: role_.id == role_id)
+            case str(role_name):
+                return flanautils.find(roles, condition=lambda role_: role_.name.lower() == role_name.lower())
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_user(self, user: int | str | User, group_: int | str | Chat = None) -> User | None:
+    async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
         pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    def get_user_id(self, user: int | str | User) -> int | None:
+        match user:
+            case int(user_id):
+                return user_id
+            case str(user_name):
+                try:
+                    return User.find_one({'platform': self.platform.value, 'name': user_name}).id
+                except AttributeError:
+                    return
+            case User():
+                return user.id
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    def get_user_name(self, user: int | str | User) -> str | None:
+        match user:
+            case int(user_id):
+                try:
+                    return User.find_one({'platform': self.platform.value, 'id': user_id}).name
+                except AttributeError:
+                    return
+            case str(user_name):
+                return user_name
+            case User():
+                return user.name
 
     def is_bot_mentioned(self, message: Message) -> bool:
-        return self.bot_id in (mention.id for mention in message.mentions)
+        return self.id in (mention.id for mention in message.mentions)
 
-    async def is_deaf(self, user: int | str | User, group_: int | str | Chat) -> bool:
+    async def is_deaf(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
         pass
 
-    async def is_muted(self, user: int | str | User, group_: int | str | Chat) -> bool:
+    async def is_muted(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
         pass
 
-    async def is_self_deaf(self, user: int | str | User, group_: int | str | Chat) -> bool:
+    async def is_self_deaf(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
         pass
 
-    async def is_self_muted(self, user: int | str | User, group_: int | str | Chat) -> bool:
+    async def is_self_muted(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
         pass
 
-    async def mute(self, user: int | str | User, group_: int | str | Chat, time: int | datetime.timedelta, message: Message = None):
-        user_id = self._get_user_id(user)
-        group_id = self._get_group_id(group_)
-        if isinstance(time, int):
-            time = datetime.timedelta(seconds=time)
-
-        try:
-            await self._mute(user_id, group_id)
-        except UserDisconnectedError as e:
-            if message and message.chat.original_object:
-                await self._manage_exceptions(e, message)
-            else:
-                raise e
-        else:
-            if time:
-                until = datetime.datetime.now(datetime.timezone.utc) + time
-                if datetime.timedelta() < time <= constants.TIME_THRESHOLD_TO_MANUAL_UNMUTE:
-                    await flanautils.do_later(time, self._check_mutes)
-            else:
-                until = None
-            # noinspection PyTypeChecker
-            Mute(self.bot_platform, user_id, group_id, until=until).save()
+    async def mute(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta, message: Message = None):
+        # noinspection PyTypeChecker
+        mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_), time)
+        await mute.punish(self._mute, self._unmute, message)
 
     @overload
     def register(self, func_: Callable = None, keywords=(), min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
@@ -673,7 +649,7 @@ class MultiBot(Generic[T], ABC):
 
     @abstractmethod
     @parse_arguments
-    async def send(self, text='', media: Media = None, buttons: list[str | list[str]] = None, message: Message = None, silent: bool = False, send_as_file: bool = None, edit=False, **_kwargs) -> Message | None:
+    async def send(self, text='', media: Media = None, buttons: list[str | list[str]] | None = None, message: Message = None, silent: bool = False, send_as_file: bool = None, edit=False, **_kwargs) -> Message | None:
         pass
 
     @parse_arguments
@@ -699,21 +675,12 @@ class MultiBot(Generic[T], ABC):
     async def typing_delay(self, message: Message):
         pass
 
-    async def unban(self, user: int | str | User, chat: int | str | Chat | Message):
-        pass
+    async def unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
+        # noinspection PyTypeChecker
+        ban = Ban(self.platform, self.get_user_id(user), self.get_group_id(group_))
+        await ban.unpunish(self._unban, message)
 
-    async def unmute(self, user: int | str | User, group_: int | str | Chat, message: Message = None):
-        try:
-            await self._unmute(user, group_)
-        except UserDisconnectedError as e:
-            if message and message.chat.original_object:
-                await self._manage_exceptions(e, message)
-            else:
-                raise e
-        else:
-            user_id = self._get_user_id(user)
-            group_id = self._get_group_id(group_)
-            try:
-                Mute.find_one({'platform': self.bot_platform.value, 'user_id': user_id, 'group_id': group_id, 'until': None}).delete()
-            except AttributeError:
-                pass
+    async def unmute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
+        # noinspection PyTypeChecker
+        mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_))
+        await mute.unpunish(self._unmute, message)

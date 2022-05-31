@@ -1,11 +1,9 @@
 from __future__ import annotations  # todo0 remove in 3.11
 
 import asyncio
-import datetime
 import functools
 import io
 import pathlib
-import struct
 from typing import Any, Callable
 
 import flanautils
@@ -78,13 +76,13 @@ class TelegramBot(MultiBot[TelegramClient]):
     # noinspection PyTypeChecker
     def _add_handlers(self):
         super()._add_handlers()
-        self.bot_client.add_event_handler(self._on_button_press_raw, telethon.events.CallbackQuery)
-        self.bot_client.add_event_handler(self._on_inline_query_raw, telethon.events.InlineQuery)
-        self.bot_client.add_event_handler(self._on_new_message_raw, telethon.events.NewMessage)
+        self.client.add_event_handler(self._on_button_press_raw, telethon.events.CallbackQuery)
+        self.client.add_event_handler(self._on_inline_query_raw, telethon.events.InlineQuery)
+        self.client.add_event_handler(self._on_new_message_raw, telethon.events.NewMessage)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _create_bot_message_from_telegram_bot_message(self, original_message: constants.TELEGRAM_MESSAGE, message: Message, contents: Any = None) -> Message | None:
-        original_message._sender = await self.bot_client.get_entity(self.bot_id)
+        original_message._sender = await self.client.get_entity(self.id)
         original_message._chat = message.chat.original_object
         bot_message = await self._get_message(original_message)
         bot_message.contents = contents or []
@@ -93,38 +91,35 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _create_chat_from_telegram_chat(self, telegram_chat: constants.TELEGRAM_CHAT) -> Chat | None:
-        chat_name = await self._get_name_from_entity(telegram_chat)
+        chat_name = self._get_name_from_entity(telegram_chat)
         if isinstance(telegram_chat, constants.TELEGRAM_USER):
-            users = [await self.get_user(self.owner_id), await self.get_user(self.bot_id)]
             group_id = None
             group_name = None
         else:
-            users = [await self._create_user_from_telegram_user(participant, telegram_chat.id) for participant in await self.bot_client.get_participants(telegram_chat)]
             group_id = telegram_chat.id
             group_name = chat_name
 
         return Chat(
-            platform=self.bot_platform.value,
+            platform=self.platform.value,
             id=telegram_chat.id,
             name=chat_name,
             group_id=group_id,
             group_name=group_name,
-            users=users,
             original_object=telegram_chat
         )
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _create_user_from_telegram_user(self, original_user: constants.TELEGRAM_USER, group_: int | str | Chat = None) -> User | None:
-        group_id = self._get_group_id(group_)
+    async def _create_user_from_telegram_user(self, original_user: constants.TELEGRAM_USER, group_: int | str | Chat | Message = None) -> User | None:
+        group_id = self.get_group_id(group_)
         try:
-            is_admin = (await self.bot_client.get_permissions(group_id, original_user)).is_admin
+            is_admin = (await self.client.get_permissions(group_id, original_user)).is_admin
         except (AttributeError, TypeError, ValueError):
             is_admin = None
 
         return User(
-            platform=self.bot_platform.value,
+            platform=self.platform.value,
             id=original_user.id,
-            name=(await self._get_name_from_entity(original_user)).strip(' @'),
+            name=self._get_name_from_entity(original_user).strip(' @'),
             is_admin=is_admin,
             original_object=original_user
         )
@@ -148,9 +143,6 @@ class TelegramBot(MultiBot[TelegramClient]):
     async def _get_chat(self, original_message: constants.TELEGRAM_MESSAGE) -> Chat | None:
         return await self._create_chat_from_telegram_chat(original_message.chat)
 
-    async def _get_me(self, group_: int | str | Chat = None):
-        return await self._create_user_from_telegram_user(await self.bot_client.get_me(), group_)
-
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.TELEGRAM_MESSAGE) -> list[User]:
         mentions = OrderedSet()
@@ -169,9 +161,10 @@ class TelegramBot(MultiBot[TelegramClient]):
                 pass
 
         words = text.lower().split()
-        for user in chat.users:
-            if user.name.lower() in words:
-                mentions.add(user)
+        for participant in await self.client.get_participants(chat.original_object):
+            user_name = self._get_name_from_entity(participant).strip(' @').lower()
+            if user_name in words:
+                mentions.add(await self._create_user_from_telegram_user(participant, chat))
 
         return list(mentions - None)
 
@@ -180,7 +173,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         return original_message.id
 
     @return_if_first_empty('', exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_name_from_entity(self, entity: telethon.hints.EntityLike) -> str:
+    def _get_name_from_entity(self, entity: telethon.hints.EntityLike) -> str:
         if isinstance(entity, telethon.types.User):
             return f'@{entity.username}' if entity.username else entity.first_name
         elif isinstance(entity, (telethon.types.Channel, telethon.types.Chat)):
@@ -230,10 +223,10 @@ class TelegramBot(MultiBot[TelegramClient]):
         await super()._on_new_message_raw(message)
 
     async def _on_ready(self):
-        self.bot_platform = Platform.TELEGRAM
-        me = await self.bot_client.get_me()
-        self.bot_id = me.id
-        self.bot_name = me.username
+        self.platform = Platform.TELEGRAM
+        me = await self.client.get_me()
+        self.id = me.id
+        self.name = me.username
         if self.user_client:
             async with self.user_client:
                 self.owner_id = (await self.user_client.get_me()).id
@@ -242,32 +235,31 @@ class TelegramBot(MultiBot[TelegramClient]):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):  # todo4 test en grupo de pruebas
-        ...
-        # if isinstance(user, User):
-        #     user = user.original_object
-        # if isinstance(chat, Chat):
-        #     chat = chat.original_object
-        # if isinstance(seconds, int):
-        #     seconds = datetime.timedelta(seconds=seconds)
-        #
-        # rights = telethon.tl.types.ChatBannedRights(
-        #     until_date=datetime.datetime.now(datetime.timezone.utc) + seconds if seconds else None,
-        #     view_messages=True,
-        #     send_messages=True,
-        #     send_media=True,
-        #     send_stickers=True,
-        #     send_gifs=True,
-        #     send_games=True,
-        #     send_inline=True,
-        #     embed_links=True,
-        #     send_polls=True,
-        #     change_info=True,
-        #     invite_users=True,
-        #     pin_messages=True
-        # )
-        #
-        # await self.bot_client(telethon.tl.functions.channels.EditBannedRequest(chat, user, rights))
+    # async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):  # todo4 test en grupo de pruebas
+    # if isinstance(user, User):
+    #     user = user.original_object
+    # if isinstance(chat, Chat):
+    #     chat = chat.original_object
+    # if isinstance(seconds, int):
+    #     seconds = datetime.timedelta(seconds=seconds)
+    #
+    # rights = telethon.tl.types.ChatBannedRights(
+    #     until_date=datetime.datetime.now(datetime.timezone.utc) + seconds if seconds else None,
+    #     view_messages=True,
+    #     send_messages=True,
+    #     send_media=True,
+    #     send_stickers=True,
+    #     send_gifs=True,
+    #     send_games=True,
+    #     send_inline=True,
+    #     embed_links=True,
+    #     send_polls=True,
+    #     change_info=True,
+    #     invite_users=True,
+    #     pin_messages=True
+    # )
+    #
+    # await self.bot_client(telethon.tl.functions.channels.EditBannedRequest(chat, user, rights))
 
     @user_client
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
@@ -295,12 +287,12 @@ class TelegramBot(MultiBot[TelegramClient]):
         chat = await self.get_chat(chat)
         match message_to_delete:
             case int() | str():
-                message_to_delete = Message.find_one({'platform': self.bot_platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
+                message_to_delete = Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
             case Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
                 chat = None
 
         if chat and chat.original_object:
-            await self.bot_client.delete_messages(chat.original_object, message_to_delete.id)
+            await self.client.delete_messages(chat.original_object, message_to_delete.id)
         elif message_to_delete.original_object:
             await message_to_delete.original_object.delete()
         else:
@@ -316,31 +308,50 @@ class TelegramBot(MultiBot[TelegramClient]):
                 return chat
             case Message() as message:
                 return message.chat
+            case _ as chat_id:
+                pass
 
-        return await self._create_chat_from_telegram_chat(await self.bot_client.get_entity(chat))
+        return await self._create_chat_from_telegram_chat(await self.client.get_entity(chat_id))
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def get_user(self, user: int | str | User, group_: int | str | Chat = None) -> User | None:
-        if isinstance(user, User):
-            return user
+    async def get_group_users(self, group_: int | str | Chat | Message) -> list[User]:
+        chat = await self.get_chat(group_)
+        return [await self._create_user_from_telegram_user(participant, chat.id) for participant in await self.client.get_participants(chat.original_object)]
 
-        try:
-            with flanautils.suppress_stderr():
-                return await self._create_user_from_telegram_user(await self.bot_client.get_entity(user), group_)
-        except struct.error:
-            pass
+    async def get_me(self, group_: int | str | Chat = None):
+        return await self._create_user_from_telegram_user(await self.client.get_me(), group_)
+
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
+        group_id = self.get_group_id(group_)
+
+        with flanautils.suppress_stderr():
+            return await self._create_user_from_telegram_user(await self.client.get_entity(user), group_id)
 
     @parse_arguments
     async def send(
         self,
         text='',
         media: Media = None,
-        buttons: list[str | list[str]] = None,
+        buttons: list[str | list[str]] | None = None,
         message: Message = None,
         silent: bool = False,
         send_as_file: bool = None,
         edit=False,
     ) -> Message | None:
+        def create_buttons() -> list[list[str]] | None:
+            if not buttons:
+                return
+
+            telegram_buttons = []
+            for row in buttons:
+                telegram_buttons_row = []
+                for button_text in row:
+                    telegram_buttons_row.append(telethon.Button.inline(button_text))
+                telegram_buttons.append(telegram_buttons_row)
+
+            return telegram_buttons
+
         file = await self._prepare_media_to_send(media)
         if not text and not file:
             return
@@ -350,15 +361,9 @@ class TelegramBot(MultiBot[TelegramClient]):
             send_as_file_ratio = sum(max(matches.values()) for text_word, matches in word_matches.items())
             send_as_file = bool(send_as_file_ratio)
 
-        buttons = buttons or []
-        for i, row in enumerate(buttons):
-            for j, column in enumerate(row):
-                buttons[i][j] = telethon.Button.inline(buttons[i][j])
-
         kwargs = {
             'file': file,
             'force_document': send_as_file,
-            'buttons': buttons or None,
             'parse_mode': 'html'
         }
 
@@ -369,6 +374,8 @@ class TelegramBot(MultiBot[TelegramClient]):
                 else:
                     message.contents.append(message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower()))
         elif edit:
+            if buttons is not None:
+                kwargs['buttons'] = create_buttons()
             try:
                 edited_message = await message.original_object.edit(text, **kwargs)
             except (
@@ -384,9 +391,8 @@ class TelegramBot(MultiBot[TelegramClient]):
             message.save()
             return message
         else:
-            kwargs['silent'] = silent
             try:
-                original_message = await self.bot_client.send_message(message.chat.original_object, text, **kwargs)
+                original_message = await self.client.send_message(message.chat.original_object, text, buttons=create_buttons(), silent=silent, **kwargs)
             except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                 return
             if content := getattr(media, 'content', None):
@@ -404,13 +410,13 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     def start(self):
         async def start_():
-            await self.bot_client.connect()
+            await self.client.connect()
 
             if not self.bot_session:
                 print('----- Bot client -----')
-                if not self.bot_token:
-                    self.bot_token = input('Enter a bot token: ').strip()
-                await self.bot_client.sign_in(bot_token=self.bot_token)
+                if not self.token:
+                    self.token = input('Enter a bot token: ').strip()
+                await self.client.sign_in(bot_token=self.token)
                 print('Done.')
             if not self.user_session and self.user_client:
                 print('----- User client -----')
@@ -419,7 +425,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 print('Done.')
 
             await self._on_ready()
-            await self.bot_client.run_until_disconnected()
+            await self.client.run_until_disconnected()
 
         try:
             asyncio.get_running_loop()
@@ -427,26 +433,25 @@ class TelegramBot(MultiBot[TelegramClient]):
         except RuntimeError:
             asyncio.run(start_())
 
-    async def unban(self, user: int | str | User, chat: int | str | Chat | Message):  # todo4 test en grupo de pruebas
-        ...
-        # if isinstance(user, User):
-        #     user = user.original_object
-        # if isinstance(chat, Chat):
-        #     chat = chat.original_object
-        #
-        # rights = telethon.tl.types.ChatBannedRights(
-        #     view_messages=False,
-        #     send_messages=False,
-        #     send_media=False,
-        #     send_stickers=False,
-        #     send_gifs=False,
-        #     send_games=False,
-        #     send_inline=False,
-        #     embed_links=False,
-        #     send_polls=False,
-        #     change_info=False,
-        #     invite_users=False,
-        #     pin_messages=False
-        # )
-        #
-        # await self.bot_client(telethon.tl.functions.channels.EditBannedRequest(chat, user, rights))
+    # async def unban(self, user: int | str | User, chat: int | str | Chat | Message):  # todo4 test en grupo de pruebas
+    # if isinstance(user, User):
+    #     user = user.original_object
+    # if isinstance(chat, Chat):
+    #     chat = chat.original_object
+    #
+    # rights = telethon.tl.types.ChatBannedRights(
+    #     view_messages=False,
+    #     send_messages=False,
+    #     send_media=False,
+    #     send_stickers=False,
+    #     send_gifs=False,
+    #     send_games=False,
+    #     send_inline=False,
+    #     embed_links=False,
+    #     send_polls=False,
+    #     change_info=False,
+    #     invite_users=False,
+    #     pin_messages=False
+    # )
+    #
+    # await self.bot_client(telethon.tl.functions.channels.EditBannedRequest(chat, user, rights))

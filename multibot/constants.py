@@ -5,22 +5,26 @@ import telethon.events.common
 import twitchio
 
 DISCORD_CHAT = discord.abc.Messageable | discord.ext.commands.Context | discord.channel.DMChannel | discord.channel.GroupChannel | discord.Member | discord.channel.TextChannel | discord.abc.User
+DISCORD_GROUP = discord.Guild
 DISCORD_MESSAGE = discord.Message
 DISCORD_USER = discord.User | discord.Member | discord.ClientUser
 DISCORD_EVENT = DISCORD_MESSAGE | discord.Interaction
 DISCORD_ROLE = discord.Role
 
 TELEGRAM_CHAT = telethon.types.Channel | telethon.types.Chat
+TELEGRAM_GROUP = TELEGRAM_CHAT
 TELEGRAM_MESSAGE = telethon.custom.Message
 TELEGRAM_USER = telethon.types.User
 TELEGRAM_EVENT = telethon.events.common.EventCommon | telethon.events.common.EventBuilder
 
-TWITCH_CHAT = twitchio.Channel
+TWITCH_CHAT = twitchio.Channel | twitchio.ChannelInfo
+TWITCH_GROUP = TWITCH_CHAT
 TWITCH_MESSAGE = twitchio.Message
 TWITCH_USER = twitchio.Chatter | twitchio.User
 TWITCH_EVENT = TWITCH_MESSAGE
 
 ORIGINAL_CHAT = DISCORD_CHAT | TELEGRAM_CHAT | TWITCH_CHAT
+ORIGINAL_GROUP = DISCORD_GROUP | TELEGRAM_GROUP | TWITCH_GROUP
 ORIGINAL_MESSAGE = DISCORD_MESSAGE | TELEGRAM_MESSAGE | TWITCH_MESSAGE
 ORIGINAL_USER = DISCORD_USER | TELEGRAM_USER | TWITCH_USER
 MESSAGE_EVENT = DISCORD_EVENT | TELEGRAM_EVENT | TWITCH_EVENT | TELEGRAM_MESSAGE
@@ -42,7 +46,7 @@ RAISE_AMBIGUITY_ERROR = False
 RATIO_REWARD_EXPONENT = 2
 DELETE_MESSAGE_LIMIT = 100
 TELEGRAM_SEND_AS_FILE_RATIO_MIN_RATIO = 0.85
-TIME_THRESHOLD_TO_MANUAL_UNMUTE = datetime.timedelta(days=3)
+TIME_THRESHOLD_TO_MANUAL_UNPUNISH = datetime.timedelta(days=3)
 
 SAD_EMOJIS = '😥😪😓😔😕☹🙁😞😢😭😩😰'
 

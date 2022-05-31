@@ -22,7 +22,6 @@ class Message(EventComponent):
     id: int = None
     author: User = None
     text: str = None
-    buttons: list[list[str]] = None
     button_pressed_text: str = None
     button_pressed_user: User = None
     mentions: list[User] = field(default_factory=list)
@@ -35,6 +34,12 @@ class Message(EventComponent):
     original_object: constants.ORIGINAL_MESSAGE = None
     original_event: constants.MESSAGE_EVENT = None
 
-    def save(self, pickle_types: tuple | list = (AbstractSet,), pull_overwrite_fields: Iterable[str] = (), references=True):
+    def save(
+        self,
+        pickle_types: tuple | list = (AbstractSet,),
+        references=True,
+        pull_overwrite_fields: Iterable[str] = ('_id',),
+        pull_exclude: Iterable[str] = ()
+    ):
         self.last_update = datetime.datetime.now(datetime.timezone.utc)
-        super().save(pickle_types, pull_overwrite_fields, references)
+        super().save(pickle_types, references, pull_overwrite_fields, pull_exclude)

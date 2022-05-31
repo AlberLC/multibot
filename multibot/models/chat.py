@@ -4,8 +4,6 @@ from multibot import constants
 from multibot.models.database import db
 from multibot.models.enums import Platform
 from multibot.models.event_component import EventComponent
-from multibot.models.role import Role
-from multibot.models.user import User
 
 
 @dataclass(eq=False)
@@ -18,8 +16,6 @@ class Chat(EventComponent):
     name: str = None
     group_id: int = None
     group_name: str = None
-    users: list[User] = field(default_factory=list)
-    roles: list[Role] = field(default_factory=list)
     config: dict[str, bool] = field(default_factory=dict)
     original_object: constants.ORIGINAL_CHAT = None
 
