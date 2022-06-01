@@ -199,11 +199,15 @@ class DiscordBot(MultiBot[Bot]):
             return
 
         if media.url:
-            if (path_suffix := pathlib.Path(media.url).suffix) and len(path_suffix) <= constants.MAX_FILE_EXTENSION_LENGHT:
-                file = discord.File(media.url)
+            if pathlib.Path(media.url).is_file():
+                if (path_suffix := pathlib.Path(media.url).suffix) and len(path_suffix) <= constants.MAX_FILE_EXTENSION_LENGHT:
+                    return discord.File(media.url)
+                else:
+                    return discord.File(media.url, filename=f'bot_media.{media.type_.extension}')
             else:
-                file = discord.File(media.url, filename=f'bot_media.{media.type_.extension}')
-        elif bytes_ := media.bytes_:
+                media.bytes_ = await flanautils.get_request(media.url)
+
+        if bytes_ := media.bytes_:
             if media.type_ is MediaType.GIF:
                 bytes_ = await flanautils.mp4_to_gif(bytes_)
             file = discord.File(fp=io.BytesIO(bytes_), filename=f'bot_media.{media.type_.extension}')
@@ -298,7 +302,9 @@ class DiscordBot(MultiBot[Bot]):
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
-        guild = await self._get_discord_group(group_)
+        if not (guild := await self._get_discord_group(group_)):
+            return []
+
         # noinspection PyTypeChecker
         return [Role(self.platform.value, discord_role.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in guild.roles]
 
