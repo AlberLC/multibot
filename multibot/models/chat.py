@@ -1,3 +1,5 @@
+__all__ = ['Chat']
+
 from dataclasses import dataclass, field
 
 from multibot import constants

@@ -1,3 +1,5 @@
+__all__ = ['User']
+
 from dataclasses import dataclass
 
 from multibot import constants

@@ -72,7 +72,7 @@ KEYWORDS = {
     'delete': ('borra', 'borrado', 'borres', 'clear', 'delete', 'elimina', 'limpia', 'remove'),
     'hello': ('alo', 'aloh', 'buenas', 'dias', 'hello', 'hey', 'hi', 'hola', 'holaaaaaa', 'ola', 'saludos', 'tardes'),
     'help': ('ayuda', 'help'),
-    'message': ('mensaje', 'message', 'original'),
+    'message': ('comentario', 'comment', 'mensaje', 'message', 'original'),
     'mute': ('calla', 'calle', 'cierra', 'close', 'mute', 'mutea', 'mutealo', 'noise', 'ruido', 'shut', 'silence',
              'silencia'),
     'negate': ('no', 'ocurra', 'ocurre'),

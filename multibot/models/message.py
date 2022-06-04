@@ -1,5 +1,7 @@
 from __future__ import annotations  # todo0 remove in 3.11
 
+__all__ = ['Message']
+
 import datetime
 from dataclasses import dataclass, field
 from typing import AbstractSet, Iterable
@@ -19,7 +21,7 @@ class Message(EventComponent):
     _nullable_unique_keys = ('platform', 'id', 'author')
 
     platform: Platform = None
-    id: int = None
+    id: int | str = None
     author: User = None
     text: str = None
     button_pressed_text: str = None

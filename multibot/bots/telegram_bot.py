@@ -1,5 +1,7 @@
 from __future__ import annotations  # todo0 remove in 3.11
 
+__all__ = ['user_client', 'TelegramBot']
+
 import asyncio
 import functools
 import io
@@ -335,6 +337,8 @@ class TelegramBot(MultiBot[TelegramClient]):
         media: Media = None,
         buttons: list[str | list[str]] | None = None,
         message: Message = None,
+        *,
+        reply_to: int | str | Message = None,
         silent: bool = False,
         send_as_file: bool = None,
         edit=False,
@@ -391,8 +395,14 @@ class TelegramBot(MultiBot[TelegramClient]):
             message.save()
             return message
         else:
+            match reply_to:
+                case str():
+                    reply_to = int(reply_to)
+                case Message() as message_to_reply:
+                    reply_to = message_to_reply.original_object
+
             try:
-                original_message = await self.client.send_message(message.chat.original_object, text, buttons=create_buttons(), silent=silent, **kwargs)
+                original_message = await self.client.send_message(message.chat.original_object, text, buttons=create_buttons(), reply_to=reply_to, silent=silent, **kwargs)
             except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                 return
             if content := getattr(media, 'content', None):

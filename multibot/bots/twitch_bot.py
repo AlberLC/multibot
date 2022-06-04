@@ -1,5 +1,7 @@
 from __future__ import annotations  # todo0 remove in 3.11
 
+__all__ = ['TwitchBot']
+
 import asyncio
 import datetime
 import re
@@ -9,9 +11,10 @@ from typing import Iterable, Iterator
 import flanautils
 import pymongo
 import twitchio
+import twitchio.ext.commands
 from flanautils import Media, OrderedSet, return_if_first_empty
 
-import constants
+from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
 from multibot.models import Chat, Message, Platform, User
 
@@ -22,7 +25,7 @@ from multibot.models import Chat, Message, Platform, User
 class TwitchBot(MultiBot[twitchio.Client]):
     def __init__(self, bot_token: str, initial_channels: Iterable[str] = None, owner_name: str = None):
         super().__init__(bot_token=bot_token,
-                         bot_client=twitchio.Client(token=bot_token, initial_channels=initial_channels))
+                         bot_client=twitchio.ext.commands.Bot(token=bot_token, prefix='/', initial_channels=initial_channels))
         self.owner_name = owner_name
 
     # ----------------------------------------------------------- #
@@ -40,7 +43,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         channel_name = twitch_chat.name
         try:
             channel_id = int(flanautils.find(twitch_chat.chatters, condition=lambda user: user.name == channel_name).id)
-        except AttributeError:
+        except (AttributeError, TypeError):
             channel_id = int(next(iter(await self.client.fetch_users([channel_name])), None).id)
 
         return Chat(
@@ -60,7 +63,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         return User(
             platform=self.platform.value,
             id=int(id),
-            name=twitch_user.name,
+            name=twitch_user.display_name,
             is_admin=getattr(twitch_user, 'is_mod', None) if is_admin is None else is_admin,
             original_object=twitch_user
         )
@@ -77,15 +80,16 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.TWITCH_MESSAGE) -> list[User]:
-        mentions = OrderedSet([user for mention in re.findall(r'@[\d\w]+', original_message.content) if (user := await self.get_user(mention[1:], original_message.channel.name))])
-
         text = await self._get_text(original_message)
         chat = await self._get_chat(original_message)
+        mentions = OrderedSet([user for mention in re.findall(r'@[\d\w]+', text) if (user := await self.get_user(mention[1:], chat))])
 
-        words = text.lower().split()
-        for chatter in chat.original_object.chatters:
-            if chatter.name.lower() in words:
-                mentions.add(await self._create_user_from_twitch_user(chatter))
+        if chat.original_object.chatters:
+            words = text.lower().split()
+
+            for chatter in chat.original_object.chatters:
+                if chatter.name.lower() in words:
+                    mentions.add(await self._create_user_from_twitch_user(chatter))
 
         return list(mentions)
 
@@ -106,7 +110,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_text(self, original_message: constants.TWITCH_MESSAGE) -> str:
-        return re.sub(r'@[\d\w]+', '', original_message.content).strip()
+        return original_message.content
 
     # ---------------------------------------------- #
     #                    HANDLERS                    #
@@ -224,6 +228,9 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def join(self, chat_name: str | Iterable[str]):
         await self.client.join_channels((chat_name,) if isinstance(chat_name, str) else chat_name)
 
+    async def leave(self, chat_name: str | Iterable[str]):
+        await self.client.part_channels((chat_name,) if isinstance(chat_name, str) else chat_name)
+
     @parse_arguments
     async def send(
         self,
@@ -231,11 +238,22 @@ class TwitchBot(MultiBot[twitchio.Client]):
         media: Media = None,
         buttons: list[str | list[str]] | None = None,
         message: Message = None,
+        *,
+        reply_to: str | Message = None,
         silent: bool = False,
         send_as_file: bool = None,
         edit=False,
     ):
-        await message.chat.original_object.send(text)
+        match reply_to:
+            case str(message_id):
+                # noinspection PyProtectedMember
+                await message.chat.original_object._ws.reply(message_id, f"PRIVMSG #{message.author.name.lower()} :{text}\r\n")
+            case Message() as message_to_reply:
+                # noinspection PyUnresolvedReferences
+                context = await self.client.get_context(message_to_reply.original_object)
+                await context.reply(text)
+            case _:
+                await message.chat.original_object.send(text)
 
     def start(self):
         async def start_():

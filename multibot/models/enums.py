@@ -1,3 +1,5 @@
+__all__ = ['Action', 'Platform']
+
 from enum import auto
 
 from flanautils import FlanaEnum

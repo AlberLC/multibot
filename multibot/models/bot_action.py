@@ -1,3 +1,5 @@
+__all__ = ['BotAction']
+
 import datetime
 from dataclasses import dataclass, field
 

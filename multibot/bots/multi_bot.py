@@ -1,5 +1,19 @@
 from __future__ import annotations  # todo0 remove in 3.11
 
+__all__ = [
+    'find_message',
+    'admin',
+    'block',
+    'bot_mentioned',
+    'group',
+    'ignore_self_message',
+    'inline',
+    'out_of_service',
+    'parse_arguments',
+    'reply',
+    'MultiBot'
+]
+
 import datetime
 import functools
 import random
@@ -136,21 +150,12 @@ def parse_arguments(func: Callable) -> Callable:
         media: Media | None = None
         buttons: list[str | list[str]] | None = None
         message: Message | None = None
-        silent: bool | None = None
-        send_as_file: bool | None = None
-        edit = False
 
         for arg in args:
             match arg:
                 case MultiBot() as bot:
                     pass
                 case str(text):
-                    pass
-                case bool(silent):
-                    pass
-                case bool(send_as_file):
-                    pass
-                case bool(edit):
                     pass
                 case int() | float() as number:
                     text = str(number)
@@ -167,16 +172,22 @@ def parse_arguments(func: Callable) -> Callable:
                 case Message() as message:
                     pass
 
-        silent = silent if (kw_value := kwargs.get('silent')) is None else kw_value
-        send_as_file = send_as_file if (kw_value := kwargs.get('send_as_file')) is None else kw_value
-        edit = edit if (kw_value := kwargs.get('edit')) is None else kw_value
+        reply_to = kwargs.get('reply_to', None)
+        silent = kwargs.get('silent', None)
+        send_as_file = kwargs.get('send_as_file', None)
+        edit = kwargs.get('edit', None)
 
-        if edit is None:
-            args = (bot, text, media, buttons, message)
-            kwargs |= {'silent': silent, 'send_as_file': send_as_file}
-        else:
-            args = (bot, text, media, buttons, message)
-            kwargs |= {'silent': silent, 'send_as_file': send_as_file, 'edit': edit}
+        if reply_to is not None and edit is not None:
+            raise TypeError('reply_to and edit parameters can not be setted at the same time')
+
+        if not message and isinstance(reply_to, Message):
+            message = reply_to
+
+        args = (bot, text, media, buttons, message)
+        kwargs |= {'reply_to': reply_to, 'silent': silent, 'send_as_file': send_as_file}
+
+        if edit is not None:
+            kwargs['edit'] = edit
 
         return await func(*args, **kwargs)
 
@@ -649,7 +660,7 @@ class MultiBot(Generic[T], ABC):
 
     @abstractmethod
     @parse_arguments
-    async def send(self, text='', media: Media = None, buttons: list[str | list[str]] | None = None, message: Message = None, silent: bool = False, send_as_file: bool = None, edit=False, **_kwargs) -> Message | None:
+    async def send(self, text='', media: Media = None, buttons: list[str | list[str]] | None = None, message: Message = None, *, reply_to: int | str | Message = None, silent: bool = False, send_as_file: bool = None, edit=False) -> Message | None:
         pass
 
     @parse_arguments

@@ -1,3 +1,5 @@
+__all__ = ['RegisteredCallback']
+
 from dataclasses import dataclass
 from typing import Callable, Iterable
 

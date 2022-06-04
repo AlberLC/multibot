@@ -1,5 +1,7 @@
 from __future__ import annotations  # todo0 remove in 3.11
 
+__all__ = ['EventComponent']
+
 from typing import Any, TypeVar
 
 from flanautils import DCMongoBase, FlanaBase
