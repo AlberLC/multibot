@@ -83,9 +83,9 @@ class TelegramBot(MultiBot[TelegramClient]):
         self.client.add_event_handler(self._on_new_message_raw, telethon.events.NewMessage)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _create_bot_message_from_telegram_bot_message(self, original_message: constants.TELEGRAM_MESSAGE, message: Message, contents: Any = None) -> Message | None:
+    async def _create_bot_message_from_telegram_bot_message(self, original_message: constants.TELEGRAM_MESSAGE, chat: Chat, contents: Any = None) -> Message | None:
         original_message._sender = await self.client.get_entity(self.id)
-        original_message._chat = message.chat.original_object
+        original_message._chat = chat.original_object
         bot_message = await self._get_message(original_message)
         bot_message.contents = contents or []
         bot_message.save()
@@ -304,8 +304,12 @@ class TelegramBot(MultiBot[TelegramClient]):
         message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def get_chat(self, chat: int | str | Chat | Message = None) -> Chat | None:
+    async def get_chat(self, chat: int | str | User | Chat | Message = None) -> Chat | None:
         match chat:
+            case User() as user:
+                if user.original_object:
+                    return await self._create_chat_from_telegram_chat(user.original_object)
+                chat_id = user.id
             case Chat():
                 return chat
             case Message() as message:
@@ -336,6 +340,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         text='',
         media: Media = None,
         buttons: list[str | list[str]] | None = None,
+        chat: int | str | User | Chat | Message | None = None,
         message: Message = None,
         *,
         reply_to: int | str | Message = None,
@@ -360,56 +365,56 @@ class TelegramBot(MultiBot[TelegramClient]):
         if not text and not file:
             return
 
-        if send_as_file is None:
-            word_matches = flanautils.cartesian_product_string_matching(message.text, constants.KEYWORDS['send_as_file'], min_ratio=constants.TELEGRAM_SEND_AS_FILE_RATIO_MIN_RATIO)
-            send_as_file_ratio = sum(max(matches.values()) for text_word, matches in word_matches.items())
-            send_as_file = bool(send_as_file_ratio)
-
         kwargs = {
             'file': file,
-            'force_document': send_as_file,
             'parse_mode': 'html'
         }
 
-        if message.is_inline:
-            if media:
-                if media.type_ is MediaType.IMAGE:
-                    message.contents.append(message.original_event.builder.photo(file))
+        if message:
+            if send_as_file is None:
+                word_matches = flanautils.cartesian_product_string_matching(message.text, constants.KEYWORDS['send_as_file'], min_ratio=constants.TELEGRAM_SEND_AS_FILE_RATIO_MIN_RATIO)
+                send_as_file_ratio = sum(max(matches.values()) for text_word, matches in word_matches.items())
+                kwargs['force_document'] = bool(send_as_file_ratio)
+
+            if message.is_inline:
+                if media:
+                    if media.type_ is MediaType.IMAGE:
+                        message.contents.append(message.original_event.builder.photo(file))
+                    else:
+                        message.contents.append(message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower()))
+            elif edit:
+                if buttons is not None:
+                    kwargs['buttons'] = create_buttons()
+                try:
+                    edited_message = await message.original_object.edit(text, **kwargs)
+                except (
+                        telethon.errors.rpcerrorlist.PeerIdInvalidError,
+                        telethon.errors.rpcerrorlist.UserIsBlockedError,
+                        telethon.errors.rpcerrorlist.MessageNotModifiedError
+                ):
+                    pass
                 else:
-                    message.contents.append(message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower()))
-        elif edit:
-            if buttons is not None:
-                kwargs['buttons'] = create_buttons()
-            try:
-                edited_message = await message.original_object.edit(text, **kwargs)
-            except (
-                    telethon.errors.rpcerrorlist.PeerIdInvalidError,
-                    telethon.errors.rpcerrorlist.UserIsBlockedError,
-                    telethon.errors.rpcerrorlist.MessageNotModifiedError
-            ):
-                pass
-            else:
-                message.original_object = edited_message
-            if content := getattr(media, 'content', None):
-                message.contents = [content]
-            message.save()
-            return message
-        else:
+                    message.original_object = edited_message
+                if content := getattr(media, 'content', None):
+                    message.contents = [content]
+                message.save()
+                return message
+
             match reply_to:
                 case str():
                     reply_to = int(reply_to)
                 case Message() as message_to_reply:
                     reply_to = message_to_reply.original_object
 
-            try:
-                original_message = await self.client.send_message(message.chat.original_object, text, buttons=create_buttons(), reply_to=reply_to, silent=silent, **kwargs)
-            except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
-                return
-            if content := getattr(media, 'content', None):
-                contents = [content]
-            else:
-                contents = []
-            return await self._create_bot_message_from_telegram_bot_message(original_message, message, contents=contents)
+        try:
+            original_message = await self.client.send_message(chat.original_object, text, buttons=create_buttons(), reply_to=reply_to, silent=silent, **kwargs)
+        except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
+            return
+        if content := getattr(media, 'content', None):
+            contents = [content]
+        else:
+            contents = []
+        return await self._create_bot_message_from_telegram_bot_message(original_message, chat, contents=contents)
 
     @inline
     async def send_inline_results(self, message: Message):

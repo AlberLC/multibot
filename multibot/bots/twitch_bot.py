@@ -175,15 +175,16 @@ class TwitchBot(MultiBot[twitchio.Client]):
         message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def get_chat(self, chat: int | str | Chat | Message = None) -> Chat | None:
+    async def get_chat(self, chat: int | str | User | Chat | Message = None) -> Chat | None:
         match chat:
             case int(group_id):
                 group_name = self.get_group_name(group_id)
                 if not group_name:
-                    # noinspection PyTypeChecker
                     return await self._create_chat_from_twitch_chat(await self.client.fetch_channel(group_id))
             case str(group_name):
                 pass
+            case User() as user:
+                group_name = user.name.lower()
             case Chat():
                 return chat
             case Message() as message:
@@ -237,6 +238,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         text='',
         media: Media = None,
         buttons: list[str | list[str]] | None = None,
+        chat: int | str | User | Chat | Message | None = None,
         message: Message = None,
         *,
         reply_to: str | Message = None,
@@ -253,7 +255,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
                 context = await self.client.get_context(message_to_reply.original_object)
                 await context.reply(text)
             case _:
-                await message.chat.original_object.send(text)
+                await chat.original_object.send(text)
 
     def start(self):
         async def start_():

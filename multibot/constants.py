@@ -4,29 +4,29 @@ import discord.ext.commands
 import telethon.events.common
 import twitchio
 
+DISCORD_USER = discord.User | discord.Member | discord.ClientUser
 DISCORD_CHAT = discord.abc.Messageable | discord.ext.commands.Context | discord.channel.DMChannel | discord.channel.GroupChannel | discord.Member | discord.channel.TextChannel | discord.abc.User
 DISCORD_GROUP = discord.Guild
 DISCORD_MESSAGE = discord.Message
-DISCORD_USER = discord.User | discord.Member | discord.ClientUser
 DISCORD_EVENT = DISCORD_MESSAGE | discord.Interaction
 DISCORD_ROLE = discord.Role
 
-TELEGRAM_CHAT = telethon.types.Channel | telethon.types.Chat
+TELEGRAM_USER = telethon.types.User
+TELEGRAM_CHAT = TELEGRAM_USER | telethon.types.Channel | telethon.types.Chat
 TELEGRAM_GROUP = TELEGRAM_CHAT
 TELEGRAM_MESSAGE = telethon.custom.Message
-TELEGRAM_USER = telethon.types.User
 TELEGRAM_EVENT = telethon.events.common.EventCommon | telethon.events.common.EventBuilder
 
+TWITCH_USER = twitchio.Chatter | twitchio.User
 TWITCH_CHAT = twitchio.Channel | twitchio.ChannelInfo
 TWITCH_GROUP = TWITCH_CHAT
 TWITCH_MESSAGE = twitchio.Message
-TWITCH_USER = twitchio.Chatter | twitchio.User
 TWITCH_EVENT = TWITCH_MESSAGE
 
+ORIGINAL_USER = DISCORD_USER | TELEGRAM_USER | TWITCH_USER
 ORIGINAL_CHAT = DISCORD_CHAT | TELEGRAM_CHAT | TWITCH_CHAT
 ORIGINAL_GROUP = DISCORD_GROUP | TELEGRAM_GROUP | TWITCH_GROUP
 ORIGINAL_MESSAGE = DISCORD_MESSAGE | TELEGRAM_MESSAGE | TWITCH_MESSAGE
-ORIGINAL_USER = DISCORD_USER | TELEGRAM_USER | TWITCH_USER
 MESSAGE_EVENT = DISCORD_EVENT | TELEGRAM_EVENT | TWITCH_EVENT | TELEGRAM_MESSAGE
 
 ROLE = DISCORD_ROLE

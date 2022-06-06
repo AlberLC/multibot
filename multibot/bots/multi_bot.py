@@ -145,15 +145,16 @@ def out_of_service(func: Callable) -> Callable:
 def parse_arguments(func: Callable) -> Callable:
     @functools.wraps(func)
     async def wrapper(*args, **kwargs) -> Any:
-        bot: MultiBot | None = None
+        self: MultiBot | None = None
         text = ''
         media: Media | None = None
         buttons: list[str | list[str]] | None = None
+        chat: int | str | User | Chat | Message | None = None
         message: Message | None = None
 
         for arg in args:
             match arg:
-                case MultiBot() as bot:
+                case MultiBot() as self:
                     pass
                 case str(text):
                     pass
@@ -167,29 +168,38 @@ def parse_arguments(func: Callable) -> Callable:
                     buttons = list(buttons)
                     for i, buttons_row in enumerate(buttons):
                         buttons[i] = list(buttons_row)
+                case User() as user:
+                    chat = user
                 case Chat() as chat:
-                    message = Message(chat=chat)
+                    pass
                 case Message() as message:
                     pass
 
+        chat = await self.get_chat(kwargs.get('chat', chat))
         reply_to = kwargs.get('reply_to', None)
-        silent = kwargs.get('silent', None)
-        send_as_file = kwargs.get('send_as_file', None)
         edit = kwargs.get('edit', None)
 
-        if reply_to is not None and edit is not None:
-            raise TypeError('reply_to and edit parameters can not be setted at the same time')
+        if reply_to is not None:
+            if chat:
+                raise TypeError('chat and reply_to parameters can not be setted at the same time')
+            if edit is not None:
+                raise TypeError('reply_to and edit parameters can not be setted at the same time')
+
+        if not chat:
+            if isinstance(reply_to, Message) and reply_to.chat:
+                chat = reply_to.chat
+            elif message:
+                chat = message.chat
 
         if not message and isinstance(reply_to, Message):
             message = reply_to
 
-        args = (bot, text, media, buttons, message)
-        kwargs |= {'reply_to': reply_to, 'silent': silent, 'send_as_file': send_as_file}
+        for arg_name in ('self', 'text', 'media', 'buttons', 'message'):
+            if arg_name not in kwargs:
+                kwargs[arg_name] = locals()[arg_name]
+        kwargs['chat'] = chat
 
-        if edit is not None:
-            kwargs['edit'] = edit
-
-        return await func(*args, **kwargs)
+        return await func(**kwargs)
 
     return wrapper
 
@@ -308,7 +318,7 @@ class MultiBot(Generic[T], ABC):
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_message(self, event: constants.MESSAGE_EVENT) -> Message:
         original_message = event if isinstance(event, constants.ORIGINAL_MESSAGE) else await self._get_original_message(event)
-
+        print()
         message = Message(
             platform=self.platform,
             id=await self._get_message_id(original_message),
@@ -526,7 +536,7 @@ class MultiBot(Generic[T], ABC):
         return await self.send(*args, **kwargs)
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_chat(self, chat: int | str | Chat | Message) -> Chat | None:
+    async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
@@ -660,7 +670,7 @@ class MultiBot(Generic[T], ABC):
 
     @abstractmethod
     @parse_arguments
-    async def send(self, text='', media: Media = None, buttons: list[str | list[str]] | None = None, message: Message = None, *, reply_to: int | str | Message = None, silent: bool = False, send_as_file: bool = None, edit=False) -> Message | None:
+    async def send(self, text='', media: Media = None, buttons: list[str | list[str]] | None = None, chat: int | str | User | Chat | Message | None = None, message: Message = None, *, reply_to: int | str | Message = None, silent: bool = False, send_as_file: bool = None, edit=False) -> Message | None:
         pass
 
     @parse_arguments

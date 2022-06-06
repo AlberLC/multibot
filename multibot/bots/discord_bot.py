@@ -286,12 +286,14 @@ class DiscordBot(MultiBot[Bot]):
         message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_chat(self, chat: int | str | Chat | Message = None) -> Chat | None:
+    async def get_chat(self, chat: int | str | User | Chat | Message = None) -> Chat | None:
         match chat:
             case int(chat_id):
                 pass
             case str(chat_name):
                 chat_id = Chat.find_one({'platform': self.platform.value, 'name': chat_name}).id
+            case User() as user:
+                return await self._create_chat_from_discord_chat(await user.original_object.create_dm())
             case Chat():
                 return chat
             case Message() as message:
@@ -391,6 +393,7 @@ class DiscordBot(MultiBot[Bot]):
         text='',
         media: Media = None,
         buttons: list[str | list[str]] | None = None,
+        chat: int | str | User | Chat | Message | None = None,
         message: Message = None,
         *,
         reply_to: int | str | Message = None,
@@ -427,14 +430,14 @@ class DiscordBot(MultiBot[Bot]):
         else:
             match reply_to:
                 case int(message_id):
-                    reply_to = await message.chat.original_object.fetch_message(message_id)
+                    reply_to = await chat.original_object.fetch_message(message_id)
                 case str(message_id):
-                    reply_to = await message.chat.original_object.fetch_message(int(message_id))
+                    reply_to = await chat.original_object.fetch_message(int(message_id))
                 case Message() as message_to_reply:
                     reply_to = message_to_reply.original_object
 
             try:
-                bot_message = await self._get_message(await message.chat.original_object.send(text, file=file, view=create_view(), reference=reply_to))
+                bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=create_view(), reference=reply_to))
             except discord.errors.HTTPException:
                 if random.randint(0, 10):
                     error_message = 'El archivo pesa más de 8 MB.'
