@@ -17,4 +17,5 @@ class User(EventComponent):
     id: int = None
     name: str = None
     is_admin: bool = None
+    is_bot: bool = None
     original_object: constants.ORIGINAL_USER = None

@@ -47,43 +47,44 @@ class DiscordBot(MultiBot[Bot]):
         await user.original_object.ban(delete_message_days=0)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _create_chat_from_discord_chat(self, discord_chat: constants.DISCORD_CHAT) -> Chat | None:
+    async def _create_chat_from_discord_chat(self, original_chat: constants.DISCORD_CHAT) -> Chat | None:
         try:
-            chat_name = discord_chat.name
-            group_id = discord_chat.guild.id
-            group_name = discord_chat.guild.name
+            chat_name = original_chat.name
+            group_id = original_chat.guild.id
+            group_name = original_chat.guild.name
         except AttributeError:
             try:
-                chat_name = discord_chat.recipient.name
+                chat_name = original_chat.recipient.name
             except AttributeError:
-                discord_chat = await self.client.fetch_channel(discord_chat.id)
+                original_chat = await self.client.fetch_channel(original_chat.id)
                 # noinspection PyUnresolvedReferences
-                chat_name = discord_chat.recipient.name
+                chat_name = original_chat.recipient.name
             group_id = None
             group_name = None
 
         return Chat(
             platform=self.platform.value,
-            id=discord_chat.id,
+            id=original_chat.id,
             name=chat_name,
             group_id=group_id,
             group_name=group_name,
-            original_object=discord_chat
+            original_object=original_chat
         )
 
     @return_if_first_empty
-    def _create_user_from_discord_user(self, discord_user: constants.DISCORD_USER) -> User | None:
+    def _create_user_from_discord_user(self, original_user: constants.DISCORD_USER) -> User | None:
         try:
-            is_admin = discord_user.guild_permissions.administrator
+            is_admin = original_user.guild_permissions.administrator
         except AttributeError:
             is_admin = None
 
         return User(
             platform=self.platform.value,
-            id=discord_user.id,
-            name=f'{discord_user.name}#{discord_user.discriminator}',
+            id=original_user.id,
+            name=f'{original_user.name}#{original_user.discriminator}',
             is_admin=is_admin,
-            original_object=discord_user
+            is_bot=original_user.bot,
+            original_object=original_user
         )
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
@@ -331,12 +332,12 @@ class DiscordBot(MultiBot[Bot]):
         group_id = self.get_group_id(group_)
 
         if group_id is None:
-            discord_user = self.client.get_user(user_id) or await self.client.fetch_user(user_id)
+            original_user = self.client.get_user(user_id) or await self.client.fetch_user(user_id)
         else:
             guild = self.client.get_guild(group_id) or await self.client.fetch_guild(group_id)
-            discord_user = guild.get_member(user_id)
+            original_user = guild.get_member(user_id)
 
-        return self._create_user_from_discord_user(discord_user)
+        return self._create_user_from_discord_user(original_user)
 
     async def has_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role) -> bool:
         user = await self.get_user(user, group_)
@@ -438,13 +439,15 @@ class DiscordBot(MultiBot[Bot]):
 
             try:
                 bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=create_view(), reference=reply_to))
-            except discord.errors.HTTPException:
-                if random.randint(0, 10):
-                    error_message = 'El archivo pesa más de 8 MB.'
-                else:
-                    error_message = 'El archivo pesa mas que tu madre'
-                await self._manage_exceptions(SendError(error_message), message)
-                return
+            except discord.errors.HTTPException as e:
+                if 'too large' in str(e).lower():
+                    if random.randint(0, 10):
+                        error_message = 'El archivo pesa más de 8 MB.'
+                    else:
+                        error_message = 'El archivo pesa mas que tu madre'
+                    await self._manage_exceptions(SendError(error_message), chat)
+                    return
+                raise e
             if content := getattr(media, 'content', None):
                 bot_message.contents = [content]
             bot_message.save()

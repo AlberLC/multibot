@@ -92,22 +92,22 @@ class TelegramBot(MultiBot[TelegramClient]):
         return bot_message
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _create_chat_from_telegram_chat(self, telegram_chat: constants.TELEGRAM_CHAT) -> Chat | None:
-        chat_name = self._get_name_from_entity(telegram_chat)
-        if isinstance(telegram_chat, constants.TELEGRAM_USER):
+    async def _create_chat_from_telegram_chat(self, original_chat: constants.TELEGRAM_CHAT) -> Chat | None:
+        chat_name = self._get_name_from_entity(original_chat)
+        if isinstance(original_chat, constants.TELEGRAM_USER):
             group_id = None
             group_name = None
         else:
-            group_id = telegram_chat.id
+            group_id = original_chat.id
             group_name = chat_name
 
         return Chat(
             platform=self.platform.value,
-            id=telegram_chat.id,
+            id=original_chat.id,
             name=chat_name,
             group_id=group_id,
             group_name=group_name,
-            original_object=telegram_chat
+            original_object=original_chat
         )
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
@@ -123,6 +123,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             id=original_user.id,
             name=self._get_name_from_entity(original_user).strip(' @'),
             is_admin=is_admin,
+            is_bot=original_user.bot,
             original_object=original_user
         )
 

@@ -39,10 +39,10 @@ class TwitchBot(MultiBot[twitchio.Client]):
         self.client._events['event_message'].append(self._on_new_message_raw)
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def _create_chat_from_twitch_chat(self, twitch_chat: constants.TWITCH_CHAT) -> Chat | None:
-        channel_name = twitch_chat.name
+    async def _create_chat_from_twitch_chat(self, original_chat: constants.TWITCH_CHAT) -> Chat | None:
+        channel_name = original_chat.name
         try:
-            channel_id = int(flanautils.find(twitch_chat.chatters, condition=lambda user: user.name == channel_name).id)
+            channel_id = int(flanautils.find(original_chat.chatters, condition=lambda user: user.name == channel_name).id)
         except (AttributeError, TypeError):
             channel_id = int(next(iter(await self.client.fetch_users([channel_name])), None).id)
 
@@ -52,20 +52,20 @@ class TwitchBot(MultiBot[twitchio.Client]):
             name=channel_name,
             group_id=channel_id,
             group_name=channel_name,
-            original_object=twitch_chat
+            original_object=original_chat
         )
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def _create_user_from_twitch_user(self, twitch_user: constants.TWITCH_USER, is_admin: bool = None) -> User | None:
-        if (id := twitch_user.id) is None:
-            id = next(iter(await self.client.fetch_users([twitch_user.name])), None).id
+    async def _create_user_from_twitch_user(self, original_user: constants.TWITCH_USER, is_admin: bool = None) -> User | None:
+        if (id := original_user.id) is None:
+            id = next(iter(await self.client.fetch_users([original_user.name])), None).id
 
         return User(
             platform=self.platform.value,
             id=int(id),
-            name=twitch_user.display_name,
-            is_admin=getattr(twitch_user, 'is_mod', None) if is_admin is None else is_admin,
-            original_object=twitch_user
+            name=original_user.display_name,
+            is_admin=getattr(original_user, 'is_mod', None) if is_admin is None else is_admin,
+            original_object=original_user
         )
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
@@ -180,6 +180,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
             case int(group_id):
                 group_name = self.get_group_name(group_id)
                 if not group_name:
+                    # noinspection PyTypeChecker
                     return await self._create_chat_from_twitch_chat(await self.client.fetch_channel(group_id))
             case str(group_name):
                 pass
@@ -211,20 +212,20 @@ class TwitchBot(MultiBot[twitchio.Client]):
             case _ as user_id_or_name:
                 pass
 
-        twitch_user: twitchio.User | twitchio.Chatter
-        if not (twitch_user := next(iter(await self.client.fetch_users([user_id_or_name])), None)):
+        original_user: twitchio.User | twitchio.Chatter
+        if not (original_user := next(iter(await self.client.fetch_users([user_id_or_name])), None)):
             return
 
         if group_name:
-            if twitch_user.name == group_name:
+            if original_user.name == group_name:
                 is_admin = True
             else:
                 chat = await self.get_chat(group_)
-                twitch_user = chat.original_object.get_chatter(twitch_user.name)
+                original_user = chat.original_object.get_chatter(original_user.name)
                 is_admin = None
         else:
             is_admin = None
-        return await self._create_user_from_twitch_user(twitch_user, is_admin=is_admin)
+        return await self._create_user_from_twitch_user(original_user, is_admin=is_admin)
 
     async def join(self, chat_name: str | Iterable[str]):
         await self.client.join_channels((chat_name,) if isinstance(chat_name, str) else chat_name)

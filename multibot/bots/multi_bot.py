@@ -318,7 +318,7 @@ class MultiBot(Generic[T], ABC):
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_message(self, event: constants.MESSAGE_EVENT) -> Message:
         original_message = event if isinstance(event, constants.ORIGINAL_MESSAGE) else await self._get_original_message(event)
-        print()
+
         message = Message(
             platform=self.platform,
             id=await self._get_message_id(original_message),
@@ -358,7 +358,7 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def _manage_exceptions(self, exceptions: BaseException | Iterable[BaseException], message: Message):
+    async def _manage_exceptions(self, exceptions: BaseException | Iterable[BaseException], context: Chat | Message):
         if not isinstance(exceptions, Iterable):
             exceptions = (exceptions,)
 
@@ -366,15 +366,15 @@ class MultiBot(Generic[T], ABC):
             try:
                 raise exception
             except ValueError:
-                await self.delete_message(message)
+                await self.delete_message(context)
             except LimitError as e:
-                await self.delete_message(message)
-                await self.send_error(str(e), message)
+                await self.delete_message(context)
+                await self.send_error(str(e), context)
             except (SendError, NotFoundError) as e:
-                await self.send_error(str(e), message)
+                await self.send_error(str(e), context)
             except AmbiguityError:
                 if constants.RAISE_AMBIGUITY_ERROR:
-                    await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más?  {random.choice(constants.SAD_EMOJIS)}', message)
+                    await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más?  {random.choice(constants.SAD_EMOJIS)}', context)
 
     async def _mute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
