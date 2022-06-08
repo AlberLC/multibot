@@ -196,7 +196,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         return await self._create_chat_from_twitch_chat(self.client.get_channel(group_name) or await self.client.fetch_channel(group_name))
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def get_group_users(self, group_: int | str | Chat | Message) -> list[User]:
+    async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
         chat = await self.get_chat(group_)
         return list(OrderedSet([await self._create_user_from_twitch_user(chatter) for chatter in chat.original_object.chatters]))
 

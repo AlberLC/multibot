@@ -6,6 +6,7 @@ import asyncio
 import io
 import pathlib
 import random
+from typing import Iterable
 
 import discord
 import flanautils
@@ -117,7 +118,7 @@ class DiscordBot(MultiBot[Bot]):
         return await self._create_chat_from_discord_chat(original_message.channel)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_discord_group(self, group_: int | str | Chat | Message) -> discord.Guild | None:
+    async def _get_discord_group(self, group_: int | str | Chat | Message) -> constants.DISCORD_GROUP | None:
         match group_:
             case int(group_id):
                 return self.client.get_guild(group_id) or await self.client.fetch_guild(group_id)
@@ -221,9 +222,8 @@ class DiscordBot(MultiBot[Bot]):
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user = await self.get_user(user)
-        group_id = self.get_group_id(group_)
-        guild = self.client.get_guild(group_id) or await self.client.fetch_guild(group_id)
-        await guild.unban(user)
+        discord_group = await self._get_discord_group(group_)
+        await discord_group.unban(user)
 
     async def _unmute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user = await self.get_user(user, group_)
@@ -286,6 +286,32 @@ class DiscordBot(MultiBot[Bot]):
         message_to_delete.is_deleted = True
         message_to_delete.save()
 
+    async def find_users_by_roles(self, roles: Iterable[int | str | Role], group_: int | str | Chat | Message) -> list[User]:
+        match roles:
+            case [*_, int()] as role_ids:
+                role_ids = set(role_ids)
+            case [*_, str()] as role_names:
+                role_ids = {(await self.get_role(role_name, group_)).id for role_name in role_names}
+            case [*_, Role()]:
+                role_ids = {role.id for role in roles}
+            case []:
+                role_ids = set()
+            case _:
+                raise TypeError('bad arguments')
+        role_ids.add((await self.get_role('@everyone', group_)).id)
+
+        users = []
+        discord_group = await self._get_discord_group(group_)
+        for original_user in discord_group.members:
+            for original_role in original_user.roles:
+                if original_role.id not in role_ids:
+                    break
+            else:
+                if len(original_user.roles) == len(role_ids):
+                    users.append(self._create_user_from_discord_user(original_user))
+
+        return users
+
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message = None) -> Chat | None:
         match chat:
@@ -305,19 +331,6 @@ class DiscordBot(MultiBot[Bot]):
         # noinspection PyTypeChecker
         return await self._create_chat_from_discord_chat(self.client.get_channel(chat_id) or await self.client.fetch_channel(chat_id))
 
-    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
-        if not (guild := await self._get_discord_group(group_)):
-            return []
-
-        # noinspection PyTypeChecker
-        return [Role(self.platform.value, discord_role.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in guild.roles]
-
-    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_group_users(self, group_: int | str | Chat | Message) -> list[User]:
-        guild = await self._get_discord_group(group_)
-        return [self._create_user_from_discord_user(member) for member in guild.members]
-
     async def get_me(self, group_: int | str | Chat | Message = None) -> User | None:
         # noinspection PyTypeChecker
         user = self._create_user_from_discord_user(self.client.user)
@@ -327,17 +340,29 @@ class DiscordBot(MultiBot[Bot]):
             return await self.get_user(user, group_)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def get_roles(self, group_: int | str | Chat | Message) -> list[Role]:
+        if not (discord_group := await self._get_discord_group(group_)):
+            return []
+
+        # noinspection PyTypeChecker
+        return [Role(self.platform.value, discord_role.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in discord_group.roles]
+
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
         user_id = self.get_user_id(user)
-        group_id = self.get_group_id(group_)
 
-        if group_id is None:
+        if group_ is None:
             original_user = self.client.get_user(user_id) or await self.client.fetch_user(user_id)
         else:
-            guild = self.client.get_guild(group_id) or await self.client.fetch_guild(group_id)
-            original_user = guild.get_member(user_id)
+            discord_group = await self._get_discord_group(group_)
+            original_user = discord_group.get_member(user_id)
 
         return self._create_user_from_discord_user(original_user)
+
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
+        discord_group = await self._get_discord_group(group_)
+        return [self._create_user_from_discord_user(member) for member in discord_group.members]
 
     async def has_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role) -> bool:
         user = await self.get_user(user, group_)
@@ -417,8 +442,6 @@ class DiscordBot(MultiBot[Bot]):
 
         text = self._parse_html_to_discord_markdown(text)
         file = await self._prepare_media_to_send(media)
-        if not text and not file:
-            return
 
         if edit:
             kwargs = {}

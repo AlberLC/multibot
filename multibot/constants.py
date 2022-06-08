@@ -34,6 +34,7 @@ ROLE = DISCORD_ROLE
 CHECK_MESSAGE_EVERY_SECONDS = datetime.timedelta(days=1).total_seconds()
 CHECK_MUTES_EVERY_SECONDS = datetime.timedelta(hours=1).total_seconds()
 COMMAND_MESSAGE_DURATION = 5
+DELETE_MESSAGE_LIMIT = 100
 DISCORD_COMMAND_PREFIX = '/'
 DISCORD_MEDIA_MAX_BYTES = 8000000
 ERROR_MESSAGE_DURATION = 10
@@ -41,10 +42,10 @@ KEYWORDS_LENGHT_PENALTY = 0.001
 MAX_FILE_EXTENSION_LENGHT = 5
 MESSAGE_EXPIRATION_TIME = datetime.timedelta(weeks=1)
 MINIMUM_RATIO_TO_MATCH = 3
+PARSE_BUTTON_CALLBACKS_MIN_RATIO_DEFAULT = 1
 PARSE_CALLBACKS_MIN_RATIO_DEFAULT = 0.93
 RAISE_AMBIGUITY_ERROR = False
 RATIO_REWARD_EXPONENT = 2
-DELETE_MESSAGE_LIMIT = 100
 TELEGRAM_SEND_AS_FILE_RATIO_MIN_RATIO = 0.85
 TIME_THRESHOLD_TO_MANUAL_UNPUNISH = datetime.timedelta(days=3)
 
@@ -84,6 +85,7 @@ KEYWORDS = {
     'thanks': ('gracia', 'gracias', 'grasia', 'grasias', 'grax', 'thank', 'thanks', 'ty'),
     'unban': ('desbanea', 'unban'),
     'unmute': ('desilencia', 'desmutea', 'desmutealo', 'unmute'),
+    'user': ('member', 'miembro', 'participant', 'participante', 'user', 'usuario')
 }
 
 NO_PHRASES = ('NO', 'no', 'no.', 'nope', 'hin', 'ahora mismo', 'va a ser que no', 'claro que si', 'claro que si guapi',

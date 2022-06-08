@@ -239,7 +239,7 @@ class MultiBot(Generic[T], ABC):
         self.token: str = bot_token
         self.client: T = bot_client
         self._registered_callbacks: list[RegisteredCallback] = []
-        self._registered_button_callbacks: list[Callable] = []
+        self._registered_button_callbacks: list[RegisteredCallback] = []
 
         self._add_handlers()
 
@@ -265,6 +265,10 @@ class MultiBot(Generic[T], ABC):
         self.register(self._on_unmute, constants.KEYWORDS['unmute'])
         self.register(self._on_unmute, (constants.KEYWORDS['deactivate'], constants.KEYWORDS['mute']))
         self.register(self._on_unmute, (constants.KEYWORDS['activate'], constants.KEYWORDS['sound']))
+
+        self.register(self._on_users, constants.KEYWORDS['user'])
+
+        self.register_button(self._on_users_button_press, always=True)
 
     async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
@@ -379,24 +383,25 @@ class MultiBot(Generic[T], ABC):
     async def _mute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
 
+    @staticmethod
     def _parse_callbacks(
-        self,
         text: str,
+        registered_callbacks: list[RegisteredCallback],
         ratio_reward_exponent: float = constants.RATIO_REWARD_EXPONENT,
         keywords_lenght_penalty: float = constants.KEYWORDS_LENGHT_PENALTY,
         minimum_ratio_to_match: float = constants.MINIMUM_RATIO_TO_MATCH
     ) -> OrderedSet[RegisteredCallback]:
         text = text.lower()
-        text = flanautils.remove_accents(text)
-        text = flanautils.translate(text, {'?': ' ', '¿': ' ', '!': ' ', '¡': ' ', '_': ' ', 'auto': 'auto '})
-        text = flanautils.translate(text, {'auto': 'automatico', 'matico': None, 'matic': None})
+        # text = flanautils.remove_accents(text)
+        text = flanautils.translate(text, {'?': ' ', '¿': ' ', '!': ' ', '¡': ' '})
+        # text = flanautils.translate(text, {'auto': 'automatico', 'matico': None, 'matic': None})
         original_text_words = OrderedSet(text.split())
         text_words = original_text_words - flanautils.CommonWords.all_words
 
         matched_callbacks: set[RatioMatch[RegisteredCallback]] = set()
         always_callbacks: set[RegisteredCallback] = set()
         default_callbacks: set[RegisteredCallback] = set()
-        for registered_callback in self._registered_callbacks:
+        for registered_callback in registered_callbacks:
             if registered_callback.always:
                 always_callbacks.add(registered_callback)
             elif registered_callback.default:
@@ -417,7 +422,7 @@ class MultiBot(Generic[T], ABC):
                         mached_keywords_groups += 1
 
                 if mached_keywords_groups and mached_keywords_groups == len(registered_callback.keywords):
-                    for matched_callback in matched_callbacks:
+                    for matched_callback in matched_callbacks:  # If the callback has been matched before but with less score it is overwritten, otherwise it is added
                         if matched_callback.element.callback == registered_callback.callback:
                             if total_ratio > matched_callback.ratio:
                                 matched_callbacks.discard(matched_callback)
@@ -436,7 +441,7 @@ class MultiBot(Generic[T], ABC):
             case _:
                 determined_callbacks = always_callbacks | default_callbacks
 
-        return OrderedSet(registered_callback for registered_callback in self._registered_callbacks if registered_callback in determined_callbacks)
+        return OrderedSet(registered_callback for registered_callback in registered_callbacks if registered_callback in determined_callbacks)
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
@@ -456,8 +461,13 @@ class MultiBot(Generic[T], ABC):
 
     @find_message
     async def _on_button_press_raw(self, message: Message):
-        for registered_button_callback in self._registered_button_callbacks:
-            await registered_button_callback(message)
+        try:
+            registered_callbacks = self._parse_callbacks(message.button_pressed_text, self._registered_button_callbacks)
+        except AmbiguityError as e:
+            await self._manage_exceptions(e, message)
+        else:
+            for registered_callback in registered_callbacks:
+                await registered_callback(message)
 
     @inline(False)
     async def _on_delete(self, message: Message):
@@ -487,7 +497,7 @@ class MultiBot(Generic[T], ABC):
     @ignore_self_message
     async def _on_new_message_raw(self, message: Message):
         try:
-            registered_callbacks = self._parse_callbacks(message.text)
+            registered_callbacks = self._parse_callbacks(message.text, self._registered_callbacks)
         except AmbiguityError as e:
             await self._manage_exceptions(e, message)
         else:
@@ -514,6 +524,61 @@ class MultiBot(Generic[T], ABC):
         for user in await self._find_users_to_punish(message):
             await self.unmute(user, message, message)
 
+    @group
+    @bot_mentioned
+    async def _on_users(self, message: Message):
+        role_names = [role.name for role in await self.get_roles(message.chat.group_id)]
+        role_names.remove('@everyone')
+
+        user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles([], message)]
+        joined_user_names = ', '.join(user_names)
+        await self.send(
+            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:<b>\n"
+            f"{joined_user_names}\n\n"
+            f"<b>Filtrar usuarios por roles:<b>",
+            flanautils.chunks([f'❌  {role_name}' for role_name in role_names], 5),
+            message
+        )
+
+    async def _on_users_button_press(self, message: Message):
+        await self._accept_button_event(message)
+
+        try:
+            button_role_name = message.button_pressed_text.split()[1]
+        except IndexError:
+            return
+        if not (role_names := [role.name for role in await self.get_roles(message.chat)]) or button_role_name not in role_names:
+            return
+
+        new_buttons = []
+        selected_role_names = []
+        for row in message.original_object.components:
+            new_row = []
+            for button in row.children:
+                emoji, role_name = button.label.split()
+                if role_name == button_role_name:
+                    if emoji == '✔':
+                        new_emoji = '❌'
+                    else:
+                        new_emoji = '✔'
+                        selected_role_names.append(role_name)
+                    new_row.append(f'{new_emoji}  {role_name}')
+                else:
+                    if emoji == '✔':
+                        selected_role_names.append(role_name)
+                    new_row.append(button.label)
+            new_buttons.append(new_row)
+
+        await self.edit(new_buttons, message)
+        user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles(selected_role_names, message)]
+        joined_user_names = ', '.join(user_names)
+        await self.edit(
+            f"<b><u>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:<u><b>\n"
+            f"{joined_user_names}\n\n"
+            f"<b>Filtrar usuarios por roles:<b>",
+            message
+        )
+
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
@@ -534,6 +599,9 @@ class MultiBot(Generic[T], ABC):
     async def edit(self, *args, **kwargs) -> Message:
         kwargs |= {'edit': True}
         return await self.send(*args, **kwargs)
+
+    async def find_users_by_roles(self, roles: Iterable[int | str | Role], group_: int | str | Chat | Message) -> list[User]:
+        pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
@@ -569,15 +637,6 @@ class MultiBot(Generic[T], ABC):
             case Message() as message:
                 return message.chat.group_name
 
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
-        pass
-
-    @abstractmethod
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_group_users(self, group_: int | str | Chat | Message) -> list[User]:
-        pass
-
     async def get_me(self, group_: int | str | Chat | Message = None) -> User | None:
         pass
 
@@ -586,16 +645,25 @@ class MultiBot(Generic[T], ABC):
         if isinstance(role, Role):
             return role
 
-        roles = await self.get_group_roles(group_)
+        roles = await self.get_roles(group_)
 
         match role:
             case int(role_id):
                 return flanautils.find(roles, condition=lambda role_: role_.id == role_id)
             case str(role_name):
-                return flanautils.find(roles, condition=lambda role_: role_.name.lower() == role_name.lower())
+                return flanautils.find(roles, condition=lambda role_: role_.name == role_name)
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_roles(self, group_: int | str | Chat | Message) -> list[Role]:
+        pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
+        pass
+
+    @abstractmethod
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
@@ -660,10 +728,18 @@ class MultiBot(Generic[T], ABC):
 
         return decorator(func_) if func_ else decorator
 
+    @overload
+    def register_button(self, func_: Callable = None, keywords=(), min_ratio=constants.PARSE_BUTTON_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
+        pass
+
+    @overload
+    def register_button(self, keywords=(), min_ratio=constants.PARSE_BUTTON_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
+        pass
+
     @shift_args_if_called(exclude_self_types='MultiBot', globals_=globals())
-    def register_button(self, func_: Callable = None):
+    def register_button(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), min_ratio=constants.PARSE_BUTTON_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
         def decorator(func):
-            self._registered_button_callbacks.append(func)
+            self._registered_button_callbacks.append(RegisteredCallback(func, keywords, min_ratio, always, default))
             return func
 
         return decorator(func_) if func_ else decorator

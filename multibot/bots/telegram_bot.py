@@ -320,11 +320,6 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         return await self._create_chat_from_telegram_chat(await self.client.get_entity(chat_id))
 
-    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def get_group_users(self, group_: int | str | Chat | Message) -> list[User]:
-        chat = await self.get_chat(group_)
-        return [await self._create_user_from_telegram_user(participant, chat.id) for participant in await self.client.get_participants(chat.original_object)]
-
     async def get_me(self, group_: int | str | Chat = None):
         return await self._create_user_from_telegram_user(await self.client.get_me(), group_)
 
@@ -334,6 +329,11 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         with flanautils.suppress_stderr():
             return await self._create_user_from_telegram_user(await self.client.get_entity(user), group_id)
+
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
+        chat = await self.get_chat(group_)
+        return [await self._create_user_from_telegram_user(participant, chat.id) for participant in await self.client.get_participants(chat.original_object)]
 
     @parse_arguments
     async def send(
@@ -363,8 +363,6 @@ class TelegramBot(MultiBot[TelegramClient]):
             return telegram_buttons
 
         file = await self._prepare_media_to_send(media)
-        if not text and not file:
-            return
 
         kwargs = {
             'file': file,
