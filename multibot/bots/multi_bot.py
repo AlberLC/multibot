@@ -555,7 +555,7 @@ class MultiBot(Generic[T], ABC):
         for row in message.original_object.components:
             new_row = []
             for button in row.children:
-                emoji, role_name = button.label.split()
+                emoji, role_name = button.label.split(maxsplit=1)
                 if role_name == button_role_name:
                     if emoji == '✔':
                         new_emoji = '❌'
@@ -573,7 +573,7 @@ class MultiBot(Generic[T], ABC):
         user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles(selected_role_names, message)]
         joined_user_names = ', '.join(user_names)
         await self.edit(
-            f"<b><u>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:<u><b>\n"
+            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:<b>\n"
             f"{joined_user_names}\n\n"
             f"<b>Filtrar usuarios por roles:<b>",
             message
