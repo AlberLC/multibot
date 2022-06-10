@@ -541,14 +541,14 @@ class MultiBot(Generic[T], ABC):
         )
 
     async def _on_users_button_press(self, message: Message):
-        await self._accept_button_event(message)
-
         try:
             button_role_name = message.button_pressed_text.split(maxsplit=1)[1]
         except IndexError:
             return
         if not (role_names := [role.name for role in await self.get_roles(message.chat)]) or button_role_name not in role_names:
             return
+
+        await self._accept_button_event(message)
 
         new_buttons = []
         selected_role_names = []
