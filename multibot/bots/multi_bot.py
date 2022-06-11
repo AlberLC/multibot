@@ -412,7 +412,7 @@ class MultiBot(Generic[T], ABC):
                 for keywords_group in registered_callback.keywords:
                     text_words += [original_text_word for original_text_word in original_text_words if original_text_word in keywords_group]
                     word_matches = flanautils.cartesian_product_string_matching(text_words, keywords_group, min_ratio=registered_callback.min_ratio)
-                    ratio = sum((max(matches.values()) + 1) ** ratio_reward_exponent for text_word, matches in word_matches.items())
+                    ratio = sum((max(matches.values()) + 1) ** ratio_reward_exponent for matches in word_matches.values())
                     try:
                         ratio /= max(1., keywords_lenght_penalty * len(keywords_group))
                     except ZeroDivisionError:
