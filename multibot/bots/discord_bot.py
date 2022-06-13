@@ -208,7 +208,7 @@ class DiscordBot(MultiBot[Bot]):
                     return discord.File(media.url)
                 else:
                     return discord.File(media.url, filename=f'bot_media.{media.type_.extension}')
-            else:
+            elif not media.bytes_:
                 media.bytes_ = await flanautils.get_request(media.url)
 
         if bytes_ := media.bytes_:
