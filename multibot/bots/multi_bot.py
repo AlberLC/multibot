@@ -392,9 +392,11 @@ class MultiBot(Generic[T], ABC):
         minimum_ratio_to_match: float = constants.MINIMUM_RATIO_TO_MATCH
     ) -> OrderedSet[RegisteredCallback]:
         text = text.lower()
-        # text = flanautils.remove_accents(text)
+        text = flanautils.replace(text, {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+                                         'à': 'a', 'è': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u',
+                                         'â': 'a', 'ê': 'e', 'î': 'i', 'ô': 'o', 'û': 'u',
+                                         'ä': 'a', 'ë': 'e', 'ï': 'i', 'ö': 'o', 'ü': 'u'})
         text = flanautils.translate(text, {'?': ' ', '¿': ' ', '!': ' ', '¡': ' '})
-        # text = flanautils.translate(text, {'auto': 'automatico', 'matico': None, 'matic': None})
         original_text_words = OrderedSet(text.split())
         text_words = original_text_words - flanautils.CommonWords.all_words
 
