@@ -396,6 +396,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                     message.original_object = edited_message
                 if content := getattr(media, 'content', None):
                     message.contents = [content]
+                message.update_last_edit()
                 message.save()
                 return message
 

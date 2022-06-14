@@ -4,7 +4,6 @@ __all__ = ['Message']
 
 import datetime
 from dataclasses import dataclass, field
-from typing import AbstractSet, Iterable
 
 from multibot import constants
 from multibot.models.chat import Chat
@@ -29,19 +28,13 @@ class Message(EventComponent):
     mentions: list[User] = field(default_factory=list)
     chat: Chat = None
     replied_message: Message = None
-    last_update: datetime.datetime = None
+    date: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
+    last_edit: datetime.datetime = None
     is_inline: bool = None
     contents: list = field(default_factory=list)
     is_deleted: bool = False
     original_object: constants.ORIGINAL_MESSAGE = None
     original_event: constants.MESSAGE_EVENT = None
 
-    def save(
-        self,
-        pickle_types: tuple | list = (AbstractSet,),
-        references=True,
-        pull_overwrite_fields: Iterable[str] = ('_id',),
-        pull_exclude: Iterable[str] = ()
-    ):
-        self.last_update = datetime.datetime.now(datetime.timezone.utc)
-        super().save(pickle_types, references, pull_overwrite_fields, pull_exclude)
+    def update_last_edit(self):
+        self.last_edit = datetime.datetime.now(datetime.timezone.utc)

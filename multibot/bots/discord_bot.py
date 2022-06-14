@@ -451,30 +451,30 @@ class DiscordBot(MultiBot[Bot]):
                 kwargs['view'] = create_view()
             message.original_object = await message.original_object.edit(content=text, **kwargs)
             return message
-        else:
-            match reply_to:
-                case int(message_id):
-                    reply_to = await chat.original_object.fetch_message(message_id)
-                case str(message_id):
-                    reply_to = await chat.original_object.fetch_message(int(message_id))
-                case Message() as message_to_reply:
-                    reply_to = message_to_reply.original_object
 
-            try:
-                bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=create_view(), reference=reply_to))
-            except discord.errors.HTTPException as e:
-                if 'too large' in str(e).lower():
-                    if random.randint(0, 10):
-                        error_message = 'El archivo pesa más de 8 MB.'
-                    else:
-                        error_message = 'El archivo pesa mas que tu madre'
-                    await self._manage_exceptions(SendError(error_message), chat)
-                    return
-                raise e
-            if content := getattr(media, 'content', None):
-                bot_message.contents = [content]
-            bot_message.save()
-            return bot_message
+        match reply_to:
+            case int(message_id):
+                reply_to = await chat.original_object.fetch_message(message_id)
+            case str(message_id):
+                reply_to = await chat.original_object.fetch_message(int(message_id))
+            case Message() as message_to_reply:
+                reply_to = message_to_reply.original_object
+
+        try:
+            bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=create_view(), reference=reply_to))
+        except discord.errors.HTTPException as e:
+            if 'too large' in str(e).lower():
+                if random.randint(0, 10):
+                    error_message = 'El archivo pesa más de 8 MB.'
+                else:
+                    error_message = 'El archivo pesa mas que tu madre'
+                await self._manage_exceptions(SendError(error_message), chat)
+                return
+            raise e
+        if content := getattr(media, 'content', None):
+            bot_message.contents = [content]
+        bot_message.save()
+        return bot_message
 
     def start(self):
         async def start_():
