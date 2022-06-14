@@ -163,6 +163,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             except ValueError:
                 pass
 
+        text = flanautils.remove_symbols(text, replace_with=' ')
         words = text.lower().split()
         for participant in await self.client.get_participants(chat.original_object):
             user_name = self._get_name_from_entity(participant).strip(' @').lower()

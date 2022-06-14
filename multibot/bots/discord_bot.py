@@ -137,6 +137,7 @@ class DiscordBot(MultiBot[Bot]):
         chat = await self._get_chat(original_message)
         if chat.original_object.guild:
             text = await self._get_text(original_message)
+            text = flanautils.remove_symbols(text, replace_with=' ')
             words = text.lower().split()
             for member in chat.original_object.guild.members:
                 user_name = f'{member.name}#{member.discriminator}'.lower()
@@ -450,6 +451,10 @@ class DiscordBot(MultiBot[Bot]):
             if buttons is not None:
                 kwargs['view'] = create_view()
             message.original_object = await message.original_object.edit(content=text, **kwargs)
+            if content := getattr(media, 'content', None):
+                message.contents = [content]
+            message.update_last_edit()
+            message.save()
             return message
 
         match reply_to:

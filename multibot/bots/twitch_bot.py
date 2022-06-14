@@ -85,6 +85,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         mentions = OrderedSet([user for mention in re.findall(r'@[\d\w]+', text) if (user := await self.get_user(mention[1:], chat))])
 
         if chat.original_object.chatters:
+            text = flanautils.remove_symbols(text, replace_with=' ')
             words = text.lower().split()
 
             for chatter in chat.original_object.chatters:
