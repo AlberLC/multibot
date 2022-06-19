@@ -6,18 +6,17 @@ import asyncio
 import io
 import pathlib
 import random
-from typing import Iterable
+from typing import Any, Iterable
 
 import discord
 import flanautils
 from discord.ext.commands import Bot
-from discord.ui import Button, View
 from flanautils import Media, MediaType, NotFoundError, OrderedSet, return_if_first_empty
 
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
 from multibot.exceptions import LimitError, SendError, UserDisconnectedError
-from multibot.models import Chat, Message, Mute, Platform, Role, User
+from multibot.models import Button, ButtonsInfo, Chat, Message, Mute, Platform, Role, User
 
 
 # --------------------------------------------------------------------------------------------------- #
@@ -106,7 +105,7 @@ class DiscordBot(MultiBot[Bot]):
                         return button.label
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_button_pressed_user(self, event: constants.DISCORD_EVENT) -> User | None:
+    async def _get_button_presser_user(self, event: constants.DISCORD_EVENT) -> User | None:
         try:
             return self._create_user_from_discord_user(event.user)
         except AttributeError:
@@ -419,42 +418,44 @@ class DiscordBot(MultiBot[Bot]):
         self,
         text='',
         media: Media = None,
-        buttons: list[str | list[str]] | None = None,
+        buttons: list[str | tuple[str, bool] | Button | list[str | tuple[str, bool] | Button]] | None = None,
         chat: int | str | User | Chat | Message | None = None,
         message: Message = None,
         *,
+        buttons_key: Any = None,
         reply_to: int | str | Message = None,
         silent: bool = False,
         send_as_file: bool = None,
         edit=False
     ) -> Message | None:
-        def create_view() -> View | None:
-            if not buttons:
-                return
-
-            view_ = View(timeout=None)
-            for i, row in enumerate(buttons):
-                for button_text in row:
-                    discord_button = Button(label=button_text, row=i)
-                    discord_button.callback = self._on_button_press_raw
-                    view_.add_item(discord_button)
-
-            return view_
-
         text = self._parse_html_to_discord_markdown(text)
         file = await self._prepare_media_to_send(media)
+        view = None
+
+        if buttons:
+            view = discord.ui.View(timeout=None)
+            for i, row in enumerate(buttons):
+                for button in row:
+                    discord_button = discord.ui.Button(label=button.text, row=i)
+                    discord_button.callback = self._on_button_press_raw
+                    view.add_item(discord_button)
 
         if edit:
             kwargs = {}
             if file:
                 kwargs['attachments'] = [file]
             if buttons is not None:
-                kwargs['view'] = create_view()
+                kwargs['view'] = view
+                message.buttons_info.buttons = buttons
+            if buttons_key is not None:
+                message.buttons_info.key = buttons_key
+
             message.original_object = await message.original_object.edit(content=text, **kwargs)
             if content := getattr(media, 'content', None):
                 message.contents = [content]
             message.update_last_edit()
             message.save()
+
             return message
 
         match reply_to:
@@ -466,7 +467,7 @@ class DiscordBot(MultiBot[Bot]):
                 reply_to = message_to_reply.original_object
 
         try:
-            bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=create_view(), reference=reply_to))
+            bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=view, reference=reply_to))
         except discord.errors.HTTPException as e:
             if 'too large' in str(e).lower():
                 if random.randint(0, 10):
@@ -476,9 +477,13 @@ class DiscordBot(MultiBot[Bot]):
                 await self._manage_exceptions(SendError(error_message), chat)
                 return
             raise e
+
+        bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
         if content := getattr(media, 'content', None):
             bot_message.contents = [content]
+
         bot_message.save()
+
         return bot_message
 
     def start(self):

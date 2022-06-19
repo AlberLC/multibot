@@ -1,4 +1,4 @@
-__all__ = ['RegisteredCallback']
+__all__ = ['RegisteredCallbackBase', 'RegisteredCallback', 'RegisteredButtonCallback']
 
 from dataclasses import dataclass
 from typing import Callable, Iterable
@@ -10,8 +10,24 @@ from multibot import constants
 
 
 @dataclass
-class RegisteredCallback(FlanaBase):
+class RegisteredCallbackBase(FlanaBase):
     callback: Callable
+
+    def __call__(self, *args, **kwargs):
+        return self.callback(*args, **kwargs)
+
+    def __eq__(self, other):
+        if isinstance(other, RegisteredCallback):
+            return self.callback == other.callback
+        else:
+            return self.callback == other
+
+    def __hash__(self):
+        return hash(self.callback)
+
+
+@dataclass(eq=False)
+class RegisteredCallback(RegisteredCallbackBase):
     keywords: str | Iterable[str | Iterable[str]]
     min_ratio: float
     always: bool
@@ -39,17 +55,7 @@ class RegisteredCallback(FlanaBase):
         self.always = always
         self.default = default
 
-    def __post_init__(self):
-        self.keywords = tuple(self.keywords)
 
-    def __call__(self, *args, **kwargs):
-        return self.callback(*args, **kwargs)
-
-    def __eq__(self, other):
-        if isinstance(other, RegisteredCallback):
-            return self.callback == other.callback
-        else:
-            return self.callback == other
-
-    def __hash__(self):
-        return hash(self.callback)
+@dataclass(eq=False)
+class RegisteredButtonCallback(RegisteredCallbackBase):
+    key: any

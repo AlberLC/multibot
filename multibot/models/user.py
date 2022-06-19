@@ -19,3 +19,6 @@ class User(EventComponent):
     is_admin: bool = None
     is_bot: bool = None
     original_object: constants.ORIGINAL_USER = None
+
+    def __getstate__(self):
+        return self._mongo_repr()

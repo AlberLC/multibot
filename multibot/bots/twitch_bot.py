@@ -6,7 +6,7 @@ import asyncio
 import datetime
 import re
 from collections import defaultdict
-from typing import Iterable, Iterator
+from typing import Any, Iterable, Iterator
 
 import flanautils
 import pymongo
@@ -243,6 +243,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         chat: int | str | User | Chat | Message | None = None,
         message: Message = None,
         *,
+        buttons_key: Any = None,
         reply_to: str | Message = None,
         silent: bool = False,
         send_as_file: bool = None,

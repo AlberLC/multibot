@@ -6,6 +6,7 @@ import datetime
 from dataclasses import dataclass, field
 
 from multibot import constants
+from multibot.models.buttons import ButtonsInfo
 from multibot.models.chat import Chat
 from multibot.models.database import db
 from multibot.models.enums import Platform
@@ -23,9 +24,8 @@ class Message(EventComponent):
     id: int | str = None
     author: User = None
     text: str = None
-    button_pressed_text: str = None
-    button_pressed_user: User = None
     mentions: list[User] = field(default_factory=list)
+    buttons_info: ButtonsInfo = None
     chat: Chat = None
     replied_message: Message = None
     date: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
