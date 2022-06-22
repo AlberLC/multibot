@@ -35,7 +35,10 @@ class DiscordBot(MultiBot[Bot]):
             case Message():
                 event = event.original_event
 
-        await event.response.defer()
+        try:
+            await event.response.defer()
+        except AttributeError:
+            pass
 
     def _add_handlers(self):
         super()._add_handlers()
@@ -313,7 +316,7 @@ class DiscordBot(MultiBot[Bot]):
         return users
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_chat(self, chat: int | str | User | Chat | Message = None) -> Chat | None:
+    async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
         match chat:
             case int(chat_id):
                 pass
@@ -338,6 +341,21 @@ class DiscordBot(MultiBot[Bot]):
             return user
         else:
             return await self.get_user(user, group_)
+
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def get_message(self, chat: int | str | User | Chat | Message, message: int | str | Message) -> Message | None:
+        match message:
+            case int(message_id):
+                pass
+            case str(message_id):
+                message_id = int(message_id)
+            case Message():
+                return message
+            case _:
+                raise TypeError('bad arguments')
+
+        chat = await self.get_chat(chat)
+        return await self._get_message(await chat.original_object.fetch_message(message_id))
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_roles(self, group_: int | str | Chat | Message) -> list[Role]:
@@ -416,7 +434,7 @@ class DiscordBot(MultiBot[Bot]):
     @parse_arguments
     async def send(
         self,
-        text='',
+        text: str = None,
         media: Media = None,
         buttons: list[str | tuple[str, bool] | Button | list[str | tuple[str, bool] | Button]] | None = None,
         chat: int | str | User | Chat | Message | None = None,
@@ -424,6 +442,7 @@ class DiscordBot(MultiBot[Bot]):
         *,
         buttons_key: Any = None,
         reply_to: int | str | Message = None,
+        contents: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
         edit=False
@@ -442,6 +461,8 @@ class DiscordBot(MultiBot[Bot]):
 
         if edit:
             kwargs = {}
+            if text is not None:
+                kwargs['content'] = text
             if file:
                 kwargs['attachments'] = [file]
             if buttons is not None:
@@ -450,9 +471,16 @@ class DiscordBot(MultiBot[Bot]):
             if buttons_key is not None:
                 message.buttons_info.key = buttons_key
 
-            message.original_object = await message.original_object.edit(content=text, **kwargs)
-            if content := getattr(media, 'content', None):
-                message.contents = [content]
+            message.original_object = await message.original_object.edit(**kwargs)
+            last_contents = message.contents
+            if media_content := getattr(media, 'content', None):
+                del last_contents['media']
+            message.contents = {'media': media_content}
+            if contents is None:
+                message.contents |= last_contents
+            else:
+                message.contents |= contents
+
             message.update_last_edit()
             message.save()
 
@@ -479,8 +507,9 @@ class DiscordBot(MultiBot[Bot]):
             raise e
 
         bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
-        if content := getattr(media, 'content', None):
-            bot_message.contents = [content]
+        bot_message.contents = {'media': getattr(media, 'content', None)}
+        if contents is not None:
+            bot_message.contents |= contents
 
         bot_message.save()
 

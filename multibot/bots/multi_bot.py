@@ -25,6 +25,7 @@ import flanautils
 import telethon.events
 import telethon.events.common
 from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, RatioMatch, return_if_first_empty, shift_args_if_called
+
 from multibot import constants
 from multibot.exceptions import LimitError, SendError
 from multibot.models import Ban, BotAction, Button, ButtonsGroup, Chat, Message, Mute, Platform, RegisteredButtonCallback, RegisteredCallback, Role, User
@@ -59,10 +60,11 @@ def admin(func_: Callable = None, /, is_=True, send_negative=False) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
+        async def wrapper(self: MultiBot, message: Message):
             message = message
             if is_ == message.author.is_admin or message.chat.is_private:
-                return await func(self, message, *args, **kwargs)
+                return await func(self, message)
+            await self._accept_button_event(message)
             if send_negative:
                 await self.send_negative(message)
 
@@ -73,7 +75,9 @@ def admin(func_: Callable = None, /, is_=True, send_negative=False) -> Callable:
 
 def block(func: Callable) -> Callable:
     @functools.wraps(func)
-    async def wrapper(*_args, **_kwargs):
+    @find_message
+    async def wrapper(self: MultiBot, message: Message):
+        await self._accept_button_event(message)
         return
 
     return wrapper
@@ -84,9 +88,10 @@ def bot_mentioned(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
+        async def wrapper(self: MultiBot, message: Message):
             if is_ == self.is_bot_mentioned(message):
-                return await func(self, message, *args, **kwargs)
+                return await func(self, message)
+            await self._accept_button_event(message)
 
         return wrapper
 
@@ -98,9 +103,10 @@ def group(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
+        async def wrapper(self: MultiBot, message: Message):
             if is_ == message.chat.is_group:
-                return await func(self, message, *args, **kwargs)
+                return await func(self, message)
+            await self._accept_button_event(message)
 
         return wrapper
 
@@ -110,9 +116,10 @@ def group(func_: Callable = None, /, is_=True) -> Callable:
 def ignore_self_message(func: Callable) -> Callable:
     @functools.wraps(func)
     @find_message
-    async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
+    async def wrapper(self: MultiBot, message: Message):
         if message.author.id != self.id:
-            return await func(self, message, *args, **kwargs)
+            return await func(self, message)
+        await self._accept_button_event(message)
 
     return wrapper
 
@@ -122,9 +129,10 @@ def inline(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
+        async def wrapper(self: MultiBot, message: Message):
             if message.is_inline is None or is_ == message.is_inline:
-                return await func(self, message, *args, **kwargs)
+                return await func(self, message)
+            await self._accept_button_event(message)
 
         return wrapper
 
@@ -134,9 +142,10 @@ def inline(func_: Callable = None, /, is_=True) -> Callable:
 def out_of_service(func: Callable) -> Callable:
     @functools.wraps(func)
     @find_message
-    async def wrapper(self: MultiBot, message: Message, *_args, **_kwargs):
+    async def wrapper(self: MultiBot, message: Message):
         if self.is_bot_mentioned(message) or message.chat.is_private:
             await self.send(random.choice(constants.OUT_OF_SERVICES_PHRASES), message)
+        await self._accept_button_event(message)
 
     return wrapper
 
@@ -171,7 +180,7 @@ def parse_arguments(func: Callable) -> Callable:
             return buttons_
 
         self: MultiBot | None = None
-        text = ''
+        text: str | None = None
         media: Media | None = None
         buttons: list[str | tuple[str, bool] | Button | list[str | tuple[str, bool] | Button]] | None = None
         chat: int | str | User | Chat | Message | None = None
@@ -199,8 +208,8 @@ def parse_arguments(func: Callable) -> Callable:
         chat = await self.get_chat(kwargs.get('chat', chat))
         if 'buttons' in kwargs:
             buttons = parse_buttons(kwargs['buttons'])
-        reply_to = kwargs.get('reply_to', None)
-        edit = kwargs.get('edit', None)
+        reply_to = kwargs.get('reply_to')
+        edit = kwargs.get('edit')
 
         if reply_to is not None:
             if chat:
@@ -233,9 +242,10 @@ def reply(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
+        async def wrapper(self: MultiBot, message: Message):
             if is_ == bool(message.replied_message):
-                return await func(self, message, *args, **kwargs)
+                return await func(self, message)
+            await self._accept_button_event(message)
 
         return wrapper
 
@@ -439,7 +449,7 @@ class MultiBot(Generic[T], ABC):
                 mached_keywords_groups = 0
                 total_ratio = 0
                 for keywords_group in registered_callback.keywords:
-                    text_words += [original_text_word for original_text_word in original_text_words if original_text_word in keywords_group]
+                    text_words += [original_text_word for original_text_word in original_text_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_ratio=registered_callback.min_ratio)]
                     word_matches = flanautils.cartesian_product_string_matching(text_words, keywords_group, min_ratio=registered_callback.min_ratio)
                     ratio = sum((max(matches.values()) + 1) ** ratio_reward_exponent for matches in word_matches.values())
                     try:
@@ -561,9 +571,9 @@ class MultiBot(Generic[T], ABC):
         user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles([], message)]
         joined_user_names = ', '.join(user_names)
         await self.send(
-            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:<b>\n"
+            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>\n"
             f"{joined_user_names}\n\n"
-            f"<b>Filtrar usuarios por roles:<b>",
+            f"<b>Filtrar usuarios por roles:</b>",
             flanautils.chunks([f'❌  {role_name}' for role_name in role_names], 5),
             message,
             buttons_key=ButtonsGroup.USERS
@@ -585,9 +595,9 @@ class MultiBot(Generic[T], ABC):
         user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles(selected_role_names, message)]
         joined_user_names = ', '.join(user_names)
         await self.edit(
-            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:<b>\n"
+            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>\n"
             f"{joined_user_names}\n\n"
-            f"<b>Filtrar usuarios por roles:<b>",
+            f"<b>Filtrar usuarios por roles:</b>",
             message.buttons_info.buttons,
             message
         )
@@ -651,6 +661,10 @@ class MultiBot(Generic[T], ABC):
                 return message.chat.group_name
 
     async def get_me(self, group_: int | str | Chat | Message = None) -> User | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_message(self, chat: int | str | User | Chat | Message, message: int | str | Message) -> Message | None:
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
@@ -769,6 +783,7 @@ class MultiBot(Generic[T], ABC):
         *,
         buttons_key: Any = None,
         reply_to: int | str | Message = None,
+        contents: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
         edit=False

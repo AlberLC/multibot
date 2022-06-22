@@ -35,6 +35,7 @@ CHECK_MESSAGE_EVERY_SECONDS = datetime.timedelta(days=1).total_seconds()
 CHECK_MUTES_EVERY_SECONDS = datetime.timedelta(hours=1).total_seconds()
 COMMAND_MESSAGE_DURATION = 5
 DELETE_MESSAGE_LIMIT = 100
+DISCORD_BUTTONS_MAX = 5
 DISCORD_COMMAND_PREFIX = '/'
 DISCORD_MEDIA_MAX_BYTES = 8000000
 ERROR_MESSAGE_DURATION = 10
@@ -82,6 +83,8 @@ KEYWORDS = {
     'send_as_file': ('arhivo', 'calidad', 'compress', 'compression', 'comprimir', 'file', 'quality'),
     'show': ('actual', 'enseña', 'estado', 'how', 'muestra', 'show', 'como'),
     'sound': ('hablar', 'hable', 'micro', 'microfono', 'microphone', 'sonido', 'sound', 'talk', 'volumen'),
+    'stop': ('acabar', 'caducar', 'detener', 'end', 'expirar', 'expire', 'finalizar', 'finish', 'parar', 'stop',
+             'suspend', 'suspender', 'terminar', 'terminate'),
     'thanks': ('gracia', 'gracias', 'grasia', 'grasias', 'grax', 'thank', 'thanks', 'ty'),
     'unban': ('desbanea', 'unban'),
     'unmute': ('desilencia', 'desmutea', 'desmutealo', 'unmute'),

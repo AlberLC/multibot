@@ -73,7 +73,10 @@ class TelegramBot(MultiBot[TelegramClient]):
             case Message():
                 event = event.original_event
 
-        await event.answer()
+        try:
+            await event.answer()
+        except AttributeError:
+            pass
 
     # noinspection PyTypeChecker
     def _add_handlers(self):
@@ -83,12 +86,14 @@ class TelegramBot(MultiBot[TelegramClient]):
         self.client.add_event_handler(self._on_new_message_raw, telethon.events.NewMessage)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _create_bot_message_from_telegram_bot_message(self, original_message: constants.TELEGRAM_MESSAGE, chat: Chat, buttons: list[list[Button]], buttons_key: Any = None, contents: Any = None) -> Message | None:
+    async def _create_bot_message_from_telegram_bot_message(self, original_message: constants.TELEGRAM_MESSAGE, media: Media, chat: Chat, buttons: list[list[Button]] = None, buttons_key: Any = None, contents: dict = None) -> Message | None:
         original_message._sender = await self.client.get_entity(self.id)
         original_message._chat = chat.original_object
         bot_message = await self._get_message(original_message)
         bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
-        bot_message.contents = contents or []
+        bot_message.contents = {'media': getattr(media, 'content', None)}
+        if contents is not None:
+            bot_message.contents |= contents
         bot_message.save()
 
         return bot_message
@@ -308,7 +313,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def get_chat(self, chat: int | str | User | Chat | Message = None) -> Chat | None:
+    async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
         match chat:
             case User() as user:
                 if user.original_object:
@@ -325,6 +330,21 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     async def get_me(self, group_: int | str | Chat = None):
         return await self._create_user_from_telegram_user(await self.client.get_me(), group_)
+
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def get_message(self, chat: int | str | User | Chat | Message, message: int | str | Message) -> Message | None:
+        match message:
+            case int(message_id):
+                pass
+            case str(message_id):
+                pass
+            case Message():
+                return message
+            case _:
+                raise TypeError('bad arguments')
+
+        chat = await self.get_chat(chat)
+        return await self._get_message(await self.client.get_messages(chat.original_object, ids=message_id))
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
@@ -349,6 +369,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         *,
         buttons_key: Any = None,
         reply_to: int | str | Message = None,
+        contents: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
         edit=False,
@@ -377,10 +398,12 @@ class TelegramBot(MultiBot[TelegramClient]):
 
             if message.is_inline:
                 if media:
+                    if 'inline_media' not in message.contents:
+                        message.contents['inline_media'] = []
                     if media.type_ is MediaType.IMAGE:
-                        message.contents.append(message.original_event.builder.photo(file))
+                        message.contents['inline_media'].append(message.original_event.builder.photo(file))
                     else:
-                        message.contents.append(message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower()))
+                        message.contents['inline_media'].append(message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower()))
             elif edit:
                 if buttons is not None:
                     kwargs['buttons'] = telegram_buttons
@@ -397,8 +420,14 @@ class TelegramBot(MultiBot[TelegramClient]):
                 ):
                     return
                 else:
-                    if content := getattr(media, 'content', None):
-                        message.contents = [content]
+                    last_contents = message.contents
+                    if media_content := getattr(media, 'content', None):
+                        del last_contents['media']
+                    message.contents = {'media': media_content}
+                    if contents is None:
+                        message.contents |= last_contents
+                    else:
+                        message.contents |= contents
                     message.update_last_edit()
                     message.save()
 
@@ -415,12 +444,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
             return
 
-        if content := getattr(media, 'content', None):
-            contents = [content]
-        else:
-            contents = []
-
-        return await self._create_bot_message_from_telegram_bot_message(original_message, chat, buttons, buttons_key, contents)
+        return await self._create_bot_message_from_telegram_bot_message(original_message, media, chat, buttons, buttons_key, contents)
 
     @inline
     async def send_inline_results(self, message: Message):

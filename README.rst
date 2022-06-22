@@ -430,7 +430,7 @@ For both a normal bot and a user bot (bot using your "human" account) you will n
     :target: https://www.python.org/downloads/
     :alt: PyPI - Python Version
 
-.. |multiBot_class_diagram| image:: https://user-images.githubusercontent.com/37489786/173702357-d53b3d52-987a-447b-9a75-e5520d08f56c.png
+.. |multiBot_class_diagram| image:: https://user-images.githubusercontent.com/37489786/174965487-c83fb40a-65f9-4796-b661-2eb93883fe5d.png
     :alt: multiBot_class_diagram
 
 .. |my.telegram.org_app| image:: https://user-images.githubusercontent.com/37489786/149607226-36b0e3d6-6e21-4852-a08f-16ce52d3a7dc.png

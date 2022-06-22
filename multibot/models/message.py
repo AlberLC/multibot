@@ -31,7 +31,7 @@ class Message(EventComponent):
     date: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
     last_edit: datetime.datetime = None
     is_inline: bool = None
-    contents: list = field(default_factory=list)
+    contents: dict = field(default_factory=dict)
     is_deleted: bool = False
     original_object: constants.ORIGINAL_MESSAGE = None
     original_event: constants.MESSAGE_EVENT = None
