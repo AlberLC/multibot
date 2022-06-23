@@ -137,15 +137,26 @@ class DiscordBot(MultiBot[Bot]):
         mentions = OrderedSet(self._create_user_from_discord_user(user) for user in original_message.mentions)
 
         chat = await self._get_chat(original_message)
-        if chat.original_object.guild:
-            text = await self._get_text(original_message)
-            text = flanautils.remove_symbols(text, replace_with=' ')
-            words = text.lower().split()
+        text = await self._get_text(original_message)
+        text = flanautils.remove_symbols(text, ignore=('#',), replace_with=' ')
+        words = text.lower().split()
+
+        if chat.is_group:
             for member in chat.original_object.guild.members:
                 user_name = f'{member.name}#{member.discriminator}'.lower()
                 short_user_name = member.name.lower()
                 if user_name in words or short_user_name in words:
                     mentions.add(self._create_user_from_discord_user(member))
+        else:
+            user_name = f'{chat.original_object.recipient.name}#{chat.original_object.recipient.discriminator}'.lower()
+            short_user_name = chat.original_object.recipient.name.lower()
+            if user_name in words or short_user_name in words:
+                mentions.add(self._create_user_from_discord_user(chat.original_object.recipient))
+
+            bot_name = f'{chat.original_object.me.name}#{chat.original_object.me.discriminator}'.lower()
+            short_bot_name = chat.original_object.me.name.lower()
+            if bot_name in words or short_bot_name in words:
+                mentions.add(self._create_user_from_discord_user(chat.original_object.me))
 
         return list(mentions - None)
 

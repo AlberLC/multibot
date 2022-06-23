@@ -128,7 +128,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         return User(
             platform=self.platform.value,
             id=original_user.id,
-            name=self._get_name_from_entity(original_user).strip(' @'),
+            name=self._get_name_from_entity(original_user),
             is_admin=is_admin,
             is_bot=original_user.bot,
             original_object=original_user
@@ -172,10 +172,14 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         text = flanautils.remove_symbols(text, replace_with=' ')
         words = text.lower().split()
+
         for participant in await self.client.get_participants(chat.original_object):
-            user_name = self._get_name_from_entity(participant).strip(' @').lower()
+            user_name = self._get_name_from_entity(participant).lower()
             if user_name in words:
                 mentions.add(await self._create_user_from_telegram_user(participant, chat))
+        if chat.is_private:
+            if self.name.lower() in words:
+                mentions.add(await self.get_me())
 
         return list(mentions - None)
 
@@ -186,7 +190,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     @return_if_first_empty('', exclude_self_types='TelegramBot', globals_=globals())
     def _get_name_from_entity(self, entity: telethon.hints.EntityLike) -> str:
         if isinstance(entity, telethon.types.User):
-            return f'@{entity.username}' if entity.username else entity.first_name
+            return entity.username or entity.first_name
         elif isinstance(entity, (telethon.types.Channel, telethon.types.Chat)):
             return entity.title
 
