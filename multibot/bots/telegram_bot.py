@@ -31,7 +31,7 @@ def user_client(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(self: TelegramBot, *args, **kwargs):
-            if is_ == bool(self.user_client):
+            if is_ is bool(self.user_client):
                 return await func(self, *args, **kwargs)
 
         return wrapper

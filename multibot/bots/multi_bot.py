@@ -62,7 +62,7 @@ def admin(func_: Callable = None, /, is_=True, send_negative=False) -> Callable:
         @find_message
         async def wrapper(self: MultiBot, message: Message):
             message = message
-            if is_ == message.author.is_admin or message.chat.is_private:
+            if is_ is message.author.is_admin or message.chat.is_private:
                 return await func(self, message)
             await self.accept_button_event(message)
             if send_negative:
@@ -89,7 +89,7 @@ def bot_mentioned(func_: Callable = None, /, is_=True) -> Callable:
         @functools.wraps(func)
         @find_message
         async def wrapper(self: MultiBot, message: Message):
-            if is_ == self.is_bot_mentioned(message):
+            if is_ is self.is_bot_mentioned(message):
                 return await func(self, message)
             await self.accept_button_event(message)
 
@@ -104,7 +104,7 @@ def group(func_: Callable = None, /, is_=True) -> Callable:
         @functools.wraps(func)
         @find_message
         async def wrapper(self: MultiBot, message: Message):
-            if is_ == message.chat.is_group:
+            if is_ is message.chat.is_group:
                 return await func(self, message)
             await self.accept_button_event(message)
 
@@ -130,7 +130,7 @@ def inline(func_: Callable = None, /, is_=True) -> Callable:
         @functools.wraps(func)
         @find_message
         async def wrapper(self: MultiBot, message: Message):
-            if message.is_inline is None or is_ == message.is_inline:
+            if message.is_inline is None or is_ is message.is_inline:
                 return await func(self, message)
             await self.accept_button_event(message)
 
@@ -243,7 +243,7 @@ def reply(func_: Callable = None, /, is_=True) -> Callable:
         @functools.wraps(func)
         @find_message
         async def wrapper(self: MultiBot, message: Message):
-            if is_ == bool(message.replied_message):
+            if is_ is bool(message.replied_message):
                 return await func(self, message)
             await self.accept_button_event(message)
 
