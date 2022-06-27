@@ -78,7 +78,7 @@ class PunishmentBase(DCMongoBase, FlanaBase):
                 raise e
         else:
             self.save()
-            if datetime.timedelta() < self.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPUNISH:
+            if self.time is not None and datetime.timedelta() <= self.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPUNISH:
                 await flanautils.do_later(self.time, self.check_olds, unpunishment_method, self.platform)
 
     async def unpunish(self, unpunishment_method: Callable, message: Message = None):
