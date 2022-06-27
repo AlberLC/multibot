@@ -137,7 +137,7 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_button_presser_user(self, event: constants.TELEGRAM_EVENT) -> User | None:
-        return await self._create_user_from_telegram_user(event.sender)
+        return await self._create_user_from_telegram_user(event.sender, event.chat.id)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_chat(self, original_message: constants.TELEGRAM_MESSAGE) -> Chat | None:
