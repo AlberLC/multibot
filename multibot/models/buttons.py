@@ -24,7 +24,9 @@ class ButtonsInfo(FlanaBase):
     buttons: list[list[Button]] = field(default_factory=lambda: [[]])
     key: Any = None
 
-    def __getitem__(self, item) -> Button:
+    def __getitem__(self, item) -> Button | None:
+        if not item:
+            return
         if not isinstance(item, str):
             raise TypeError('index has to be a string')
 
@@ -41,3 +43,7 @@ class ButtonsInfo(FlanaBase):
 
     def find_button(self, text: str) -> Button:
         return self[text]
+
+    @property
+    def pressed_button(self) -> Button | None:
+        return self[self.pressed_text]
