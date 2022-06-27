@@ -30,16 +30,6 @@ class DiscordBot(MultiBot[Bot]):
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #
     # ----------------------------------------------------------- #
-    async def _accept_button_event(self, event: constants.DISCORD_EVENT | Message):
-        match event:
-            case Message():
-                event = event.original_event
-
-        try:
-            await event.response.defer()
-        except AttributeError:
-            pass
-
     def _add_handlers(self):
         super()._add_handlers()
         self.client.add_listener(self._on_ready, 'on_ready')
@@ -259,6 +249,16 @@ class DiscordBot(MultiBot[Bot]):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
+    async def accept_button_event(self, event: constants.DISCORD_EVENT | Message):
+        match event:
+            case Message():
+                event = event.original_event
+
+        try:
+            await event.response.defer()
+        except AttributeError:
+            pass
+
     async def add_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
         user = await self.get_user(user, group_)
         try:

@@ -68,16 +68,6 @@ class TelegramBot(MultiBot[TelegramClient]):
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #
     # ----------------------------------------------------------- #
-    async def _accept_button_event(self, event: constants.TELEGRAM_EVENT | Message):
-        match event:
-            case Message():
-                event = event.original_event
-
-        try:
-            await event.answer()
-        except AttributeError:
-            pass
-
     # noinspection PyTypeChecker
     def _add_handlers(self):
         super()._add_handlers()
@@ -250,6 +240,16 @@ class TelegramBot(MultiBot[TelegramClient]):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
+    async def accept_button_event(self, event: constants.TELEGRAM_EVENT | Message):
+        match event:
+            case Message():
+                event = event.original_event
+
+        try:
+            await event.answer()
+        except AttributeError:
+            pass
+
     # async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):  # todo4 test en grupo de pruebas
     # if isinstance(user, User):
     #     user = user.original_object

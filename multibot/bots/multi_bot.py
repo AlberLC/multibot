@@ -64,7 +64,7 @@ def admin(func_: Callable = None, /, is_=True, send_negative=False) -> Callable:
             message = message
             if is_ == message.author.is_admin or message.chat.is_private:
                 return await func(self, message)
-            await self._accept_button_event(message)
+            await self.accept_button_event(message)
             if send_negative:
                 await self.send_negative(message)
 
@@ -77,7 +77,7 @@ def block(func: Callable) -> Callable:
     @functools.wraps(func)
     @find_message
     async def wrapper(self: MultiBot, message: Message):
-        await self._accept_button_event(message)
+        await self.accept_button_event(message)
         return
 
     return wrapper
@@ -91,7 +91,7 @@ def bot_mentioned(func_: Callable = None, /, is_=True) -> Callable:
         async def wrapper(self: MultiBot, message: Message):
             if is_ == self.is_bot_mentioned(message):
                 return await func(self, message)
-            await self._accept_button_event(message)
+            await self.accept_button_event(message)
 
         return wrapper
 
@@ -106,7 +106,7 @@ def group(func_: Callable = None, /, is_=True) -> Callable:
         async def wrapper(self: MultiBot, message: Message):
             if is_ == message.chat.is_group:
                 return await func(self, message)
-            await self._accept_button_event(message)
+            await self.accept_button_event(message)
 
         return wrapper
 
@@ -119,7 +119,7 @@ def ignore_self_message(func: Callable) -> Callable:
     async def wrapper(self: MultiBot, message: Message):
         if message.author.id != self.id:
             return await func(self, message)
-        await self._accept_button_event(message)
+        await self.accept_button_event(message)
 
     return wrapper
 
@@ -132,7 +132,7 @@ def inline(func_: Callable = None, /, is_=True) -> Callable:
         async def wrapper(self: MultiBot, message: Message):
             if message.is_inline is None or is_ == message.is_inline:
                 return await func(self, message)
-            await self._accept_button_event(message)
+            await self.accept_button_event(message)
 
         return wrapper
 
@@ -145,7 +145,7 @@ def out_of_service(func: Callable) -> Callable:
     async def wrapper(self: MultiBot, message: Message):
         if self.is_bot_mentioned(message) or message.chat.is_private:
             await self.send(random.choice(constants.OUT_OF_SERVICES_PHRASES), message)
-        await self._accept_button_event(message)
+        await self.accept_button_event(message)
 
     return wrapper
 
@@ -245,7 +245,7 @@ def reply(func_: Callable = None, /, is_=True) -> Callable:
         async def wrapper(self: MultiBot, message: Message):
             if is_ == bool(message.replied_message):
                 return await func(self, message)
-            await self._accept_button_event(message)
+            await self.accept_button_event(message)
 
         return wrapper
 
@@ -280,9 +280,6 @@ class MultiBot(Generic[T], ABC):
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #
     # ----------------------------------------------------------- #
-    async def _accept_button_event(self, event: constants.MESSAGE_EVENT | Message):
-        pass
-
     def _add_handlers(self):
         self.register(self._on_ban, constants.KEYWORDS['ban'])
 
@@ -435,7 +432,7 @@ class MultiBot(Generic[T], ABC):
                                          'ä': 'a', 'ë': 'e', 'ï': 'i', 'ö': 'o', 'ü': 'u'})
         text = flanautils.translate(text, {'?': ' ', '¿': ' ', '!': ' ', '¡': ' '})
         original_text_words = OrderedSet(text.split())
-        text_words = original_text_words - flanautils.CommonWords.all_words
+        text_words = original_text_words - flanautils.CommonWords.get()
 
         matched_callbacks: set[RatioMatch[RegisteredCallback]] = set()
         always_callbacks: set[RegisteredCallback] = set()
@@ -580,14 +577,14 @@ class MultiBot(Generic[T], ABC):
         )
 
     async def _on_users_button_press(self, message: Message):
-        await self._accept_button_event(message)
+        await self.accept_button_event(message)
 
         try:
             button_role_name = message.buttons_info.pressed_text.split(maxsplit=1)[1]
         except IndexError:
             return
 
-        pressed_button = message.buttons_info[message.buttons_info.pressed_text]
+        pressed_button = message.buttons_info.pressed_button
         pressed_button.is_checked = not pressed_button.is_checked
         pressed_button.text = f"{'✔' if pressed_button.is_checked else '❌'}  {button_role_name}"
 
@@ -605,6 +602,9 @@ class MultiBot(Generic[T], ABC):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
+    async def accept_button_event(self, event: constants.MESSAGE_EVENT | Message):
+        pass
+
     async def ban(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
         # noinspection PyTypeChecker
         ban = Ban(self.platform, self.get_user_id(user), self.get_group_id(group_), time)
