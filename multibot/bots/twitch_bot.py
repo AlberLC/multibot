@@ -141,8 +141,8 @@ class TwitchBot(MultiBot[twitchio.Client]):
             'author': {'$ne': owner_user.object_id},
             'chat': chat.object_id,
             'is_deleted': False,
-            'last_update': {'$gt': datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)}
-        }, sort_keys=(('last_update', pymongo.DESCENDING),), lazy=True)
+            'date': {'$gt': datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)}
+        }, sort_keys=(('date', pymongo.DESCENDING),), lazy=True)
 
         deleted_message_count = 0
         while deleted_message_count < n_messages:

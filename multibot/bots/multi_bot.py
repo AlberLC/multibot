@@ -307,7 +307,7 @@ class MultiBot(Generic[T], ABC):
     @staticmethod
     async def _check_messages():
         before_date = datetime.datetime.now(datetime.timezone.utc) - constants.MESSAGE_EXPIRATION_TIME
-        Message.collection.delete_many({'last_update': {'$lte': before_date}})
+        Message.collection.delete_many({'date': {'$lte': before_date}})
         BotAction.collection.delete_many({'date': {'$lte': before_date}})
 
     async def _find_users_to_punish(self, message: Message) -> OrderedSet[User]:
