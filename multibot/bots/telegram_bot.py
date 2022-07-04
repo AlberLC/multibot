@@ -31,7 +31,7 @@ def user_client(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(self: TelegramBot, *args, **kwargs):
-            if is_ is bool(self.user_client):
+            if is_ == bool(self.user_client):
                 return await func(self, *args, **kwargs)
 
         return wrapper
@@ -408,6 +408,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                         message.contents['inline_media'].append(message.original_event.builder.photo(file))
                     else:
                         message.contents['inline_media'].append(message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower()))
+                return
             elif edit:
                 if buttons is not None:
                     kwargs['buttons'] = telegram_buttons
@@ -453,8 +454,8 @@ class TelegramBot(MultiBot[TelegramClient]):
     @inline
     async def send_inline_results(self, message: Message):
         try:
-            await message.original_event.answer(message.contents)
-        except telethon.errors.rpcerrorlist.QueryIdInvalidError:
+            await message.original_event.answer(message.contents['inline_media'])
+        except (KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
             pass
 
     def start(self):
