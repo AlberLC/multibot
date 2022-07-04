@@ -54,6 +54,12 @@ Telegram
 
 You will need your own **API_ID** and **API_HASH**. To get them see `Native Telegram app & MTProto configuration`_.
 
+The first time you start the bot you will need a **BOT_TOKEN** (then you can save and reuse the session). To get your **BOT_TOKEN** you will need to talk to BotFather_.
+
+Other configurations with BotFather_:
+ - Deactivate the privacy mode to read group messages or add your bot as an administrator.
+ - Activate the inline mode if you want to use it.
+
 .. code-block:: python
 
     import os
@@ -436,3 +442,5 @@ For both a normal bot and a user bot (bot using your "human" account) you will n
 .. |my.telegram.org_app| image:: https://user-images.githubusercontent.com/37489786/149607226-36b0e3d6-6e21-4852-a08f-16ce52d3a7dc.png
     :target: https://my.telegram.org/
     :alt: my.telegram.org
+
+.. _BotFather: https://t.me/botfather
