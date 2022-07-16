@@ -562,7 +562,7 @@ class MultiBot(Generic[T], ABC):
     @group
     @bot_mentioned
     async def _on_users(self, message: Message):
-        role_names = [role.name for role in await self.get_roles(message.chat.group_id)]
+        role_names = [role.name for role in await self.get_group_roles(message.chat.group_id)]
         role_names.remove('@everyone')
 
         user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles([], message)]
@@ -623,6 +623,19 @@ class MultiBot(Generic[T], ABC):
         kwargs |= {'edit': True}
         return await self.send(*args, **kwargs)
 
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def find_role(self, role: int | str | Role, group_: int | str | Chat | Message) -> Role | None:
+        if isinstance(role, Role):
+            return role
+
+        roles = await self.get_group_roles(group_)
+
+        match role:
+            case int(role_id):
+                return flanautils.find(roles, condition=lambda role_: role_.id == role_id)
+            case str(role_name):
+                return flanautils.find(roles, condition=lambda role_: role_.name == role_name)
+
     async def find_users_by_roles(self, roles: Iterable[int | str | Role], group_: int | str | Chat | Message) -> list[User]:
         pass
 
@@ -668,20 +681,7 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_role(self, role: int | str | Role, group_: int | str | Chat | Message) -> Role | None:
-        if isinstance(role, Role):
-            return role
-
-        roles = await self.get_roles(group_)
-
-        match role:
-            case int(role_id):
-                return flanautils.find(roles, condition=lambda role_: role_.id == role_id)
-            case str(role_name):
-                return flanautils.find(roles, condition=lambda role_: role_.name == role_name)
-
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_roles(self, group_: int | str | Chat | Message) -> list[Role]:
+    async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())

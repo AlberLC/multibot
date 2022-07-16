@@ -77,6 +77,7 @@ class DiscordBot(MultiBot[Bot]):
             name=f'{original_user.name}#{original_user.discriminator}',
             is_admin=is_admin,
             is_bot=original_user.bot,
+            roles=[Role(self.platform.value, discord_role.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in original_user.roles],
             original_object=original_user
         )
 
@@ -261,9 +262,12 @@ class DiscordBot(MultiBot[Bot]):
 
     async def add_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
         user = await self.get_user(user, group_)
+        role = await self.find_role(role, group_)
+        if role not in user.roles:
+            user.roles.append(role)
         try:
-            await user.original_object.add_roles((await self.get_role(role, group_)).original_object)
-        except AttributeError:
+            await user.original_object.add_roles(role.original_object)
+        except (AttributeError, discord.errors.NotFound):
             raise NotFoundError('role not found')
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
@@ -305,14 +309,14 @@ class DiscordBot(MultiBot[Bot]):
             case [*_, int()] as role_ids:
                 role_ids = set(role_ids)
             case [*_, str()] as role_names:
-                role_ids = {(await self.get_role(role_name, group_)).id for role_name in role_names}
+                role_ids = {(await self.find_role(role_name, group_)).id for role_name in role_names}
             case [*_, Role()]:
                 role_ids = {role.id for role in roles}
             case []:
                 role_ids = set()
             case _:
                 raise TypeError('bad arguments')
-        role_ids.add((await self.get_role('@everyone', group_)).id)
+        role_ids.add((await self.find_role('@everyone', group_)).id)
 
         users = []
         discord_group = await self._get_discord_group(group_)
@@ -369,7 +373,7 @@ class DiscordBot(MultiBot[Bot]):
         return await self._get_message(await chat.original_object.fetch_message(message_id))
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_roles(self, group_: int | str | Chat | Message) -> list[Role]:
+    async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
         if not (discord_group := await self._get_discord_group(group_)):
             return []
 
@@ -398,7 +402,7 @@ class DiscordBot(MultiBot[Bot]):
         if not (user_roles := getattr(user.original_object, 'roles', None)):
             return False
 
-        role = await self.get_role(role)
+        role = await self.find_role(role)
         return role.original_object in user_roles
 
     async def is_deaf(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
@@ -437,9 +441,14 @@ class DiscordBot(MultiBot[Bot]):
 
     async def remove_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
         user = await self.get_user(user, group_)
+        role = await self.find_role(role, group_)
         try:
-            await user.original_object.remove_roles((await self.get_role(role, group_)).original_object)
-        except AttributeError:
+            user.roles.remove(role)
+        except ValueError:
+            pass
+        try:
+            await user.original_object.remove_roles(role.original_object)
+        except (AttributeError, discord.errors.NotFound):
             raise NotFoundError('role not found')
 
     @parse_arguments
