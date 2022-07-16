@@ -263,12 +263,15 @@ class DiscordBot(MultiBot[Bot]):
     async def add_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
         user = await self.get_user(user, group_)
         role = await self.find_role(role, group_)
-        if role not in user.roles:
-            user.roles.append(role)
+
         try:
             await user.original_object.add_roles(role.original_object)
         except (AttributeError, discord.errors.NotFound):
             raise NotFoundError('role not found')
+
+        if role not in user.roles:
+            user.roles.append(role)
+            user.save()
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):  # todo2 test
@@ -442,14 +445,18 @@ class DiscordBot(MultiBot[Bot]):
     async def remove_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
         user = await self.get_user(user, group_)
         role = await self.find_role(role, group_)
-        try:
-            user.roles.remove(role)
-        except ValueError:
-            pass
+
         try:
             await user.original_object.remove_roles(role.original_object)
         except (AttributeError, discord.errors.NotFound):
             raise NotFoundError('role not found')
+
+        try:
+            user.roles.remove(role)
+        except ValueError:
+            pass
+        else:
+            user.save()
 
     @parse_arguments
     async def send(
