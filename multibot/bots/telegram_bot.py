@@ -125,7 +125,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         )
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_author(self, original_message: constants.TELEGRAM_MESSAGE) -> User | None:
+    async def _get_author(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> User | None:
         return await self._create_user_from_telegram_user(original_message.sender, original_message.chat.id)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
@@ -140,11 +140,11 @@ class TelegramBot(MultiBot[TelegramClient]):
         return await self._create_user_from_telegram_user(event.sender, event.chat.id)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_chat(self, original_message: constants.TELEGRAM_MESSAGE) -> Chat | None:
+    async def _get_chat(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> Chat | None:
         return await self._create_chat_from_telegram_chat(original_message.chat)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_mentions(self, original_message: constants.TELEGRAM_MESSAGE) -> list[User]:
+    async def _get_mentions(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> list[User]:
         mentions = OrderedSet()
         try:
             entities = original_message.entities or ()
@@ -174,7 +174,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         return list(mentions - None)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_message_id(self, original_message: constants.TELEGRAM_MESSAGE) -> int | None:
+    async def _get_message_id(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> int | None:
         return original_message.id
 
     @return_if_first_empty('', exclude_self_types='TelegramBot', globals_=globals())
@@ -187,21 +187,21 @@ class TelegramBot(MultiBot[TelegramClient]):
         return ''
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_original_message(self, event: constants.TELEGRAM_EVENT) -> telethon.custom.Message:
+    async def _get_original_message(self, event: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE:
         if isinstance(event, telethon.events.CallbackQuery.Event):
             return await event.get_message()
         else:
             return getattr(event, 'message', event)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_replied_message(self, original_message: constants.TELEGRAM_MESSAGE) -> Message | None:
+    async def _get_replied_message(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> Message | None:
         try:
             return await self._get_message(await original_message.get_reply_message())
         except AttributeError:
             pass
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _get_text(self, original_message: constants.TELEGRAM_MESSAGE) -> str:
+    async def _get_text(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> str:
         return original_message.text
 
     @staticmethod
