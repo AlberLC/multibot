@@ -21,6 +21,3 @@ class User(EventComponent):
     is_bot: bool = None
     roles: list[Role] = field(default_factory=list)
     original_object: constants.ORIGINAL_USER = None
-
-    def __getstate__(self):
-        return self._mongo_repr()
