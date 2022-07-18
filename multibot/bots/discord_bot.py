@@ -70,6 +70,10 @@ class DiscordBot(MultiBot[Bot]):
             is_admin = original_user.guild_permissions.administrator
         except AttributeError:
             is_admin = None
+        try:
+            roles = [Role(self.platform.value, discord_role.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in original_user.roles]
+        except AttributeError:
+            roles = []
 
         return User(
             platform=self.platform.value,
@@ -77,7 +81,7 @@ class DiscordBot(MultiBot[Bot]):
             name=f'{original_user.name}#{original_user.discriminator}',
             is_admin=is_admin,
             is_bot=original_user.bot,
-            roles=[Role(self.platform.value, discord_role.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in original_user.roles],
+            roles=roles,
             original_object=original_user
         )
 
