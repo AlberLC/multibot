@@ -12,7 +12,6 @@ import discord
 import flanautils
 from discord.ext.commands import Bot
 from flanautils import Media, MediaType, NotFoundError, OrderedSet, return_if_first_empty
-
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
 from multibot.exceptions import LimitError, SendError, UserDisconnectedError
@@ -56,7 +55,7 @@ class DiscordBot(MultiBot[Bot]):
             group_name = None
 
         return Chat(
-            platform=self.platform.value,
+            platform=self.platform,
             id=original_chat.id,
             name=chat_name,
             group_id=group_id,
@@ -71,17 +70,26 @@ class DiscordBot(MultiBot[Bot]):
         except AttributeError:
             is_admin = None
         try:
-            roles = [Role(self.platform.value, discord_role.id, original_user.guild.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in original_user.roles]
+            # noinspection PyTypeChecker
+            actual_roles = [Role(self.platform, discord_role.id, original_user.guild.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in original_user.roles]
+            for actual_role in actual_roles:
+                actual_role.pull_from_database()
+            actual_roles = OrderedSet(actual_roles)
         except AttributeError:
-            roles = []
+            actual_roles = OrderedSet()
+
+        if database_user_data := User.collection.find_one({'platform': self.platform.value, 'id': original_user.id}):
+            database_roles = OrderedSet(Role.find({'_id': {'$in': database_user_data['roles']}}))
+        else:
+            database_roles = OrderedSet()
 
         return User(
-            platform=self.platform.value,
+            platform=self.platform,
             id=original_user.id,
             name=f'{original_user.name}#{original_user.discriminator}',
             is_admin=is_admin,
             is_bot=original_user.bot,
-            roles=roles,
+            roles=list(actual_roles | database_roles),
             original_object=original_user
         )
 
@@ -385,7 +393,7 @@ class DiscordBot(MultiBot[Bot]):
             return []
 
         # noinspection PyTypeChecker
-        return [Role(self.platform.value, discord_role.id, discord_group.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in discord_group.roles]
+        return [Role(self.platform, discord_role.id, discord_group.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in discord_group.roles]
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:

@@ -47,7 +47,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
             channel_id = int(next(iter(await self.client.fetch_users([channel_name])), None).id)
 
         return Chat(
-            platform=self.platform.value,
+            platform=self.platform,
             id=channel_id,
             name=channel_name,
             group_id=channel_id,
@@ -61,7 +61,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
             id = next(iter(await self.client.fetch_users([original_user.name])), None).id
 
         return User(
-            platform=self.platform.value,
+            platform=self.platform,
             id=int(id),
             name=original_user.display_name,
             is_admin=getattr(original_user, 'is_mod', None) if is_admin is None else is_admin,

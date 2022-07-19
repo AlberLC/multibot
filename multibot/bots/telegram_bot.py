@@ -99,7 +99,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             group_name = chat_name
 
         return Chat(
-            platform=self.platform.value,
+            platform=self.platform,
             id=original_chat.id,
             name=chat_name,
             group_id=group_id,
@@ -116,7 +116,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             is_admin = None
 
         return User(
-            platform=self.platform.value,
+            platform=self.platform,
             id=original_user.id,
             name=self._get_name_from_entity(original_user),
             is_admin=is_admin,
