@@ -15,6 +15,7 @@ class Role(EventComponent):
 
     platform: Platform = None
     id: int = None
+    group_id: int = None
     name: str = None
     is_admin: bool = None
     original_object: constants.ROLE = None

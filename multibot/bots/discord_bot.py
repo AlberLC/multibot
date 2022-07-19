@@ -71,7 +71,7 @@ class DiscordBot(MultiBot[Bot]):
         except AttributeError:
             is_admin = None
         try:
-            roles = [Role(self.platform.value, discord_role.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in original_user.roles]
+            roles = [Role(self.platform.value, discord_role.id, original_user.guild.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in original_user.roles]
         except AttributeError:
             roles = []
 
@@ -385,7 +385,7 @@ class DiscordBot(MultiBot[Bot]):
             return []
 
         # noinspection PyTypeChecker
-        return [Role(self.platform.value, discord_role.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in discord_group.roles]
+        return [Role(self.platform.value, discord_role.id, discord_group.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in discord_group.roles]
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
