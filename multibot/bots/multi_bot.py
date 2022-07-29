@@ -605,6 +605,9 @@ class MultiBot(Generic[T], ABC):
     async def accept_button_event(self, event: constants.MESSAGE_EVENT | Message):
         pass
 
+    async def add_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
+        pass
+
     async def ban(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
         # noinspection PyTypeChecker
         ban = Ban(self.platform, self.get_user_id(user), self.get_group_id(group_), time)
@@ -770,6 +773,9 @@ class MultiBot(Generic[T], ABC):
             return func
 
         return decorator(func_) if func_ else decorator
+
+    async def remove_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
+        pass
 
     @abstractmethod
     @parse_arguments

@@ -12,6 +12,7 @@ import discord
 import flanautils
 from discord.ext.commands import Bot
 from flanautils import Media, MediaType, NotFoundError, OrderedSet, return_if_first_empty
+
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
 from multibot.exceptions import LimitError, SendError, UserDisconnectedError

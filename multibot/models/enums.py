@@ -13,6 +13,7 @@ class Action(FlanaEnum):
 class ButtonsGroup(FlanaEnum):
     CONFIG = auto()
     POLL = auto()
+    ROLES = auto()
     USERS = auto()
     WEATHER = auto()
 

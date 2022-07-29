@@ -56,8 +56,8 @@ INTERROGATION_PHRASES = ('?', 'que?', 'que dise', 'no entiendo', 'no entender', 
                          '🧐', '🙄', '🙃')
 
 KEYWORDS = {
-    'activate': ('activa', 'activar', 'activate', 'deja', 'dejale', 'devuelve', 'devuelvele', 'enable', 'encender',
-                 'enciende', 'habilita', 'habilitar'),
+    'activate': ('activa', 'activar', 'activate', 'add', 'añade', 'añadir', 'deja', 'dejale', 'devuelve', 'devuelvele',
+                 'enable', 'encender', 'enciende', 'habilita', 'habilitar'),
     'ban': ('ban', 'banea', 'banealo'),
     'bye': ('adieu', 'adio', 'adiooooo', 'adios', 'agur', 'buenas', 'bye', 'cama', 'chao', 'farewell', 'goodbye',
             'hasta', 'luego', 'noches', 'pronto', 'taluego', 'taluegorl', 'tenga', 'vemos', 'vista', 'voy'),
@@ -80,6 +80,7 @@ KEYWORDS = {
     'negate': ('no', 'ocurra', 'ocurre'),
     'permission': ('permiso', 'permission'),
     'reset': ('recover', 'recovery', 'recupera', 'reinicia', 'reset', 'resetea', 'restart'),
+    'role': ('rol', 'role', 'roles'),
     'send_as_file': ('arhivo', 'calidad', 'compress', 'compression', 'comprimir', 'file', 'quality'),
     'show': ('actual', 'enseña', 'estado', 'how', 'muestra', 'show', 'como'),
     'sound': ('hablar', 'hable', 'micro', 'microfono', 'microphone', 'sonido', 'sound', 'talk', 'volumen'),
