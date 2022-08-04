@@ -81,7 +81,11 @@ class TelegramBot(MultiBot[TelegramClient]):
         original_message._chat = chat.original_object
         bot_message = await self._get_message(original_message)
         bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
-        bot_message.contents = {'media': getattr(media, 'content', None)}
+        if media and media.bytes_ and len(media.bytes_) <= constants.PYMONGO_MEDIA_MAX_BYTES:
+            media = media.content
+        else:
+            media = None
+        bot_message.contents = {'media': media}
         if contents is not None:
             bot_message.contents |= contents
         bot_message.save()
