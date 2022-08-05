@@ -232,6 +232,8 @@ class DiscordBot(MultiBot[Bot]):
         if bytes_ := media.bytes_:
             if media.type_ is MediaType.GIF:
                 bytes_ = await flanautils.mp4_to_gif(bytes_)
+            if len(bytes_) > constants.DISCORD_MEDIA_MAX_BYTES:
+                raise LimitError
             file = discord.File(fp=io.BytesIO(bytes_), filename=f'bot_media.{media.type_.extension}')
         else:
             return
@@ -487,8 +489,19 @@ class DiscordBot(MultiBot[Bot]):
         send_as_file: bool = None,
         edit=False
     ) -> Message | None:
+        async def file_too_large():
+            if random.randint(0, 10):
+                error_message = 'El archivo pesa más de 8 MB.'
+            else:
+                error_message = 'El archivo pesa mas que tu madre'
+            await self._manage_exceptions(SendError(error_message), chat)
+
         text = self._parse_html_to_discord_markdown(text)
-        file = await self._prepare_media_to_send(media)
+        try:
+            file = await self._prepare_media_to_send(media)
+        except LimitError:
+            await file_too_large()
+            return
         view = None
 
         if buttons:
@@ -538,11 +551,7 @@ class DiscordBot(MultiBot[Bot]):
             bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=view, reference=reply_to))
         except discord.errors.HTTPException as e:
             if 'too large' in str(e).lower():
-                if random.randint(0, 10):
-                    error_message = 'El archivo pesa más de 8 MB.'
-                else:
-                    error_message = 'El archivo pesa mas que tu madre'
-                await self._manage_exceptions(SendError(error_message), chat)
+                await file_too_large()
                 return
             raise e
 
