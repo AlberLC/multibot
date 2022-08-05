@@ -324,7 +324,6 @@ class MultiBot(Generic[T], ABC):
                 await self.send_negative(message)
                 return OrderedSet()
 
-        await flanautils.do_later(constants.COMMAND_MESSAGE_DURATION, self.delete_message, message)
         return users - bot_user
 
     @abstractmethod
