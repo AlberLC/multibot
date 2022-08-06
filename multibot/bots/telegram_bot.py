@@ -210,8 +210,8 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @staticmethod
     @return_if_first_empty
-    async def _prepare_media_to_send(media: Media) -> str | io.BytesIO | None:
-        if media.url:
+    async def _prepare_media_to_send(media: Media, force_bytes=False) -> str | io.BytesIO | None:
+        if media.url and not force_bytes:
             if not pathlib.Path(media.url).is_file() and media.source is Source.INSTAGRAM and (not (path_suffix := pathlib.Path(media.url).suffix) or len(path_suffix) > constants.MAX_FILE_EXTENSION_LENGHT):
                 file = f'{media.url}.{media.type_.extension}'
             else:
@@ -450,6 +450,12 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         try:
             original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
+        except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
+            if media.bytes_:
+                kwargs['file'] = await self._prepare_media_to_send(media, force_bytes=True)
+                original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
+            else:
+                raise
         except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
             return
 
