@@ -210,17 +210,28 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @staticmethod
     @return_if_first_empty
-    async def _prepare_media_to_send(media: Media, force_bytes=False) -> str | io.BytesIO | None:
-        if media.url and not force_bytes:
+    def _prepare_media_to_send(media: Media, prefer_bytes=False) -> str | io.BytesIO | None:
+        def url_file() -> str | None:
+            if not media.url:
+                return
+
             if not pathlib.Path(media.url).is_file() and media.source is Source.INSTAGRAM and (not (path_suffix := pathlib.Path(media.url).suffix) or len(path_suffix) > constants.MAX_FILE_EXTENSION_LENGHT):
-                file = f'{media.url}.{media.type_.extension}'
+                return f'{media.url}.{media.type_.extension}'
             else:
-                file = media.url
-        elif media.bytes_:
-            file = io.BytesIO(media.bytes_)
-            file.name = f'bot_media.{media.type_.extension}'
+                return media.url
+
+        def bytes_file() -> io.BytesIO | None:
+            if not media.url:
+                return
+
+            file_ = io.BytesIO(media.bytes_)
+            file_.name = f'bot_media.{media.type_.extension}'
+            return file_
+
+        if prefer_bytes:
+            file = bytes_file() or url_file()
         else:
-            return
+            file = url_file() or bytes_file()
 
         return file
 
@@ -382,7 +393,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         send_as_file: bool = None,
         edit=False,
     ) -> Message | None:
-        file = await self._prepare_media_to_send(media)
+        file = self._prepare_media_to_send(media)
         telegram_buttons = None
 
         if buttons:
@@ -408,10 +419,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 if media:
                     if 'inline_media' not in message.contents:
                         message.contents['inline_media'] = []
-                    if media.type_ is MediaType.IMAGE:
-                        message.contents['inline_media'].append(message.original_event.builder.photo(file))
-                    else:
-                        message.contents['inline_media'].append(message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower()))
+                    message.contents['inline_media'].append(media)
                 return
             elif edit:
                 if buttons is not None:
@@ -452,7 +460,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
         except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
             if media.bytes_:
-                kwargs['file'] = await self._prepare_media_to_send(media, force_bytes=True)
+                kwargs['file'] = self._prepare_media_to_send(media, prefer_bytes=True)
                 original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
             else:
                 raise
@@ -463,8 +471,18 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @inline
     async def send_inline_results(self, message: Message):
+        def create_result(media: Media, prefer_bytes=False) -> telethon.types.InputBotInlineResultPhoto | telethon.types.InputBotInlineResultDocument:
+            file = self._prepare_media_to_send(media, prefer_bytes)
+            if media.type_ is MediaType.IMAGE:
+                return message.original_event.builder.photo(file)
+            else:
+                return message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower())
+
         try:
-            await message.original_event.answer(message.contents['inline_media'])
+            try:
+                await message.original_event.answer([create_result(media) for media in message.contents['inline_media']])
+            except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
+                await message.original_event.answer([create_result(media, prefer_bytes=True) for media in message.contents['inline_media']])
         except (KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
             pass
 
