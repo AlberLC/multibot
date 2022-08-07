@@ -221,7 +221,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 return media.url
 
         def bytes_file() -> io.BytesIO | None:
-            if not media.url:
+            if not media.bytes_:
                 return
 
             file_ = io.BytesIO(media.bytes_)
