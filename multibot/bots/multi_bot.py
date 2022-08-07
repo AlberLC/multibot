@@ -411,7 +411,7 @@ class MultiBot(Generic[T], ABC):
                 await self.send_error(str(e), context)
             except AmbiguityError:
                 if constants.RAISE_AMBIGUITY_ERROR:
-                    await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más?  {random.choice(constants.SAD_EMOJIS)}', context)
+                    await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más? {random.choice(constants.SAD_EMOJIS)}', context)
 
     async def _mute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
@@ -570,7 +570,7 @@ class MultiBot(Generic[T], ABC):
             f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>\n"
             f"{joined_user_names}\n\n"
             f"<b>Filtrar usuarios por roles:</b>",
-            flanautils.chunks([f'❌  {role_name}' for role_name in role_names], 5),
+            flanautils.chunks([f'❌ {role_name}' for role_name in role_names], 5),
             message,
             buttons_key=ButtonsGroup.USERS
         )
@@ -585,7 +585,7 @@ class MultiBot(Generic[T], ABC):
 
         pressed_button = message.buttons_info.pressed_button
         pressed_button.is_checked = not pressed_button.is_checked
-        pressed_button.text = f"{'✔' if pressed_button.is_checked else '❌'}  {button_role_name}"
+        pressed_button.text = f"{'✔' if pressed_button.is_checked else '❌'} {button_role_name}"
 
         selected_role_names = [checked_button.text.split(maxsplit=1)[1] for checked_button in message.buttons_info.checked_buttons()]
         user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles(selected_role_names, message)]

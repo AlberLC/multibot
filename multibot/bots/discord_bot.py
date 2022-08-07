@@ -301,7 +301,7 @@ class DiscordBot(MultiBot[Bot]):
             try:
                 await chat.original_object.delete_messages(chunk)
             except discord.errors.HTTPException:
-                raise LimitError(f'Solo puedo eliminar mensajes con menos de 14 días  {random.choice(constants.SAD_EMOJIS)}')
+                raise LimitError(f'Solo puedo eliminar mensajes con menos de 14 días {random.choice(constants.SAD_EMOJIS)}')
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):  # todo2 test
