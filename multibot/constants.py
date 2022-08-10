@@ -59,6 +59,7 @@ INTERROGATION_PHRASES = ('?', 'que?', 'que dise', 'no entiendo', 'no entender', 
 KEYWORDS = {
     'activate': ('activa', 'activar', 'activate', 'add', 'añade', 'añadir', 'deja', 'dejale', 'devuelve', 'devuelvele',
                  'enable', 'encender', 'enciende', 'habilita', 'habilitar'),
+    'audio': ('audio', 'music', 'musica', 'sonido', 'sound'),
     'ban': ('ban', 'banea', 'banealo'),
     'bye': ('adieu', 'adio', 'adiooooo', 'adios', 'agur', 'buenas', 'bye', 'cama', 'chao', 'farewell', 'goodbye',
             'hasta', 'luego', 'noches', 'pronto', 'taluego', 'taluegorl', 'tenga', 'vemos', 'vista', 'voy'),
