@@ -566,6 +566,7 @@ class MultiBot(Generic[T], ABC):
 
         user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles([], message)]
         joined_user_names = ', '.join(user_names)
+        await self.delete_message(message)
         await self.send(
             f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>\n"
             f"{joined_user_names}\n\n"
