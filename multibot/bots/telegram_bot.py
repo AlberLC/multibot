@@ -479,13 +479,14 @@ class TelegramBot(MultiBot[TelegramClient]):
             else:
                 return message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower())
 
-        try:
+        with flanautils.suppress_stderr():
             try:
-                await message.original_event.answer([create_result(media) for media in message.contents['inline_media']])
-            except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
-                await message.original_event.answer([create_result(media, prefer_bytes=True) for media in message.contents['inline_media']])
-        except (KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
-            pass
+                try:
+                    await message.original_event.answer([create_result(media) for media in message.contents['inline_media']])
+                except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
+                    await message.original_event.answer([create_result(media, prefer_bytes=True) for media in message.contents['inline_media']])
+            except (KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
+                pass
 
     def start(self):
         async def start_():
