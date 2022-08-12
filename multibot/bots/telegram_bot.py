@@ -216,7 +216,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 return
 
             if not pathlib.Path(media.url).is_file() and media.source is Source.INSTAGRAM and (not (path_suffix := pathlib.Path(media.url).suffix) or len(path_suffix) > constants.MAX_FILE_EXTENSION_LENGHT):
-                return f'{media.url}.{media.type_.extension}'
+                return f'{media.url}.{media.extension}'
             else:
                 return media.url
 
@@ -225,7 +225,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 return
 
             file_ = io.BytesIO(media.bytes_)
-            file_.name = f'bot_media.{media.type_.extension}'
+            file_.name = f'bot_media.{media.extension}'
             return file_
 
         if prefer_bytes:
