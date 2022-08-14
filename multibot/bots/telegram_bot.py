@@ -210,7 +210,7 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @staticmethod
     @return_if_first_empty
-    def _prepare_media_to_send(media: Media, prefer_bytes=False) -> str | io.BytesIO | None:
+    def _prepare_media_to_send(media: Media, prefer_bytes=False, inline_=False) -> str | io.BytesIO | None:
         def url_file() -> str | None:
             if not media.url:
                 return
@@ -224,7 +224,10 @@ class TelegramBot(MultiBot[TelegramClient]):
             if not media.bytes_:
                 return
 
-            file_ = io.BytesIO(media.bytes_)
+            bytes_ = media.bytes_
+            if inline_ and media.type_ is MediaType.AUDIO:
+                bytes_ = await flanautils.add_metadata(bytes_, {'title': 'Audio'}, overwrite=False)
+            file_ = io.BytesIO(bytes_)
             file_.name = f'bot_media.{media.extension}'
             return file_
 
@@ -473,11 +476,12 @@ class TelegramBot(MultiBot[TelegramClient]):
     @inline
     async def send_inline_results(self, message: Message):
         def create_result(media: Media, prefer_bytes=False) -> telethon.types.InputBotInlineResultPhoto | telethon.types.InputBotInlineResultDocument:
-            file = self._prepare_media_to_send(media, prefer_bytes)
-            if media.type_ is MediaType.IMAGE:
-                return message.original_event.builder.photo(file)
-            else:
-                return message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower())
+            file = self._prepare_media_to_send(media, prefer_bytes, inline_=True)
+            match media.type_:
+                case MediaType.IMAGE:
+                    return message.original_event.builder.photo(file)
+                case _:
+                    return message.original_event.builder.document(file, title=media.type_.name.title(), type=media.type_.name.lower())
 
         with flanautils.suppress_stderr():
             try:

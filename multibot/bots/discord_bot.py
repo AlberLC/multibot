@@ -231,7 +231,7 @@ class DiscordBot(MultiBot[Bot]):
 
         if bytes_ := media.bytes_:
             if media.type_ is MediaType.GIF:
-                bytes_ = await flanautils.mp4_to_gif(bytes_)
+                bytes_ = await flanautils.to_gif(bytes_)
             if len(bytes_) > constants.DISCORD_MEDIA_MAX_BYTES:
                 raise LimitError
             file = discord.File(fp=io.BytesIO(bytes_), filename=f'bot_media.{media.extension}')
