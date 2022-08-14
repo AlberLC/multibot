@@ -210,7 +210,7 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @staticmethod
     @return_if_first_empty
-    def _prepare_media_to_send(media: Media, prefer_bytes=False, inline_=False) -> str | io.BytesIO | None:
+    async def _prepare_media_to_send(media: Media, prefer_bytes=False, inline_=False) -> str | io.BytesIO | None:
         def url_file() -> str | None:
             if not media.url:
                 return
@@ -220,7 +220,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             else:
                 return media.url
 
-        def bytes_file() -> io.BytesIO | None:
+        async def bytes_file() -> io.BytesIO | None:
             if not media.bytes_:
                 return
 
@@ -232,9 +232,9 @@ class TelegramBot(MultiBot[TelegramClient]):
             return file_
 
         if prefer_bytes:
-            file = bytes_file() or url_file()
+            file = await bytes_file() or url_file()
         else:
-            file = url_file() or bytes_file()
+            file = url_file() or await bytes_file()
 
         return file
 
@@ -396,7 +396,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         send_as_file: bool = None,
         edit=False,
     ) -> Message | None:
-        file = self._prepare_media_to_send(media)
+        file = await self._prepare_media_to_send(media)
         telegram_buttons = None
 
         if buttons:
@@ -464,7 +464,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
             except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
                 if media.bytes_:
-                    kwargs['file'] = self._prepare_media_to_send(media, prefer_bytes=True)
+                    kwargs['file'] = await self._prepare_media_to_send(media, prefer_bytes=True)
                     original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
                 else:
                     raise
@@ -475,8 +475,8 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @inline
     async def send_inline_results(self, message: Message):
-        def create_result(media: Media, prefer_bytes=False) -> telethon.types.InputBotInlineResultPhoto | telethon.types.InputBotInlineResultDocument:
-            file = self._prepare_media_to_send(media, prefer_bytes, inline_=True)
+        async def create_result(media: Media, prefer_bytes=False) -> telethon.types.InputBotInlineResultPhoto | telethon.types.InputBotInlineResultDocument:
+            file = await self._prepare_media_to_send(media, prefer_bytes, inline_=True)
             match media.type_:
                 case MediaType.IMAGE:
                     return message.original_event.builder.photo(file)
@@ -486,9 +486,9 @@ class TelegramBot(MultiBot[TelegramClient]):
         with flanautils.suppress_stderr():
             try:
                 try:
-                    await message.original_event.answer([create_result(media) for media in message.contents['inline_media']])
+                    await message.original_event.answer([await create_result(media) for media in message.contents['inline_media']])
                 except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
-                    await message.original_event.answer([create_result(media, prefer_bytes=True) for media in message.contents['inline_media']])
+                    await message.original_event.answer([await create_result(media, prefer_bytes=True) for media in message.contents['inline_media']])
             except (KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
                 pass
 
