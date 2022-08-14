@@ -226,9 +226,9 @@ class TelegramBot(MultiBot[TelegramClient]):
 
             bytes_ = media.bytes_
             if inline_ and media.type_ is MediaType.AUDIO:
-                bytes_ = await flanautils.add_metadata(bytes_, {'title': 'Audio'}, overwrite=False)
+                bytes_ = await flanautils.add_metadata(bytes_, {'title': 'bot_media.mp3'}, overwrite=False)
             file_ = io.BytesIO(bytes_)
-            file_.name = f'bot_media.{media.extension}'
+            file_.name = f"{media.title or 'bot_media'}.{media.extension}"
             return file_
 
         if prefer_bytes:

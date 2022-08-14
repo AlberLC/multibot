@@ -220,12 +220,14 @@ class DiscordBot(MultiBot[Bot]):
         if not media:
             return
 
+        file_name = f"{media.title or 'bot_media'}.{media.extension}"
+
         if media.url:
             if pathlib.Path(media.url).is_file():
                 if (path_suffix := pathlib.Path(media.url).suffix) and len(path_suffix) <= constants.MAX_FILE_EXTENSION_LENGHT:
                     return discord.File(media.url)
                 else:
-                    return discord.File(media.url, filename=f'bot_media.{media.extension}')
+                    return discord.File(media.url, filename=file_name)
             elif not media.bytes_:
                 media.bytes_ = await flanautils.get_request(media.url)
 
@@ -234,7 +236,7 @@ class DiscordBot(MultiBot[Bot]):
                 bytes_ = await flanautils.to_gif(bytes_)
             if len(bytes_) > constants.DISCORD_MEDIA_MAX_BYTES:
                 raise LimitError
-            file = discord.File(fp=io.BytesIO(bytes_), filename=f'bot_media.{media.extension}')
+            file = discord.File(fp=io.BytesIO(bytes_), filename=file_name)
         else:
             return
 
