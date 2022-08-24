@@ -236,11 +236,7 @@ class DiscordBot(MultiBot[Bot]):
                 bytes_ = await flanautils.to_gif(bytes_)
             if len(bytes_) > constants.DISCORD_MEDIA_MAX_BYTES:
                 raise LimitError
-            file = discord.File(fp=io.BytesIO(bytes_), filename=file_name)
-        else:
-            return
-
-        return file
+            return discord.File(fp=io.BytesIO(bytes_), filename=file_name)
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user = await self.get_user(user)
