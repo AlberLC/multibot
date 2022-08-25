@@ -567,14 +567,13 @@ class MultiBot(Generic[T], ABC):
         user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles([], message)]
         joined_user_names = ', '.join(user_names)
         await self.delete_message(message)
-        await self.send(
-            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>\n"
-            f"{joined_user_names}\n\n"
-            f"<b>Filtrar usuarios por roles:</b>",
+        bot_message = await self.send(
+            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>",
             flanautils.chunks([f'❌ {role_name}' for role_name in role_names], 5),
             message,
             buttons_key=ButtonsGroup.USERS
         )
+        await self.edit(f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>\n{joined_user_names}\n\n<b>Filtrar usuarios por roles:</b>", bot_message)
 
     async def _on_users_button_press(self, message: Message):
         await self.accept_button_event(message)
@@ -588,7 +587,7 @@ class MultiBot(Generic[T], ABC):
         pressed_button.is_checked = not pressed_button.is_checked
         pressed_button.text = f"{'✔' if pressed_button.is_checked else '❌'} {button_role_name}"
 
-        selected_role_names = [checked_button.text.split(maxsplit=1)[1] for checked_button in message.buttons_info.checked_buttons()]
+        selected_role_names = [checked_button.text.split(maxsplit=1)[1] for checked_button in message.buttons_info.checked_buttons]
         user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles(selected_role_names, message)]
         joined_user_names = ', '.join(user_names)
         await self.edit(

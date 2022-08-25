@@ -3,6 +3,7 @@ from __future__ import annotations  # todo0 remove in 3.11
 __all__ = ['DiscordBot']
 
 import asyncio
+import datetime
 import io
 import pathlib
 import random
