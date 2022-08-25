@@ -38,6 +38,7 @@ class ButtonsInfo(FlanaBase):
     def _dict_repr(self) -> Any:
         return bytes(self)
 
+    @property
     def checked_buttons(self) -> list[Button]:
         return [button for row in self.buttons for button in row if button.is_checked]
 
