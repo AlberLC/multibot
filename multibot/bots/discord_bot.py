@@ -293,11 +293,16 @@ class DiscordBot(MultiBot[Bot]):
 
         chat = await self.get_chat(chat)
         n_messages += 1
-        messages = [message async for message in chat.original_object.history(limit=n_messages)]
 
-        for chunk in flanautils.chunks(messages, 100, lazy=True):
+        while n_messages > 0:
+            if n_messages > 100:
+                n_messages_chunk = 100
+                n_messages -= 100
+            else:
+                n_messages_chunk = n_messages
+                n_messages = 0
             try:
-                await chat.original_object.delete_messages(chunk)
+                await chat.original_object.purge(limit=n_messages_chunk)
             except discord.errors.HTTPException:
                 raise LimitError(f'Solo puedo eliminar mensajes con menos de 14 días {random.choice(constants.SAD_EMOJIS)}')
 
