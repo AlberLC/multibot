@@ -65,19 +65,19 @@ class DiscordBot(MultiBot[Bot]):
         )
 
     @return_if_first_empty
-    def _create_user_from_discord_user(self, original_user: constants.DISCORD_USER) -> User | None:
+    async def _create_user_from_discord_user(self, original_user: constants.DISCORD_USER) -> User | None:
         try:
             is_admin = original_user.guild_permissions.administrator
         except AttributeError:
             is_admin = None
         try:
             # noinspection PyTypeChecker
-            actual_roles = [Role(self.platform, discord_role.id, original_user.guild.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in original_user.roles]
-            for actual_role in actual_roles:
-                actual_role.pull_from_database()
-            actual_roles = OrderedSet(actual_roles)
+            current_roles = await self.get_current_roles(original_user)
+            for current_role in current_roles:
+                current_role.pull_from_database()
+            current_roles = OrderedSet(current_roles)
         except AttributeError:
-            actual_roles = OrderedSet()
+            current_roles = OrderedSet()
 
         if database_user_data := User.collection.find_one({'platform': self.platform.value, 'id': original_user.id}):
             database_roles = OrderedSet(Role.find({'_id': {'$in': database_user_data['roles']}}))
@@ -90,13 +90,13 @@ class DiscordBot(MultiBot[Bot]):
             name=f'{original_user.name}#{original_user.discriminator}',
             is_admin=is_admin,
             is_bot=original_user.bot,
-            roles=list(actual_roles | database_roles),
+            roles=list(current_roles | database_roles),
             original_object=original_user
         )
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_author(self, original_message: constants.DISCORD_MESSAGE) -> User | None:
-        return self._create_user_from_discord_user(original_message.author)
+        return await self._create_user_from_discord_user(original_message.author)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_button_pressed_text(self, event: constants.DISCORD_EVENT) -> str | None:
@@ -114,7 +114,7 @@ class DiscordBot(MultiBot[Bot]):
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_button_presser_user(self, event: constants.DISCORD_EVENT) -> User | None:
         try:
-            return self._create_user_from_discord_user(event.user)
+            return await self._create_user_from_discord_user(event.user)
         except AttributeError:
             pass
 
@@ -138,7 +138,7 @@ class DiscordBot(MultiBot[Bot]):
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.DISCORD_MESSAGE) -> list[User]:
-        mentions = OrderedSet(self._create_user_from_discord_user(user) for user in original_message.mentions)
+        mentions = OrderedSet([await self._create_user_from_discord_user(user) for user in original_message.mentions])
 
         chat = await self._get_chat(original_message)
         text = await self._get_text(original_message)
@@ -150,17 +150,17 @@ class DiscordBot(MultiBot[Bot]):
                 user_name = f'{member.name}#{member.discriminator}'.lower()
                 short_user_name = member.name.lower()
                 if user_name in words or short_user_name in words:
-                    mentions.add(self._create_user_from_discord_user(member))
+                    mentions.add(await self._create_user_from_discord_user(member))
         else:
             user_name = f'{chat.original_object.recipient.name}#{chat.original_object.recipient.discriminator}'.lower()
             short_user_name = chat.original_object.recipient.name.lower()
             if user_name in words or short_user_name in words:
-                mentions.add(self._create_user_from_discord_user(chat.original_object.recipient))
+                mentions.add(await self._create_user_from_discord_user(chat.original_object.recipient))
 
             bot_name = f'{chat.original_object.me.name}#{chat.original_object.me.discriminator}'.lower()
             short_bot_name = chat.original_object.me.name.lower()
             if bot_name in words or short_bot_name in words:
-                mentions.add(self._create_user_from_discord_user(chat.original_object.me))
+                mentions.add(await self._create_user_from_discord_user(chat.original_object.me))
 
         return list(mentions - None)
 
@@ -325,6 +325,28 @@ class DiscordBot(MultiBot[Bot]):
         message_to_delete.is_deleted = True
         message_to_delete.save()
 
+    async def find_audit_entries(
+        self,
+        group_: int | str | Chat | Message,
+        limit: int = None,
+        actions=None,
+        before: datetime.datetime = None,
+        after: datetime.datetime = None,
+        newer_first=True
+    ) -> list[discord.AuditLogEntry]:
+        discord_group = await self._get_discord_group(group_)
+        if actions is not None:
+            actions = list(actions)
+
+        audit_entries = []
+        async for entry in discord_group.audit_logs(before=before, after=after, oldest_first=not newer_first):
+            if limit is not None and len(audit_entries) == limit:
+                break
+            if actions is None or entry.action in actions:
+                audit_entries.append(entry)
+
+        return audit_entries
+
     async def find_users_by_roles(self, roles: Iterable[int | str | Role], group_: int | str | Chat | Message) -> list[User]:
         match roles:
             case [*_, int()] as role_ids:
@@ -347,7 +369,7 @@ class DiscordBot(MultiBot[Bot]):
                     break
             else:
                 if len(original_user.roles) == len(role_ids):
-                    users.append(self._create_user_from_discord_user(original_user))
+                    users.append(await self._create_user_from_discord_user(original_user))
 
         return users
 
@@ -370,9 +392,24 @@ class DiscordBot(MultiBot[Bot]):
         # noinspection PyTypeChecker
         return await self._create_chat_from_discord_chat(self.client.get_channel(chat_id) or await self.client.fetch_channel(chat_id))
 
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def get_current_roles(self, user: int | str | User | constants.DISCORD_USER) -> list[Role]:
+        if isinstance(user, (int, str, User)):
+            original_user = (await self.get_user(user)).original_object
+        elif isinstance(user, constants.DISCORD_USER):
+            original_user = user
+        else:
+            raise TypeError('bad arguments')
+
+        try:
+            # noinspection PyTypeChecker
+            return [Role(self.platform, discord_role.id, original_user.guild.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in original_user.roles]
+        except AttributeError:
+            return []
+
     async def get_me(self, group_: int | str | Chat | Message = None) -> User | None:
         # noinspection PyTypeChecker
-        user = self._create_user_from_discord_user(self.client.user)
+        user = await self._create_user_from_discord_user(self.client.user)
         if group_ is None:
             return user
         else:
@@ -411,12 +448,12 @@ class DiscordBot(MultiBot[Bot]):
             discord_group = await self._get_discord_group(group_)
             original_user = discord_group.get_member(user_id)
 
-        return self._create_user_from_discord_user(original_user)
+        return await self._create_user_from_discord_user(original_user)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
         discord_group = await self._get_discord_group(group_)
-        return [self._create_user_from_discord_user(member) for member in discord_group.members]
+        return [await self._create_user_from_discord_user(member) for member in discord_group.members]
 
     async def has_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role) -> bool:
         user = await self.get_user(user, group_)
