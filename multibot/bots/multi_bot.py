@@ -646,7 +646,7 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_current_roles(self, user: int | str | User) -> list[Role]:
+    async def get_current_roles(self, user: int | str | User | constants.ORIGINAL_USER, group_: int | str | Chat | Message = None) -> list[Role]:
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())

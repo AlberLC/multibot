@@ -394,9 +394,11 @@ class DiscordBot(MultiBot[Bot]):
         return await self._create_chat_from_discord_chat(self.client.get_channel(chat_id) or await self.client.fetch_channel(chat_id))
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_current_roles(self, user: int | str | User | constants.DISCORD_USER) -> list[Role]:
-        if isinstance(user, (int, str, User)):
-            original_user = (await self.get_user(user)).original_object
+    async def get_current_roles(self, user: int | str | User | constants.DISCORD_USER, group_: int | str | Chat | Message = None) -> list[Role]:
+        if isinstance(user, User) and not group_:
+            original_user = user.original_object
+        elif isinstance(user, (int, str, User)):
+            original_user = (await self.get_user(user, group_)).original_object
         elif isinstance(user, constants.DISCORD_USER):
             original_user = user
         else:
