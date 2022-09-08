@@ -614,7 +614,7 @@ class MultiBot(Generic[T], ABC):
     async def ban(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
         # noinspection PyTypeChecker
         ban = Ban(self.platform, self.get_user_id(user), self.get_group_id(group_), time)
-        await ban.punish(self._ban, self._unban, message)
+        await ban.apply(self._ban, self._unban, message)
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
@@ -744,10 +744,10 @@ class MultiBot(Generic[T], ABC):
     async def is_self_muted(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
         pass
 
-    async def mute(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta, message: Message = None):
+    async def mute(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
         # noinspection PyTypeChecker
         mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_), time)
-        await mute.punish(self._mute, self._unmute, message)
+        await mute.apply(self._mute, self._unmute, message)
 
     @overload
     def register(self, func_: Callable = None, keywords=(), min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
@@ -829,9 +829,9 @@ class MultiBot(Generic[T], ABC):
     async def unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         # noinspection PyTypeChecker
         ban = Ban(self.platform, self.get_user_id(user), self.get_group_id(group_))
-        await ban.unpunish(self._unban, message)
+        await ban.remove(self._unban, message)
 
     async def unmute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         # noinspection PyTypeChecker
         mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_))
-        await mute.unpunish(self._unmute, message)
+        await mute.remove(self._unmute, message)
