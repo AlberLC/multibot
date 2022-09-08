@@ -511,7 +511,11 @@ class MultiBot(Generic[T], ABC):
                 await self.delete_message(message)
             elif self.is_bot_mentioned(message):
                 await self.send_negative(message)
-        elif message.author.is_admin and self.is_bot_mentioned(message) and (n_messages := flanautils.sum_numbers_in_text(message.text)):
+        elif self.is_bot_mentioned(message) and (n_messages := flanautils.sum_numbers_in_text(message.text)):
+            if not message.author.is_admin:
+                await self.send_negative(message)
+                return
+
             if n_messages <= 0:
                 await self._manage_exceptions(ValueError(), message)
                 return
