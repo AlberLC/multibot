@@ -9,6 +9,7 @@ import pathlib
 from typing import Any, Callable
 
 import flanautils
+import pymongo
 import telethon.events.common
 import telethon.hints
 import telethon.tl.functions.channels
@@ -305,15 +306,16 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         async with self.user_client:
             owner_user = await self._create_user_from_telegram_user(await self.user_client.get_me(), chat.group_id)
-            if owner_user not in chat.users:
+            if owner_user not in await self.get_users(chat):
                 return
 
-            user_chat = await self.user_client.get_entity(chat.id)
-            messages_to_delete = await self.user_client.get_messages(user_chat, n_messages)
-            await self.user_client.delete_messages(user_chat, messages_to_delete)
-            for message_to_delete in messages_to_delete:
-                message_to_delete.is_deleted = True
-                message_to_delete.save()
+            original_chat = await self.user_client.get_entity(chat.id)  # it's necessary
+            database_messages_to_delete = Message.find({'platform': self.platform.value, 'chat': chat.object_id}, sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages, lazy=True)
+            messages_to_delete = await self.user_client.get_messages(original_chat, n_messages)
+            await self.user_client.delete_messages(original_chat, messages_to_delete)
+            for database_message_to_delete in database_messages_to_delete:
+                database_message_to_delete.is_deleted = True
+                database_message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):

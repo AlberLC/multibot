@@ -10,4 +10,4 @@ mongo_client = pymongo.MongoClient(
     tz_aware=True
 )
 
-db = getattr(mongo_client, os.environ['DATABASE_NAME'])
+db = mongo_client[os.environ['DATABASE_NAME']]

@@ -143,7 +143,7 @@ def out_of_service(func: Callable) -> Callable:
     @functools.wraps(func)
     @find_message
     async def wrapper(self: MultiBot, message: Message):
-        if self.is_bot_mentioned(message) or message.chat.is_private:
+        if message.chat.is_private or self.is_bot_mentioned(message):
             await self.send(random.choice(constants.OUT_OF_SERVICES_PHRASES), message)
         await self.accept_button_event(message)
 
@@ -509,9 +509,9 @@ class MultiBot(Generic[T], ABC):
             if message.replied_message.author.id == self.id:
                 await self.delete_message(message.replied_message)
                 await self.delete_message(message)
-            elif self.is_bot_mentioned(message):
+            elif message.chat.is_group and self.is_bot_mentioned(message):
                 await self.send_negative(message)
-        elif self.is_bot_mentioned(message) and (n_messages := flanautils.sum_numbers_in_text(message.text)):
+        elif message.chat.is_group and self.is_bot_mentioned(message) and (n_messages := flanautils.sum_numbers_in_text(message.text)):
             if not message.author.is_admin:
                 await self.send_negative(message)
                 return
