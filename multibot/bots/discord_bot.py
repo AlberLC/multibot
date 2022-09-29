@@ -304,13 +304,13 @@ class DiscordBot(MultiBot[Bot]):
                 n_messages_chunk = n_messages
                 n_messages = 0
 
-            database_messages_to_delete = Message.find({'platform': self.platform.value, 'chat': chat.object_id}, sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages_chunk, lazy=True)
             try:
                 await chat.original_object.purge(limit=n_messages_chunk)
             except discord.errors.HTTPException:
                 raise LimitError(f'Solo puedo eliminar mensajes con menos de 14 días {random.choice(constants.SAD_EMOJIS)}')
 
-            for database_message_to_delete in database_messages_to_delete:
+            database_messages_to_delete_generator = Message.find({'platform': self.platform.value, 'chat': chat.object_id}, sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages_chunk, lazy=True)
+            for database_message_to_delete in database_messages_to_delete_generator:
                 database_message_to_delete.is_deleted = True
                 database_message_to_delete.save()
 
