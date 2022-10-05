@@ -433,7 +433,7 @@ class MultiBot(Generic[T], ABC):
         original_text_words = OrderedSet(text.split())
         text_words = original_text_words - flanautils.CommonWords.get()
 
-        matched_callbacks: set[RatioMatch[RegisteredCallback]] = set()
+        matched_callbacks: set[tuple[int, RatioMatch[RegisteredCallback]]] = set()
         always_callbacks: set[RegisteredCallback] = set()
         default_callbacks: set[RegisteredCallback] = set()
         for registered_callback in registered_callbacks:
@@ -457,20 +457,22 @@ class MultiBot(Generic[T], ABC):
                         mached_keywords_groups += 1
 
                 if mached_keywords_groups and mached_keywords_groups == len(registered_callback.keywords):
-                    for matched_callback in matched_callbacks:  # If the callback has been matched before but with less score it is overwritten, otherwise it is added
+                    for priority, matched_callback in matched_callbacks:  # If the callback has been matched before but with less score it is overwritten, otherwise it is added
                         if matched_callback.element.callback == registered_callback.callback:
                             if total_ratio > matched_callback.ratio:
-                                matched_callbacks.discard(matched_callback)
-                                matched_callbacks.add(RatioMatch(registered_callback, total_ratio))
+                                matched_callbacks.discard((priority, matched_callback))
+                                matched_callbacks.add((registered_callback.priority, RatioMatch(registered_callback, total_ratio)))
                             break
                     else:
-                        matched_callbacks.add(RatioMatch(registered_callback, total_ratio))
+                        matched_callbacks.add((registered_callback.priority, RatioMatch(registered_callback, total_ratio)))
 
-        match sorted(matched_callbacks):
-            case [single]:
+        sorted_matched_callbacks = sorted(matched_callbacks, key=lambda e: e[1])
+        sorted_matched_callbacks = sorted(sorted_matched_callbacks, key=lambda e: e[0], reverse=True)
+        match sorted_matched_callbacks:
+            case [(_priority, single)]:
                 determined_callbacks = always_callbacks | {single.element}
-            case [first, second, *_] if first.ratio >= minimum_ratio_to_match:
-                if first.ratio == second.ratio:
+            case [(first_priority, first), (second_priority, second), *_] if first.ratio >= minimum_ratio_to_match:
+                if first_priority == second_priority and first.ratio == second.ratio:
                     raise AmbiguityError(f'\n{first.element.callback}\n{second.element.callback}')
                 determined_callbacks = always_callbacks | {first.element}
             case _:
@@ -750,17 +752,17 @@ class MultiBot(Generic[T], ABC):
         await mute.apply(self._mute, self._unmute, message)
 
     @overload
-    def register(self, func_: Callable = None, keywords=(), min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
+    def register(self, func_: Callable = None, keywords=(), priority: int | float = 1, min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
         pass
 
     @overload
-    def register(self, keywords=(), min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
+    def register(self, keywords=(), priority: int | float = 1, min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
         pass
 
     @shift_args_if_called(exclude_self_types='MultiBot', globals_=globals())
-    def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
+    def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
         def decorator(func):
-            self._registered_callbacks.append(RegisteredCallback(func, keywords, min_ratio, always, default))
+            self._registered_callbacks.append(RegisteredCallback(func, keywords, priority, min_ratio, always, default))
             return func
 
         return decorator(func_) if func_ else decorator

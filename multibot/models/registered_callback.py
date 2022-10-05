@@ -29,6 +29,7 @@ class RegisteredCallbackBase(FlanaBase):
 @dataclass(eq=False)
 class RegisteredCallback(RegisteredCallbackBase):
     keywords: str | Iterable[str | Iterable[str]]
+    priority: int | float
     min_ratio: float
     always: bool
     default: bool
@@ -37,6 +38,7 @@ class RegisteredCallback(RegisteredCallbackBase):
         self,
         callback: Callable,
         keywords: str | Iterable[str | Iterable[str]] = (),
+        priority: int | float = 1,
         min_ratio: float = constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT,
         always=False,
         default=False
@@ -51,6 +53,7 @@ class RegisteredCallback(RegisteredCallbackBase):
                 self.keywords = (tuple(flanautils.flatten_iterator(keyword.strip().split() for keyword in keywords)),)
             case _:
                 self.keywords = tuple(keywords)
+        self.priority = priority
         self.min_ratio = min_ratio
         self.always = always
         self.default = default
