@@ -17,6 +17,7 @@ __all__ = [
 import datetime
 import functools
 import random
+import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Generic, Iterable, Type, TypeVar, overload
 
@@ -28,7 +29,7 @@ from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, RatioMa
 
 from multibot import constants
 from multibot.exceptions import LimitError, SendError
-from multibot.models import Ban, BotAction, Button, ButtonsGroup, Chat, Message, Mute, Platform, RegisteredButtonCallback, RegisteredCallback, Role, User
+from multibot.models import Ban, BotAction, Button, ButtonsGroup, Chat, Message, Mute, Platform, RegisteredButtonCallback, RegisteredCallback, RegisteredCallbackBase, Role, User
 
 
 # ---------------------------------------------------------- #
@@ -304,6 +305,18 @@ class MultiBot(Generic[T], ABC):
     async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
 
+    async def _call_registered_callback(self, callback: RegisteredCallbackBase, message: Message):
+        # noinspection PyBroadException
+        try:
+            await callback(message)
+        except Exception:
+            traceback_message = '\n'.join(traceback.format_exc().splitlines()[-10:])
+            await self.send(f'{random.choice(constants.EXCEPTION_PHRASES)}\n'
+                            f'\n'
+                            f'...\n'
+                            f'{traceback_message}',
+                            message)
+
     @staticmethod
     async def _check_messages():
         before_date = datetime.datetime.now(datetime.timezone.utc) - constants.MESSAGE_EXPIRATION_TIME
@@ -503,7 +516,7 @@ class MultiBot(Generic[T], ABC):
 
         for registered_callback in self._registered_button_callbacks:
             if registered_callback.key == message.buttons_info.key:
-                await registered_callback(message)
+                await self._call_registered_callback(registered_callback, message)
 
     @inline(False)
     async def _on_delete(self, message: Message):
@@ -542,7 +555,7 @@ class MultiBot(Generic[T], ABC):
             await self._manage_exceptions(e, message)
         else:
             for registered_callback in registered_callbacks:
-                await registered_callback(message)
+                await self._call_registered_callback(registered_callback, message)
 
     async def _on_ready(self):
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')

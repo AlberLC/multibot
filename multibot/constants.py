@@ -1,6 +1,7 @@
 import datetime
 
 import discord.ext.commands
+import flanautils
 import telethon.events.common
 import twitchio
 
@@ -37,7 +38,7 @@ COMMAND_MESSAGE_DURATION = 5
 DELETE_MESSAGE_LIMIT = 100
 DISCORD_BUTTON_MAX_CHARACTERS = 80
 DISCORD_BUTTONS_MAX = 5
-DISCORD_COMMAND_PREFIX = '/'
+DISCORD_COMMAND_PREFIX = flanautils.random_string()
 DISCORD_MEDIA_MAX_BYTES = 8000000
 ERROR_MESSAGE_DURATION = 10
 KEYWORDS_LENGHT_PENALTY = 0.001
@@ -53,6 +54,15 @@ TELEGRAM_SEND_AS_FILE_RATIO_MIN_RATIO = 0.85
 TIME_THRESHOLD_TO_MANUAL_UNPUNISH = datetime.timedelta(days=3)
 
 SAD_EMOJIS = '😥😪😓😔😕☹🙁😞😢😭😩😰'
+
+EXCEPTION_PHRASES = ('A ver como lo digo...', 'Anda mira que error más bonito.', 'Ayudaaa',
+                     'Bueeeno... esto es incómodo...',
+                     'Con que querías que hiciera eso... pues esto es lo que he hecho:', 'Feliz Navidad:',
+                     'Flanagan, ayuda!', 'Ha pasado esto:', 'Han pasado cosas.', 'He hecho pum',
+                     'Iba a hacer eso peeero he hecho esto:', 'La cagué', 'La he cagao', 'Me fui a la puta',
+                     'Me hice caca', 'Me rompí', 'No funciono', 'No me siento muy bien...', 'Pues me he roto',
+                     'Pues no ha salido muy bien la cosa', 'Todo iba bien haste que dejó de ir bien', 'Toma error',
+                     'me rompido')
 
 INTERROGATION_PHRASES = ('?', 'que?', 'que dise', 'no entiendo', 'no entender', 'mi no entender', 'ein?', '🤔', '🤨',
                          '🧐', '🙄', '🙃')
