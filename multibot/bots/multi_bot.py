@@ -306,16 +306,17 @@ class MultiBot(Generic[T], ABC):
         pass
 
     async def _call_registered_callback(self, callback: RegisteredCallbackBase, message: Message):
-        # noinspection PyBroadException
         try:
             await callback(message)
         except Exception:
-            traceback_message = '\n'.join(traceback.format_exc().splitlines()[-10:])
-            await self.send(f'{random.choice(constants.EXCEPTION_PHRASES)}\n'
-                            f'\n'
-                            f'...\n'
-                            f'{traceback_message}',
-                            message)
+            if constants.SHOW_EXCEPTION_MESSAGE:
+                traceback_message = '\n'.join(traceback.format_exc().splitlines()[-10:])
+                await self.send(f'{random.choice(constants.EXCEPTION_PHRASES)}\n'
+                                f'\n'
+                                f'...\n'
+                                f'{traceback_message}',
+                                message)
+            raise
 
     @staticmethod
     async def _check_messages():
