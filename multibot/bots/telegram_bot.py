@@ -462,16 +462,25 @@ class TelegramBot(MultiBot[TelegramClient]):
                 reply_to = message_to_reply.original_object
 
         with flanautils.suppress_stderr():
-            try:
-                original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
-            except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
-                if media.bytes_:
-                    kwargs['file'] = await self._prepare_media_to_send(media, prefer_bytes=True)
+            parse_retries = 1
+            while True:
+                try:
                     original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
+                except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
+                    if media.bytes_:
+                        kwargs['file'] = await self._prepare_media_to_send(media, prefer_bytes=True)
+                    else:
+                        raise
+                except ValueError as e:
+                    if 'parse' in str(e).lower() and parse_retries:
+                        del kwargs['parse_mode']
+                        parse_retries -= 1
+                    else:
+                        raise
+                except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
+                    return
                 else:
-                    raise
-            except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
-                return
+                    break
 
         return await self._create_bot_message_from_telegram_bot_message(original_message, media, chat, buttons, buttons_key, contents)
 

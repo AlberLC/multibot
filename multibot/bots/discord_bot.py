@@ -603,7 +603,7 @@ class DiscordBot(MultiBot[Bot]):
             if 'too large' in str(e).lower():
                 await file_too_large()
                 return
-            raise e
+            raise
 
         bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
         bot_message.contents = {'media': getattr(media, 'content', None)}
