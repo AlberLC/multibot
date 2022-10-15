@@ -309,8 +309,8 @@ class MultiBot(Generic[T], ABC):
         try:
             await callback(message)
         except Exception:
-            if constants.SEND_EXCEPTION_MESSAGE:
-                traceback_message = '\n'.join(traceback.format_exc().splitlines()[-10:])
+            if constants.SEND_EXCEPTION_MESSAGE_LINES:
+                traceback_message = '\n'.join(traceback.format_exc().splitlines()[-constants.SEND_EXCEPTION_MESSAGE_LINES:])
                 await self.send(f'{random.choice(constants.EXCEPTION_PHRASES)}\n'
                                 f'\n'
                                 f'...\n'
