@@ -50,6 +50,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         self.phone = phone
         self.bot_session = bot_session
         self.user_session = user_session
+        self.inline_call_index = 0
 
         if self.bot_session:
             bot_client = TelegramClient(StringSession(bot_session), self.api_id, self.api_hash)
@@ -244,7 +245,12 @@ class TelegramBot(MultiBot[TelegramClient]):
     # ---------------------------------------------- #
     @find_message
     async def _on_inline_query_raw(self, message: Message):
-        await super()._on_new_message_raw(message)
+        self.inline_call_index += 1
+        inline_call_index = self.inline_call_index
+        await asyncio.sleep(constants.INLINE_DELAY_SECONDS)
+        if inline_call_index == self.inline_call_index:
+            self.inline_call_index = 0
+            await self._on_new_message_raw(message)
 
     async def _on_ready(self):
         self.platform = Platform.TELEGRAM
