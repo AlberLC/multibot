@@ -63,7 +63,7 @@ EXCEPTION_PHRASES = ('A ver como lo digo...', 'Anda mira que error más bonito.'
                      'Flanagan, ayuda!', 'Ha pasado esto:', 'Han pasado cosas.', 'He hecho pum',
                      'Iba a hacer eso peeero he hecho esto:', 'La cagué', 'La he cagao', 'Me fui a la puta',
                      'Me hice caca', 'Me rompí', 'No funciono', 'No me siento muy bien...', 'Pues me he roto',
-                     'Pues no ha salido muy bien la cosa', 'Todo iba bien haste que dejó de ir bien', 'Toma error',
+                     'Pues no ha salido muy bien la cosa', 'Todo iba bien hasta que dejó de ir bien', 'Toma error',
                      'me rompido')
 
 INTERROGATION_PHRASES = ('?', 'que?', 'que dise', 'no entiendo', 'no entender', 'mi no entender', 'ein?', '🤔', '🤨',
