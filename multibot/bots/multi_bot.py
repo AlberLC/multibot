@@ -441,7 +441,7 @@ class MultiBot(Generic[T], ABC):
         text = text.lower()
         original_text_words = OrderedSet()
         for word in text.split():
-            if len(word) > 25:
+            if len(word) > constants.MAX_WORD_LENGTH:
                 continue
 
             word = flanautils.replace(word, {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
