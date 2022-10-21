@@ -439,12 +439,17 @@ class MultiBot(Generic[T], ABC):
         minimum_ratio_to_match: float = constants.MINIMUM_RATIO_TO_MATCH
     ) -> OrderedSet[RegisteredCallback]:
         text = text.lower()
-        text = flanautils.replace(text, {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-                                         'à': 'a', 'è': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u',
-                                         'â': 'a', 'ê': 'e', 'î': 'i', 'ô': 'o', 'û': 'u',
-                                         'ä': 'a', 'ë': 'e', 'ï': 'i', 'ö': 'o', 'ü': 'u'})
-        text = flanautils.translate(text, {'?': ' ', '¿': ' ', '!': ' ', '¡': ' '})
-        original_text_words = OrderedSet(text.split())
+        original_text_words = OrderedSet()
+        for word in text.split():
+            if len(word) > 25:
+                continue
+
+            word = flanautils.replace(word, {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+                                             'à': 'a', 'è': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u',
+                                             'â': 'a', 'ê': 'e', 'î': 'i', 'ô': 'o', 'û': 'u',
+                                             'ä': 'a', 'ë': 'e', 'ï': 'i', 'ö': 'o', 'ü': 'u'})
+            word = flanautils.translate(word, {'?': ' ', '¿': ' ', '!': ' ', '¡': ' '})
+            original_text_words.add(word)
         text_words = original_text_words - flanautils.CommonWords.get()
 
         matched_callbacks: set[tuple[int, RatioMatch[RegisteredCallback]]] = set()
