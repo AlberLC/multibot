@@ -529,7 +529,8 @@ class MultiBot(Generic[T], ABC):
         if message.replied_message:
             if message.replied_message.author.id == self.id:
                 await self.delete_message(message.replied_message)
-                await self.delete_message(message)
+                if message.chat.is_group:
+                    await self.delete_message(message)
             elif message.chat.is_group and self.is_bot_mentioned(message):
                 await self.send_negative(message)
         elif message.chat.is_group and self.is_bot_mentioned(message) and (n_messages := flanautils.sum_numbers_in_text(message.text)):
