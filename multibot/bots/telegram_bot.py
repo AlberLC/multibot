@@ -1,4 +1,4 @@
-from __future__ import annotations  # todo0 remove in 3.11
+from __future__ import annotations  # todo0 remove when it's by default
 
 __all__ = ['user_client', 'TelegramBot']
 
