@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from flanautils import DCMongoBase, FlanaBase
 
 from multibot.models.chat import Chat
-from multibot.models.database import db
 from multibot.models.enums import Action
 from multibot.models.message import Message
 from multibot.models.user import User
@@ -14,9 +13,9 @@ from multibot.models.user import User
 
 @dataclass(eq=False)
 class BotAction(DCMongoBase, FlanaBase):
-    collection = db.bot_action
-    _unique_keys = 'message'
-    _nullable_unique_keys = 'message'
+    collection_name = 'bot_action'
+    unique_keys = 'message'
+    nullable_unique_keys = 'message'
 
     action: Action = None
     message: Message = None

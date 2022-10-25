@@ -565,6 +565,7 @@ class MultiBot(Generic[T], ABC):
                 await self._call_registered_callback(registered_callback, message)
 
     async def _on_ready(self):
+        flanautils.init_db()
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
         await flanautils.do_every(constants.CHECK_MESSAGE_EVERY_SECONDS, self._check_messages)
         await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, Mute.check_olds, self._unmute, self.platform)

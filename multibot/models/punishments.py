@@ -11,14 +11,13 @@ from flanautils import DCMongoBase, FlanaBase
 
 from multibot import constants
 from multibot.exceptions import BadRoleError, UserDisconnectedError
-from multibot.models.database import db
 from multibot.models.enums import Platform
 from multibot.models.message import Message
 
 
 @dataclass(eq=False)
 class PunishmentBase(DCMongoBase, FlanaBase):
-    _unique_keys = ('platform', 'user_id', 'group_id')
+    unique_keys = ('platform', 'user_id', 'group_id')
 
     platform: Platform = None
     user_id: int = None
@@ -89,9 +88,9 @@ class PunishmentBase(DCMongoBase, FlanaBase):
 
 @dataclass(eq=False)
 class Ban(PunishmentBase):
-    collection = db.ban
+    collection_name = 'ban'
 
 
 @dataclass(eq=False)
 class Mute(PunishmentBase):
-    collection = db.mute
+    collection_name = 'mute'

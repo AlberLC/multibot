@@ -3,15 +3,14 @@ __all__ = ['Chat']
 from dataclasses import dataclass, field
 
 from multibot import constants
-from multibot.models.database import db
 from multibot.models.enums import Platform
 from multibot.models.event_component import EventComponent
 
 
 @dataclass(eq=False)
 class Chat(EventComponent):
-    collection = db.chat
-    _unique_keys = ('platform', 'id')
+    collection_name = 'chat'
+    unique_keys = ('platform', 'id')
 
     platform: Platform = None
     id: int = None

@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from multibot import constants
 from multibot.models.buttons import ButtonsInfo
 from multibot.models.chat import Chat
-from multibot.models.database import db
 from multibot.models.enums import Platform
 from multibot.models.event_component import EventComponent
 from multibot.models.user import User
@@ -16,9 +15,9 @@ from multibot.models.user import User
 
 @dataclass(eq=False)
 class Message(EventComponent):
-    collection = db.message
-    _unique_keys = ('platform', 'id', 'author')
-    _nullable_unique_keys = ('platform', 'id', 'author')
+    collection_name = 'message'
+    unique_keys = ('platform', 'id', 'author')
+    nullable_unique_keys = ('platform', 'id', 'author')
 
     platform: Platform = None
     id: int | str = None

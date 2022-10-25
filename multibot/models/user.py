@@ -3,7 +3,6 @@ __all__ = ['User']
 from dataclasses import dataclass, field
 
 from multibot import constants
-from multibot.models.database import db
 from multibot.models.enums import Platform
 from multibot.models.event_component import EventComponent
 from multibot.models.role import Role
@@ -11,8 +10,8 @@ from multibot.models.role import Role
 
 @dataclass(eq=False)
 class User(EventComponent):
-    collection = db.user
-    _unique_keys = ('platform', 'id')
+    collection_name = 'user'
+    unique_keys = ('platform', 'id')
 
     platform: Platform = None
     id: int = None
