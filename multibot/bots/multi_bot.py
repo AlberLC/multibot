@@ -341,7 +341,7 @@ class MultiBot(Generic[T], ABC):
         return users - bot_user
 
     async def _check_old_penalties(self, penalty_class: Type[Penalty], unpenalize_method: Callable):
-        penalties = penalty_class.find({'platform': self.platform.value})
+        penalties = penalty_class.find({'platform': self.platform.value}, lazy=True)
 
         for penalty in penalties:
             if penalty.until and penalty.until <= datetime.datetime.now(datetime.timezone.utc):
