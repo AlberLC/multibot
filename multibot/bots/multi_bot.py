@@ -197,11 +197,11 @@ def parse_arguments(func: Callable) -> Callable:
                     text = str(number)
                 case Media() as media:
                     pass
-                case User() as user:
+                case self.user_class() as user:
                     chat = user
-                case Chat() as chat:
+                case self.chat_class() as chat:
                     pass
-                case Message() as message:
+                case self.message_class() as message:
                     pass
                 case _:
                     buttons = parse_buttons(arg)
@@ -381,7 +381,7 @@ class MultiBot(Generic[T], ABC):
     async def _get_message(self, event: constants.MESSAGE_EVENT) -> Message:
         original_message = event if isinstance(event, constants.ORIGINAL_MESSAGE) else await self._get_original_message(event)
 
-        message = Message(
+        message = self.message_class(
             platform=self.platform,
             id=await self._get_message_id(original_message),
             author=await self._get_author(original_message),
@@ -696,6 +696,10 @@ class MultiBot(Generic[T], ABC):
         ban.save(pull_exclude_fields=('until',))
         await self._unpenalize_later(ban, self._unban, message)
 
+    @property
+    def chat_class(self) -> Type[Chat]:
+        return Chat
+
     async def check_old_bans(self):
         await self._check_old_penalties(Ban, self._unban)
 
@@ -749,9 +753,9 @@ class MultiBot(Generic[T], ABC):
                     return Chat.find_one({'platform': self.platform.value, 'group_name': group_name}).group_id
                 except AttributeError:
                     return
-            case Chat() as chat:
+            case self.chat_class() as chat:
                 return chat.group_id
-            case Message() as message:
+            case self.message_class() as message:
                 return message.chat.group_id
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
@@ -764,9 +768,9 @@ class MultiBot(Generic[T], ABC):
                     return
             case str(group_name):
                 return group_name
-            case Chat() as chat:
+            case self.chat_class() as chat:
                 return chat.group_name
-            case Message() as message:
+            case self.message_class() as message:
                 return message.chat.group_name
 
     async def get_me(self, group_: int | str | Chat | Message = None) -> User | None:
@@ -799,7 +803,7 @@ class MultiBot(Generic[T], ABC):
                     return User.find_one({'platform': self.platform.value, 'name': user_name}).id
                 except AttributeError:
                     return
-            case User():
+            case self.user_class():
                 return user.id
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
@@ -812,7 +816,7 @@ class MultiBot(Generic[T], ABC):
                     return
             case str(user_name):
                 return user_name
-            case User():
+            case self.user_class():
                 return user.name
 
     def is_bot_mentioned(self, message: Message) -> bool:
@@ -829,6 +833,10 @@ class MultiBot(Generic[T], ABC):
 
     async def is_self_muted(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
         pass
+
+    @property
+    def message_class(self) -> Type[Message]:
+        return Message
 
     async def mute(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
         # noinspection PyTypeChecker
@@ -930,3 +938,7 @@ class MultiBot(Generic[T], ABC):
         # noinspection PyTypeChecker
         mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_))
         await self._remove_penalty(mute, self._unmute, message)
+
+    @property
+    def user_class(self) -> Type[User]:
+        return User

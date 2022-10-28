@@ -104,7 +104,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             group_id = original_chat.id
             group_name = chat_name
 
-        return Chat(
+        return self.chat_class(
             platform=self.platform,
             id=original_chat.id,
             name=chat_name,
@@ -121,7 +121,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         except (AttributeError, TypeError, ValueError):
             is_admin = None
 
-        return User(
+        return self.user_class(
             platform=self.platform,
             id=original_user.id,
             name=self._get_name_from_entity(original_user),
@@ -268,7 +268,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     # -------------------------------------------------------- #
     async def accept_button_event(self, event: constants.TELEGRAM_EVENT | Message):
         match event:
-            case Message():
+            case self.message_class():
                 event = event.original_event
 
         try:
@@ -330,7 +330,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         match message_to_delete:
             case int() | str():
                 message_to_delete = Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
-            case Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
+            case self.message_class() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
                 chat = None
 
         if chat and chat.original_object:
@@ -346,13 +346,13 @@ class TelegramBot(MultiBot[TelegramClient]):
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
         match chat:
-            case User() as user:
+            case self.user_class() as user:
                 if user.original_object:
                     return await self._create_chat_from_telegram_chat(user.original_object)
                 chat_id = user.id
-            case Chat():
+            case self.chat_class():
                 return chat
-            case Message() as message:
+            case self.message_class() as message:
                 return message.chat
             case _ as chat_id:
                 pass
@@ -369,7 +369,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 pass
             case str(message_id):
                 pass
-            case Message():
+            case self.message_class():
                 return message
             case _:
                 raise TypeError('bad arguments')
@@ -465,7 +465,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         match reply_to:
             case str():
                 reply_to = int(reply_to)
-            case Message() as message_to_reply:
+            case self.message_class() as message_to_reply:
                 reply_to = message_to_reply.original_object
 
         with flanautils.suppress_stderr():

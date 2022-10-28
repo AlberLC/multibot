@@ -46,7 +46,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         except (AttributeError, TypeError):
             channel_id = int(next(iter(await self.client.fetch_users([channel_name])), None).id)
 
-        return Chat(
+        return self.chat_class(
             platform=self.platform,
             id=channel_id,
             name=channel_name,
@@ -60,7 +60,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         if (id := original_user.id) is None:
             id = next(iter(await self.client.fetch_users([original_user.name])), None).id
 
-        return User(
+        return self.user_class(
             platform=self.platform,
             id=int(id),
             name=original_user.display_name,
@@ -129,7 +129,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user_name = self.get_user_name(user)
         chat = await self.get_chat(group_)
-        await self.send(f'/ban {user_name}', Message(chat=chat) or message)
+        await self.send(f'/ban {user_name}', self.message_class(chat=chat) or message)
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
@@ -161,11 +161,11 @@ class TwitchBot(MultiBot[twitchio.Client]):
         match message_to_delete:
             case int() | str():
                 message_to_delete = Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
-            case Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
+            case self.message_class() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
                 chat = None
 
         if chat and chat.original_object:
-            message = Message(chat=chat)
+            message = self.message_class(chat=chat)
         elif message_to_delete.original_object:
             message = message_to_delete
         else:
@@ -185,11 +185,11 @@ class TwitchBot(MultiBot[twitchio.Client]):
                     return await self._create_chat_from_twitch_chat(await self.client.fetch_channel(group_id))
             case str(group_name):
                 pass
-            case User() as user:
+            case self.user_class() as user:
                 group_name = user.name.lower()
-            case Chat():
+            case self.chat_class():
                 return chat
-            case Message() as message:
+            case self.message_class() as message:
                 return message.chat
             case _:
                 raise TypeError('bad arguments')
@@ -208,7 +208,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
         group_name = self.get_group_name(group_)
         match user:
-            case User() if user.group_name == group_name:
+            case self.user_class() if user.group_name == group_name:
                 return user
             case _ as user_id_or_name:
                 pass
@@ -254,7 +254,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
             case str(message_id):
                 # noinspection PyProtectedMember
                 await message.chat.original_object._ws.reply(message_id, f"PRIVMSG #{message.author.name.lower()} :{text}\r\n")
-            case Message() as message_to_reply:
+            case self.message_class() as message_to_reply:
                 # noinspection PyUnresolvedReferences
                 context = await self.client.get_context(message_to_reply.original_object)
                 await context.reply(text)
@@ -276,4 +276,4 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user_name = self.get_user_name(user)
         chat = await self.get_chat(group_)
-        await self.send(f'/unban {user_name}', Message(chat=chat) or message)
+        await self.send(f'/unban {user_name}', self.message_class(chat=chat) or message)

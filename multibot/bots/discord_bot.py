@@ -57,7 +57,7 @@ class DiscordBot(MultiBot[Bot]):
             group_id = None
             group_name = None
 
-        return Chat(
+        return self.chat_class(
             platform=self.platform,
             id=original_chat.id,
             name=chat_name,
@@ -86,7 +86,7 @@ class DiscordBot(MultiBot[Bot]):
         else:
             database_roles = OrderedSet()
 
-        return User(
+        return self.user_class(
             platform=self.platform,
             id=original_user.id,
             name=f'{original_user.name}#{original_user.discriminator}',
@@ -133,9 +133,9 @@ class DiscordBot(MultiBot[Bot]):
             case str(group_name):
                 group_id = self.get_group_id(group_name)
                 return self.client.get_guild(group_id) or await self.client.fetch_guild(group_id)
-            case Chat() as chat:
+            case self.chat_class() as chat:
                 return chat.original_object.guild
-            case Message() as message:
+            case self.message_class() as message:
                 return message.chat.original_object.guild
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
@@ -267,7 +267,7 @@ class DiscordBot(MultiBot[Bot]):
     # -------------------------------------------------------- #
     async def accept_button_event(self, event: constants.DISCORD_EVENT | Message):
         match event:
-            case Message():
+            case self.message_class():
                 event = event.original_event
 
         try:
@@ -320,7 +320,7 @@ class DiscordBot(MultiBot[Bot]):
         match message_to_delete:
             case int() | str():
                 message_to_delete = Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
-            case Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
+            case self.message_class() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
                 chat = None
 
         if chat and chat.original_object:  # todo3 los 3 delete_message son casi identicos y la estructura de match ifs es enrevesada
@@ -388,11 +388,11 @@ class DiscordBot(MultiBot[Bot]):
                 pass
             case str(chat_name):
                 chat_id = Chat.find_one({'platform': self.platform.value, 'name': chat_name}).id
-            case User() as user:
+            case self.user_class() as user:
                 return await self._create_chat_from_discord_chat(await user.original_object.create_dm())
-            case Chat():
+            case self.chat_class():
                 return chat
-            case Message() as message:
+            case self.message_class() as message:
                 return message.chat
             case _:
                 raise TypeError('bad arguments')
@@ -432,7 +432,7 @@ class DiscordBot(MultiBot[Bot]):
                 pass
             case str(message_id):
                 message_id = int(message_id)
-            case Message():
+            case self.message_class():
                 return message
             case _:
                 raise TypeError('bad arguments')
@@ -594,7 +594,7 @@ class DiscordBot(MultiBot[Bot]):
                 reply_to = await chat.original_object.fetch_message(message_id)
             case str(message_id):
                 reply_to = await chat.original_object.fetch_message(int(message_id))
-            case Message() as message_to_reply:
+            case self.message_class() as message_to_reply:
                 reply_to = message_to_reply.original_object
 
         try:
