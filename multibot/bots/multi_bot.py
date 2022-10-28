@@ -284,6 +284,9 @@ class MultiBot(Generic[T], ABC):
     def _add_handlers(self):
         self.register(self._on_ban, constants.KEYWORDS['ban'])
 
+        self.register(self._on_config, constants.KEYWORDS['config'])
+        self.register(self._on_config, (constants.KEYWORDS['show'], constants.KEYWORDS['config']))
+
         self.register(self._on_delete, constants.KEYWORDS['delete'])
         self.register(self._on_delete, (constants.KEYWORDS['delete'], constants.KEYWORDS['message']))
 
@@ -300,6 +303,7 @@ class MultiBot(Generic[T], ABC):
 
         self.register(self._on_users, constants.KEYWORDS['user'])
 
+        self.register_button(self._on_config_button_press, ButtonsGroup.CONFIG)
         self.register_button(self._on_users_button_press, ButtonsGroup.USERS)
 
     async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
@@ -552,6 +556,28 @@ class MultiBot(Generic[T], ABC):
         for registered_callback in self._registered_button_callbacks:
             if registered_callback.key == message.buttons_info.key:
                 await self._call_registered_callback(registered_callback, message)
+
+    @group
+    @bot_mentioned
+    async def _on_config(self, message: Message):
+        if not message.chat.config:
+            return
+
+        buttons_texts = [(f"{'✔' if v else '❌'} {k}", v) for k, v in message.chat.config.items()]
+        await self.delete_message(message)
+        await self.send('<b>Estos son los ajustes del chat:</b>\n\n', flanautils.chunks(buttons_texts, 3), message, buttons_key=ButtonsGroup.CONFIG)
+
+    async def _on_config_button_press(self, message: Message):
+        await self.accept_button_event(message)
+
+        if message.buttons_info.presser_user.is_admin is False:
+            return
+
+        config = message.buttons_info.pressed_text.split()[1]
+        message.chat.config[config] = not message.chat.config[config]
+        message.buttons_info.pressed_button.text = f"{'✔' if message.chat.config[config] else '❌'} {config}"
+
+        await self.edit(message.buttons_info.buttons, message)
 
     @inline(False)
     async def _on_delete(self, message: Message):
