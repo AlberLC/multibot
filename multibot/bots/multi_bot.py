@@ -28,8 +28,8 @@ import telethon.events.common
 from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, RatioMatch, return_if_first_empty, shift_args_if_called
 
 from multibot import constants
-from multibot.exceptions import LimitError, SendError
-from multibot.models import Ban, BotAction, Button, ButtonsGroup, Chat, Message, Mute, Platform, RegisteredButtonCallback, RegisteredCallback, RegisteredCallbackBase, Role, User
+from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
+from multibot.models import Ban, BotAction, Button, ButtonsGroup, Chat, Message, Mute, Penalty, Platform, RegisteredButtonCallback, RegisteredCallback, RegisteredCallbackBase, Role, User
 
 
 # ---------------------------------------------------------- #
@@ -340,6 +340,16 @@ class MultiBot(Generic[T], ABC):
 
         return users - bot_user
 
+    async def _check_old_penalties(self, penalty_class: Type[Penalty], unpenalize_method: Callable):
+        penalties = penalty_class.find({'platform': self.platform.value})
+
+        for penalty in penalties:
+            if penalty.until and penalty.until <= datetime.datetime.now(datetime.timezone.utc):
+                try:
+                    await self._remove_penalty(penalty, unpenalize_method)
+                except UserDisconnectedError:
+                    pass
+
     @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_author(self, original_message: constants.ORIGINAL_MESSAGE) -> User | None:
@@ -423,6 +433,8 @@ class MultiBot(Generic[T], ABC):
                 await self.send_error(str(e), context)
             except (SendError, NotFoundError) as e:
                 await self.send_error(str(e), context)
+            except UserDisconnectedError:
+                await self.send_error('El usuario no está conectado.', context)
             except AmbiguityError:
                 if constants.RAISE_AMBIGUITY_ERROR:
                     await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más? {random.choice(constants.SAD_EMOJIS)}', context)
@@ -499,11 +511,28 @@ class MultiBot(Generic[T], ABC):
 
         return OrderedSet(registered_callback for registered_callback in registered_callbacks if registered_callback in determined_callbacks)
 
+    async def _remove_penalty(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None, delete=True):
+        try:
+            await unpenalize_method(penalty.user_id, penalty.group_id)
+        except (BadRoleError, UserDisconnectedError) as e:
+            if message and message.chat.original_object:
+                await self._manage_exceptions(e, message)
+            else:
+                raise e
+        else:
+            if delete:
+                penalty.pull_from_database()
+                penalty.delete()
+
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
 
     async def _unmute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
+
+    async def _unpenalize_later(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
+        if penalty.time and datetime.timedelta() <= penalty.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPUNISH:
+            await flanautils.do_later(penalty.time, self._remove_penalty, penalty, unpenalize_method, message)
 
     # ---------------------------------------------- #
     #                    HANDLERS                    #
@@ -568,8 +597,8 @@ class MultiBot(Generic[T], ABC):
         flanautils.init_db()
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
         await flanautils.do_every(constants.CHECK_MESSAGE_EVERY_SECONDS, self._check_messages)
-        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, Mute.check_olds, self._unmute, self.platform)
-        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, Ban.check_olds, self._unban, self.platform)
+        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_old_bans)
+        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_old_mutes)
 
     @bot_mentioned
     @group
@@ -637,7 +666,15 @@ class MultiBot(Generic[T], ABC):
     async def ban(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
         # noinspection PyTypeChecker
         ban = Ban(self.platform, self.get_user_id(user), self.get_group_id(group_), time)
-        await ban.apply(self._ban, self._unban, message)
+        await self._ban(ban.user_id, ban.group_id, message)
+        ban.save(pull_exclude_fields=('until',))
+        await self._unpenalize_later(ban, self._unban, message)
+
+    async def check_old_bans(self):
+        await self._check_old_penalties(Ban, self._unban)
+
+    async def check_old_mutes(self):
+        await self._check_old_penalties(Mute, self._unmute)
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
@@ -770,7 +807,16 @@ class MultiBot(Generic[T], ABC):
     async def mute(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
         # noinspection PyTypeChecker
         mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_), time)
-        await mute.apply(self._mute, self._unmute, message)
+        try:
+            await self._mute(mute.user_id, mute.group_id)
+        except UserDisconnectedError as e:
+            if message and message.chat.original_object:
+                await self._manage_exceptions(e, message)
+            else:
+                raise e
+        else:
+            mute.save(pull_exclude_fields=('until',))
+            await self._unpenalize_later(mute, self._unmute, message)
 
     @overload
     def register(self, func_: Callable = None, keywords=(), priority: int | float = 1, min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
@@ -852,9 +898,9 @@ class MultiBot(Generic[T], ABC):
     async def unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         # noinspection PyTypeChecker
         ban = Ban(self.platform, self.get_user_id(user), self.get_group_id(group_))
-        await ban.remove(self._unban, message)
+        await self._remove_penalty(ban, self._unban, message)
 
     async def unmute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         # noinspection PyTypeChecker
         mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_))
-        await mute.remove(self._unmute, message)
+        await self._remove_penalty(mute, self._unmute, message)
