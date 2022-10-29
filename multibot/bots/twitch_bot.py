@@ -46,7 +46,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         except (AttributeError, TypeError):
             channel_id = int(next(iter(await self.client.fetch_users([channel_name])), None).id)
 
-        return self.Chat(
+        return self._Chat(
             platform=self.platform,
             id=channel_id,
             name=channel_name,
@@ -60,7 +60,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         if (id := original_user.id) is None:
             id = next(iter(await self.client.fetch_users([original_user.name])), None).id
 
-        return self.User(
+        return self._User(
             platform=self.platform,
             id=int(id),
             name=original_user.display_name,
@@ -105,7 +105,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_replied_message(self, original_message: constants.TWITCH_MESSAGE) -> Message | None:
         try:
-            return self.Message.find_one({'platform': self.platform.value, 'id': original_message.tags['reply-parent-msg-id']})
+            return self._Message.find_one({'platform': self.platform.value, 'id': original_message.tags['reply-parent-msg-id']})
         except KeyError:
             pass
 
@@ -129,14 +129,14 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user_name = self.get_user_name(user)
         chat = await self.get_chat(group_)
-        await self.send(f'/ban {user_name}', self.Message(chat=chat) or message)
+        await self.send(f'/ban {user_name}', self._Message(chat=chat) or message)
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
         chat = await self.get_chat(chat)
 
-        owner_user = self.User.find_one({'platform': self.platform.value, 'name': self.owner_name})
-        messages_to_delete: Iterator[Message] = self.Message.find({
+        owner_user = self._User.find_one({'platform': self.platform.value, 'name': self.owner_name})
+        messages_to_delete: Iterator[Message] = self._Message.find({
             'platform': self.platform.value,
             'author': {'$ne': owner_user.object_id},
             'chat': chat.object_id,
@@ -160,12 +160,12 @@ class TwitchBot(MultiBot[twitchio.Client]):
         chat = await self.get_chat(chat)
         match message_to_delete:
             case int() | str():
-                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
-            case self.Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
+                message_to_delete = self._Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
+            case self._Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
                 chat = None
 
         if chat and chat.original_object:
-            message = self.Message(chat=chat)
+            message = self._Message(chat=chat)
         elif message_to_delete.original_object:
             message = message_to_delete
         else:
@@ -185,11 +185,11 @@ class TwitchBot(MultiBot[twitchio.Client]):
                     return await self._create_chat_from_twitch_chat(await self.client.fetch_channel(group_id))
             case str(group_name):
                 pass
-            case self.User() as user:
+            case self._User() as user:
                 group_name = user.name.lower()
-            case self.Chat():
+            case self._Chat():
                 return chat
-            case self.Message() as message:
+            case self._Message() as message:
                 return message.chat
             case _:
                 raise TypeError('bad arguments')
@@ -208,7 +208,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
         group_name = self.get_group_name(group_)
         match user:
-            case self.User() if user.group_name == group_name:
+            case self._User() if user.group_name == group_name:
                 return user
             case _ as user_id_or_name:
                 pass
@@ -254,7 +254,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
             case str(message_id):
                 # noinspection PyProtectedMember
                 await message.chat.original_object._ws.reply(message_id, f"PRIVMSG #{message.author.name.lower()} :{text}\r\n")
-            case self.Message() as message_to_reply:
+            case self._Message() as message_to_reply:
                 # noinspection PyUnresolvedReferences
                 context = await self.client.get_context(message_to_reply.original_object)
                 await context.reply(text)
@@ -276,4 +276,4 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user_name = self.get_user_name(user)
         chat = await self.get_chat(group_)
-        await self.send(f'/unban {user_name}', self.Message(chat=chat) or message)
+        await self.send(f'/unban {user_name}', self._Message(chat=chat) or message)
