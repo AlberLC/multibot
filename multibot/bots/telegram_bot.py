@@ -104,7 +104,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             group_id = original_chat.id
             group_name = chat_name
 
-        return self.chat_class(
+        return self.Chat(
             platform=self.platform,
             id=original_chat.id,
             name=chat_name,
@@ -121,7 +121,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         except (AttributeError, TypeError, ValueError):
             is_admin = None
 
-        return self.user_class(
+        return self.User(
             platform=self.platform,
             id=original_user.id,
             name=self._get_name_from_entity(original_user),
@@ -268,7 +268,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     # -------------------------------------------------------- #
     async def accept_button_event(self, event: constants.TELEGRAM_EVENT | Message):
         match event:
-            case self.message_class():
+            case self.Message():
                 event = event.original_event
 
         try:
@@ -319,7 +319,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             original_chat = await self.user_client.get_entity(chat.id)  # it's necessary
             messages_to_delete = await self.user_client.get_messages(original_chat, n_messages)
             await self.user_client.delete_messages(original_chat, messages_to_delete)
-            database_messages_to_delete_generator = Message.find({'platform': self.platform.value, 'chat': chat.object_id}, sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages, lazy=True)
+            database_messages_to_delete_generator = self.Message.find({'platform': self.platform.value, 'chat': chat.object_id}, sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages, lazy=True)
             for database_message_to_delete in database_messages_to_delete_generator:
                 database_message_to_delete.is_deleted = True
                 database_message_to_delete.save()
@@ -329,8 +329,8 @@ class TelegramBot(MultiBot[TelegramClient]):
         chat = await self.get_chat(chat)
         match message_to_delete:
             case int() | str():
-                message_to_delete = Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
-            case self.message_class() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
+                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
+            case self.Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
                 chat = None
 
         if chat and chat.original_object:
@@ -346,13 +346,13 @@ class TelegramBot(MultiBot[TelegramClient]):
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
         match chat:
-            case self.user_class() as user:
+            case self.User() as user:
                 if user.original_object:
                     return await self._create_chat_from_telegram_chat(user.original_object)
                 chat_id = user.id
-            case self.chat_class():
+            case self.Chat():
                 return chat
-            case self.message_class() as message:
+            case self.Message() as message:
                 return message.chat
             case _ as chat_id:
                 pass
@@ -369,7 +369,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 pass
             case str(message_id):
                 pass
-            case self.message_class():
+            case self.Message():
                 return message
             case _:
                 raise TypeError('bad arguments')
@@ -465,7 +465,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         match reply_to:
             case str():
                 reply_to = int(reply_to)
-            case self.message_class() as message_to_reply:
+            case self.Message() as message_to_reply:
                 reply_to = message_to_reply.original_object
 
         with flanautils.suppress_stderr():
