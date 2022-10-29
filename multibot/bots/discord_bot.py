@@ -57,7 +57,7 @@ class DiscordBot(MultiBot[Bot]):
             group_id = None
             group_name = None
 
-        return self._Chat(
+        return self.Chat(
             platform=self.platform,
             id=original_chat.id,
             name=chat_name,
@@ -81,12 +81,12 @@ class DiscordBot(MultiBot[Bot]):
         except AttributeError:
             current_roles = OrderedSet()
 
-        if database_user_data := self._User.collection.find_one({'platform': self.platform.value, 'id': original_user.id}):
+        if database_user_data := self.User.collection.find_one({'platform': self.platform.value, 'id': original_user.id}):
             database_roles = OrderedSet(Role.find({'_id': {'$in': database_user_data['roles']}}))
         else:
             database_roles = OrderedSet()
 
-        return self._User(
+        return self.User(
             platform=self.platform,
             id=original_user.id,
             name=f'{original_user.name}#{original_user.discriminator}',
@@ -133,9 +133,9 @@ class DiscordBot(MultiBot[Bot]):
             case str(group_name):
                 group_id = self.get_group_id(group_name)
                 return self.client.get_guild(group_id) or await self.client.fetch_guild(group_id)
-            case self._Chat() as chat:
+            case self.Chat() as chat:
                 return chat.original_object.guild
-            case self._Message() as message:
+            case self.Message() as message:
                 return message.chat.original_object.guild
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
@@ -267,7 +267,7 @@ class DiscordBot(MultiBot[Bot]):
     # -------------------------------------------------------- #
     async def accept_button_event(self, event: constants.DISCORD_EVENT | Message):
         match event:
-            case self._Message():
+            case self.Message():
                 event = event.original_event
 
         try:
@@ -309,7 +309,7 @@ class DiscordBot(MultiBot[Bot]):
             except discord.errors.HTTPException:
                 raise LimitError(f'Solo puedo eliminar mensajes con menos de 14 días {random.choice(constants.SAD_EMOJIS)}')
 
-            database_messages_to_delete_generator = self._Message.find({'platform': self.platform.value, 'chat': chat.object_id}, sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages_chunk, lazy=True)
+            database_messages_to_delete_generator = self.Message.find({'platform': self.platform.value, 'chat': chat.object_id}, sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages_chunk, lazy=True)
             for database_message_to_delete in database_messages_to_delete_generator:
                 database_message_to_delete.is_deleted = True
                 database_message_to_delete.save()
@@ -319,8 +319,8 @@ class DiscordBot(MultiBot[Bot]):
         chat = await self.get_chat(chat)
         match message_to_delete:
             case int() | str():
-                message_to_delete = self._Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
-            case self._Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
+                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
+            case self.Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
                 chat = None
 
         if chat and chat.original_object:  # todo3 los 3 delete_message son casi identicos y la estructura de match ifs es enrevesada
@@ -387,12 +387,12 @@ class DiscordBot(MultiBot[Bot]):
             case int(chat_id):
                 pass
             case str(chat_name):
-                chat_id = self._Chat.find_one({'platform': self.platform.value, 'name': chat_name}).id
-            case self._User() as user:
+                chat_id = self.Chat.find_one({'platform': self.platform.value, 'name': chat_name}).id
+            case self.User() as user:
                 return await self._create_chat_from_discord_chat(await user.original_object.create_dm())
-            case self._Chat():
+            case self.Chat():
                 return chat
-            case self._Message() as message:
+            case self.Message() as message:
                 return message.chat
             case _:
                 raise TypeError('bad arguments')
@@ -432,7 +432,7 @@ class DiscordBot(MultiBot[Bot]):
                 pass
             case str(message_id):
                 message_id = int(message_id)
-            case self._Message():
+            case self.Message():
                 return message
             case _:
                 raise TypeError('bad arguments')
@@ -594,7 +594,7 @@ class DiscordBot(MultiBot[Bot]):
                 reply_to = await chat.original_object.fetch_message(message_id)
             case str(message_id):
                 reply_to = await chat.original_object.fetch_message(int(message_id))
-            case self._Message() as message_to_reply:
+            case self.Message() as message_to_reply:
                 reply_to = message_to_reply.original_object
 
         try:
