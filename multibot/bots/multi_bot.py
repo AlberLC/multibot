@@ -29,7 +29,7 @@ from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, RatioMa
 
 from multibot import constants
 from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
-from multibot.models import Ban, BotAction, Button, ButtonsGroup, Chat, Message, Mute, Penalty, Platform, RegisteredButtonCallback, RegisteredCallback, RegisteredCallbackBase, Role, User
+from multibot.models import Ban, Button, Chat, Message, Mute, Penalty, Platform, RegisteredButtonCallback, RegisteredCallback, RegisteredCallbackBase, Role, User
 
 
 # ---------------------------------------------------------- #
@@ -281,29 +281,7 @@ class MultiBot(Generic[T], ABC):
     # -------------------- PROTECTED METHODS -------------------- #
     # ----------------------------------------------------------- #
     def _add_handlers(self):
-        self.register(self._on_ban, constants.KEYWORDS['ban'])
-
-        self.register(self._on_config, constants.KEYWORDS['config'])
-        self.register(self._on_config, (constants.KEYWORDS['show'], constants.KEYWORDS['config']))
-
-        self.register(self._on_delete, constants.KEYWORDS['delete'])
-        self.register(self._on_delete, (constants.KEYWORDS['delete'], constants.KEYWORDS['message']))
-
-        self.register(self._on_mute, constants.KEYWORDS['mute'])
-        self.register(self._on_mute, (('haz', 'se'), constants.KEYWORDS['mute']))
-        self.register(self._on_mute, (constants.KEYWORDS['deactivate'], constants.KEYWORDS['unmute']))
-        self.register(self._on_mute, (constants.KEYWORDS['deactivate'], constants.KEYWORDS['sound']))
-
-        self.register(self._on_unban, constants.KEYWORDS['unban'])
-
-        self.register(self._on_unmute, constants.KEYWORDS['unmute'])
-        self.register(self._on_unmute, (constants.KEYWORDS['deactivate'], constants.KEYWORDS['mute']))
-        self.register(self._on_unmute, (constants.KEYWORDS['activate'], constants.KEYWORDS['sound']))
-
-        self.register(self._on_users, constants.KEYWORDS['user'])
-
-        self.register_button(self._on_config_button_press, ButtonsGroup.CONFIG)
-        self.register_button(self._on_users_button_press, ButtonsGroup.USERS)
+        pass
 
     async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
@@ -313,19 +291,22 @@ class MultiBot(Generic[T], ABC):
             await callback(message)
         except Exception:
             if constants.SEND_EXCEPTION_MESSAGE_LINES:
-                traceback_message = '\n'.join(traceback.format_exc().splitlines()[-constants.SEND_EXCEPTION_MESSAGE_LINES:])
                 await self.send(f'{random.choice(constants.EXCEPTION_PHRASES)}\n'
-                                f'\n'
-                                f'...\n'
-                                f'{traceback_message}',
+                                '\n'
+                                '...\n'
+                                '\n'.join(traceback.format_exc().splitlines()[-constants.SEND_EXCEPTION_MESSAGE_LINES:]),
                                 message)
             raise
 
-    @classmethod
-    async def _check_messages(cls):
-        before_date = datetime.datetime.now(datetime.timezone.utc) - constants.MESSAGE_EXPIRATION_TIME
-        cls.Message.collection.delete_many({'date': {'$lte': before_date}})
-        BotAction.collection.delete_many({'date': {'$lte': before_date}})
+    async def _check_penalties(self, penalty_class: Type[Penalty], unpenalize_method: Callable):
+        penalties = penalty_class.find({'platform': self.platform.value}, lazy=True)
+
+        for penalty in penalties:
+            if penalty.until and penalty.until <= datetime.datetime.now(datetime.timezone.utc):
+                try:
+                    await self._remove_penalty(penalty, unpenalize_method)
+                except UserDisconnectedError:
+                    pass
 
     async def _find_users_to_punish(self, message: Message) -> OrderedSet[User]:
         bot_user = await self.get_me(message.chat.group_id)
@@ -342,16 +323,6 @@ class MultiBot(Generic[T], ABC):
                 return OrderedSet()
 
         return users - bot_user
-
-    async def _check_old_penalties(self, penalty_class: Type[Penalty], unpenalize_method: Callable):
-        penalties = penalty_class.find({'platform': self.platform.value}, lazy=True)
-
-        for penalty in penalties:
-            if penalty.until and penalty.until <= datetime.datetime.now(datetime.timezone.utc):
-                try:
-                    await self._remove_penalty(penalty, unpenalize_method)
-                except UserDisconnectedError:
-                    pass
 
     @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
@@ -540,13 +511,6 @@ class MultiBot(Generic[T], ABC):
     # ---------------------------------------------- #
     #                    HANDLERS                    #
     # ---------------------------------------------- #
-    @bot_mentioned
-    @group
-    @admin(send_negative=True)
-    async def _on_ban(self, message: Message):
-        for user in await self._find_users_to_punish(message):
-            await self.ban(user, message, flanautils.words_to_time(message.text), message)
-
     @find_message
     async def _on_button_press_raw(self, message: Message):
         if getattr(message.buttons_info, 'key', None) is None:
@@ -555,58 +519,6 @@ class MultiBot(Generic[T], ABC):
         for registered_callback in self._registered_button_callbacks:
             if registered_callback.key == message.buttons_info.key:
                 await self._call_registered_callback(registered_callback, message)
-
-    @group
-    @bot_mentioned
-    async def _on_config(self, message: Message):
-        if not message.chat.config:
-            return
-
-        buttons_texts = [(f"{'✔' if v else '❌'} {k}", v) for k, v in message.chat.config.items()]
-        await self.delete_message(message)
-        await self.send('<b>Estos son los ajustes del chat:</b>\n\n', flanautils.chunks(buttons_texts, 3), message, buttons_key=ButtonsGroup.CONFIG)
-
-    async def _on_config_button_press(self, message: Message):
-        await self.accept_button_event(message)
-
-        if message.buttons_info.presser_user.is_admin is False:
-            return
-
-        config = message.buttons_info.pressed_text.split()[1]
-        message.chat.config[config] = not message.chat.config[config]
-        message.buttons_info.pressed_button.text = f"{'✔' if message.chat.config[config] else '❌'} {config}"
-
-        await self.edit(message.buttons_info.buttons, message)
-
-    @inline(False)
-    async def _on_delete(self, message: Message):
-        if message.replied_message:
-            if message.replied_message.author.id == self.id:
-                await self.delete_message(message.replied_message)
-                if message.chat.is_group:
-                    await self.delete_message(message)
-            elif message.chat.is_group and self.is_bot_mentioned(message):
-                await self.send_negative(message)
-        elif message.chat.is_group and self.is_bot_mentioned(message) and (n_messages := flanautils.sum_numbers_in_text(message.text)):
-            if not message.author.is_admin:
-                await self.send_negative(message)
-                return
-
-            if n_messages <= 0:
-                await self._manage_exceptions(ValueError(), message)
-                return
-
-            try:
-                await self.clear(n_messages, message.chat)
-            except LimitError as e:
-                await self._manage_exceptions(e, message)
-
-    @group
-    @bot_mentioned
-    @admin(send_negative=True)
-    async def _on_mute(self, message: Message):
-        for user in await self._find_users_to_punish(message):
-            await self.mute(user, message, flanautils.words_to_time(message.text), message)
 
     @ignore_self_message
     async def _on_new_message_raw(self, message: Message):
@@ -621,63 +533,9 @@ class MultiBot(Generic[T], ABC):
     async def _on_ready(self):
         flanautils.init_db()
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
-        await flanautils.do_every(constants.CHECK_MESSAGE_EVERY_SECONDS, self._check_messages)
-        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_old_bans)
-        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_old_mutes)
-
-    @bot_mentioned
-    @group
-    @admin(send_negative=True)
-    async def _on_unban(self, message: Message):
-        for user in await self._find_users_to_punish(message):
-            await self.unban(user, message, message)
-
-    @group
-    @bot_mentioned
-    @admin(send_negative=True)
-    async def _on_unmute(self, message: Message):
-        for user in await self._find_users_to_punish(message):
-            await self.unmute(user, message, message)
-
-    @group
-    @bot_mentioned
-    async def _on_users(self, message: Message):
-        role_names = [role.name for role in await self.get_group_roles(message.chat.group_id)]
-        role_names.remove('@everyone')
-
-        user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles([], message)]
-        joined_user_names = ', '.join(user_names)
-        await self.delete_message(message)
-        bot_message = await self.send(
-            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>",
-            flanautils.chunks([f'❌ {role_name}' for role_name in role_names], 5),
-            message,
-            buttons_key=ButtonsGroup.USERS
-        )
-        await self.edit(f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>\n{joined_user_names}\n\n<b>Filtrar usuarios por roles:</b>", bot_message)
-
-    async def _on_users_button_press(self, message: Message):
-        await self.accept_button_event(message)
-
-        try:
-            button_role_name = message.buttons_info.pressed_text.split(maxsplit=1)[1]
-        except IndexError:
-            return
-
-        pressed_button = message.buttons_info.pressed_button
-        pressed_button.is_checked = not pressed_button.is_checked
-        pressed_button.text = f"{'✔' if pressed_button.is_checked else '❌'} {button_role_name}"
-
-        selected_role_names = [checked_button.text.split(maxsplit=1)[1] for checked_button in message.buttons_info.checked_buttons]
-        user_names = [f'<@{user.id}>' for user in await self.find_users_by_roles(selected_role_names, message)]
-        joined_user_names = ', '.join(user_names)
-        await self.edit(
-            f"<b>{len(user_names)} usuario{'' if len(user_names) == 1 else 's'}:</b>\n"
-            f"{joined_user_names}\n\n"
-            f"<b>Filtrar usuarios por roles:</b>",
-            message.buttons_info.buttons,
-            message
-        )
+        await flanautils.do_every(constants.CHECK_MESSAGE_EVERY_SECONDS, self.clear_old_database_items)
+        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_bans)
+        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_mutes)
 
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
@@ -695,15 +553,20 @@ class MultiBot(Generic[T], ABC):
         ban.save(pull_exclude_fields=('until',))
         await self._unpenalize_later(ban, self._unban, message)
 
-    async def check_old_bans(self):
-        await self._check_old_penalties(Ban, self._unban)
+    async def check_bans(self):
+        await self._check_penalties(Ban, self._unban)
 
-    async def check_old_mutes(self):
-        await self._check_old_penalties(Mute, self._unmute)
+    async def check_mutes(self):
+        await self._check_penalties(Mute, self._unmute)
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
         pass
+
+    @classmethod
+    async def clear_old_database_items(cls):
+        before_date = datetime.datetime.now(datetime.timezone.utc) - constants.MESSAGE_EXPIRATION_TIME
+        cls.Message.collection.delete_many({'date': {'$lte': before_date}})
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):

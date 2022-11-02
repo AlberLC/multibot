@@ -1,6 +1,6 @@
 __all__ = ['Chat']
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from multibot import constants
 from multibot.models.enums import Platform
@@ -17,7 +17,6 @@ class Chat(EventComponent):
     name: str = None
     group_id: int = None
     group_name: str = None
-    config: dict[str, bool] = field(default_factory=dict)
     original_object: constants.ORIGINAL_CHAT = None
 
     @property
