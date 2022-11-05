@@ -196,7 +196,7 @@ class DiscordBot(MultiBot[Bot]):
         try:
             await user.original_object.edit(mute=True)
         except discord.errors.HTTPException:
-            raise UserDisconnectedError
+            raise UserDisconnectedError(user.name)
 
     @staticmethod
     def _parse_html_to_discord_markdown(text: str | None) -> str | None:
@@ -250,7 +250,7 @@ class DiscordBot(MultiBot[Bot]):
         try:
             await user.original_object.edit(mute=False)
         except discord.errors.HTTPException:
-            raise UserDisconnectedError
+            raise UserDisconnectedError(user.name)
 
     # ---------------------------------------------- #
     #                    HANDLERS                    #
@@ -478,7 +478,7 @@ class DiscordBot(MultiBot[Bot]):
         try:
             return user.original_object.voice.deaf
         except AttributeError:
-            raise UserDisconnectedError
+            raise UserDisconnectedError(user.name)
 
     async def is_muted(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
         user = await self.get_user(user, group_)
@@ -498,14 +498,14 @@ class DiscordBot(MultiBot[Bot]):
         try:
             return user.original_object.voice.self_deaf
         except AttributeError:
-            raise UserDisconnectedError
+            raise UserDisconnectedError(user.name)
 
     async def is_self_muted(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
         user = await self.get_user(user, group_)
         try:
             return user.original_object.voice.self_mute
         except AttributeError:
-            raise UserDisconnectedError
+            raise UserDisconnectedError(user.name)
 
     async def remove_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
         user = await self.get_user(user, group_)

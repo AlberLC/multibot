@@ -408,8 +408,8 @@ class MultiBot(Generic[T], ABC):
                 await self.send_error(str(e), context)
             except (SendError, NotFoundError) as e:
                 await self.send_error(str(e), context)
-            except UserDisconnectedError:
-                await self.send_error('El usuario no está conectado.', context)
+            except UserDisconnectedError as e:
+                await self.send_error(f'{e} no está conectado.', context)
             except AmbiguityError:
                 if constants.RAISE_AMBIGUITY_ERROR:
                     await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más? {random.choice(constants.SAD_EMOJIS)}', context)
