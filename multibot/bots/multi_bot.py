@@ -29,7 +29,7 @@ from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, RatioMa
 
 from multibot import constants
 from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
-from multibot.models import Ban, Button, Chat, Message, Mute, Penalty, Platform, RegisteredButtonCallback, RegisteredCallback, RegisteredCallbackBase, Role, User
+from multibot.models import Ban, Button, Chat, Message, Mute, Penalty, Platform, RegisteredButtonCallback, RegisteredCallback, Role, User
 
 
 # ---------------------------------------------------------- #
@@ -286,19 +286,6 @@ class MultiBot(Generic[T], ABC):
     async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
 
-    async def _call_registered_callback(self, callback: RegisteredCallbackBase, message: Message):
-        try:
-            await callback(message)
-        except Exception:
-            if constants.SEND_EXCEPTION_MESSAGE_LINES:
-                traceback_message = '\n'.join(traceback.format_exc().splitlines()[-constants.SEND_EXCEPTION_MESSAGE_LINES:])
-                await self.send(f'{random.choice(constants.EXCEPTION_PHRASES)}\n'
-                                '\n'
-                                '...\n'
-                                f'{traceback_message}',
-                                message)
-            raise
-
     async def _check_penalties(self, penalty_class: Type[Penalty], unpenalize_method: Callable):
         penalties = penalty_class.find({'platform': self.platform.value}, lazy=True)
 
@@ -413,6 +400,11 @@ class MultiBot(Generic[T], ABC):
             except AmbiguityError:
                 if constants.RAISE_AMBIGUITY_ERROR:
                     await self.send_error(f'Hay varias acciones relacionadas con tu mensaje. ¿Puedes especificar un poco más? {random.choice(constants.SAD_EMOJIS)}', context)
+            except Exception:
+                if constants.SEND_EXCEPTION_MESSAGE_LINES:
+                    traceback_message = '\n'.join(traceback.format_exc().splitlines()[-constants.SEND_EXCEPTION_MESSAGE_LINES:])
+                    await self.send(f'{random.choice(constants.EXCEPTION_PHRASES)}\n\n...\n{traceback_message}', context)
+                raise
 
     async def _mute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
@@ -519,7 +511,10 @@ class MultiBot(Generic[T], ABC):
 
         for registered_callback in self._registered_button_callbacks:
             if registered_callback.key == message.buttons_info.key:
-                await self._call_registered_callback(registered_callback, message)
+                try:
+                    await registered_callback(message)
+                except Exception as e:
+                    await self._manage_exceptions(e, message)
 
     @ignore_self_message
     async def _on_new_message_raw(self, message: Message):
@@ -529,7 +524,10 @@ class MultiBot(Generic[T], ABC):
             await self._manage_exceptions(e, message)
         else:
             for registered_callback in registered_callbacks:
-                await self._call_registered_callback(registered_callback, message)
+                try:
+                    await registered_callback(message)
+                except Exception as e:
+                    await self._manage_exceptions(e, message)
 
     async def _on_ready(self):
         flanautils.init_db()
