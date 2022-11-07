@@ -156,21 +156,21 @@ def parse_arguments(func: Callable) -> Callable:
     async def wrapper(*args, **kwargs) -> Any:
         def parse_buttons(buttons_) -> list[list[Button]] | None:
             match buttons_:
-                case [str(), *_] as buttons_:
+                case [*_, str()] as buttons_:
                     buttons_ = [[Button(button_text, False) for button_text in buttons_]]
-                case [(str(), bool()), *_] as buttons_:
+                case [*_, (str(), bool())] as buttons_:
                     buttons_ = [[Button(button_text, is_checked) for button_text, is_checked in buttons_]]
-                case [Button(), *_] as buttons_:
+                case [*_, Button()] as buttons_:
                     buttons_ = [list(buttons_)]
-                case [[str(), *_], *_] as buttons_:
+                case [*_, [*_, str()]] as buttons_:
                     buttons_ = list(buttons_)
                     for i, buttons_row in enumerate(buttons_):
                         buttons_[i] = [Button(button_text, False) for button_text in buttons_row]
-                case [[(str(), bool()), *_], *_] as buttons_:
+                case [*_, [*_, (str(), bool())]] as buttons_:
                     buttons_ = list(buttons_)
                     for i, buttons_row in enumerate(buttons_):
                         buttons_[i] = [Button(button_text, is_checked) for button_text, is_checked in buttons_row]
-                case [[Button(), *_], *_] as buttons_:
+                case [*_, [*_, Button()]] as buttons_:
                     buttons_ = list(buttons_)
                     for i, buttons_row in enumerate(buttons_):
                         buttons_[i] = list(buttons_row)
