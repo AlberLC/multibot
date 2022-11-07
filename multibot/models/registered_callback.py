@@ -30,7 +30,7 @@ class RegisteredCallbackBase(FlanaBase):
 class RegisteredCallback(RegisteredCallbackBase):
     keywords: str | Iterable[str | Iterable[str]]
     priority: int | float
-    min_ratio: float
+    min_score: float
     always: bool
     default: bool
 
@@ -39,7 +39,7 @@ class RegisteredCallback(RegisteredCallbackBase):
         callback: Callable,
         keywords: str | Iterable[str | Iterable[str]] = (),
         priority: int | float = 1,
-        min_ratio: float = constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT,
+        min_score: float = constants.PARSE_CALLBACKS_MIN_SCORE_DEFAULT,
         always=False,
         default=False
     ):
@@ -54,7 +54,7 @@ class RegisteredCallback(RegisteredCallbackBase):
             case _:
                 self.keywords = tuple(keywords)
         self.priority = priority
-        self.min_ratio = min_ratio
+        self.min_score = min_score
         self.always = always
         self.default = default
 

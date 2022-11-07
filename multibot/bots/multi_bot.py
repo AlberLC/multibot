@@ -25,7 +25,7 @@ import discord
 import flanautils
 import telethon.events
 import telethon.events.common
-from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, RatioMatch, return_if_first_empty, shift_args_if_called
+from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, ScoreMatch, return_if_first_empty, shift_args_if_called
 
 from multibot import constants
 from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
@@ -413,9 +413,9 @@ class MultiBot(Generic[T], ABC):
     def _parse_callbacks(
         text: str,
         registered_callbacks: list[RegisteredCallback],
-        ratio_reward_exponent: float = constants.RATIO_REWARD_EXPONENT,
+        score_reward_exponent: float = constants.SCORE_REWARD_EXPONENT,
         keywords_lenght_penalty: float = constants.KEYWORDS_LENGHT_PENALTY,
-        minimum_ratio_to_match: float = constants.MINIMUM_RATIO_TO_MATCH
+        minimum_score_to_match: float = constants.MINIMUM_SCORE_TO_MATCH
     ) -> OrderedSet[RegisteredCallback]:
         text = text.lower()
         original_text_words = OrderedSet()
@@ -431,7 +431,7 @@ class MultiBot(Generic[T], ABC):
             original_text_words.add(word)
         text_words = original_text_words - flanautils.CommonWords.get()
 
-        matched_callbacks: set[tuple[int, RatioMatch[RegisteredCallback]]] = set()
+        matched_callbacks: set[tuple[int, ScoreMatch[RegisteredCallback]]] = set()
         always_callbacks: set[RegisteredCallback] = set()
         default_callbacks: set[RegisteredCallback] = set()
         for registered_callback in registered_callbacks:
@@ -441,36 +441,36 @@ class MultiBot(Generic[T], ABC):
                 default_callbacks.add(registered_callback)
             else:
                 mached_keywords_groups = 0
-                total_ratio = 0
+                total_score = 0
                 for keywords_group in registered_callback.keywords:
-                    text_words |= [original_text_word for original_text_word in original_text_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_ratio=registered_callback.min_ratio)]
-                    word_matches = flanautils.cartesian_product_string_matching(text_words, keywords_group, min_ratio=registered_callback.min_ratio)
-                    ratio = sum((max(matches.values()) + 1) ** ratio_reward_exponent for matches in word_matches.values())
+                    text_words |= [original_text_word for original_text_word in original_text_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_score=registered_callback.min_score)]
+                    word_matches = flanautils.cartesian_product_string_matching(text_words, keywords_group, min_score=registered_callback.min_score)
+                    score = sum((max(matches.values()) + 1) ** score_reward_exponent for matches in word_matches.values())
                     try:
-                        ratio /= max(1., keywords_lenght_penalty * len(keywords_group))
+                        score /= max(1., keywords_lenght_penalty * len(keywords_group))
                     except ZeroDivisionError:
                         continue
-                    if ratio:
-                        total_ratio += ratio
+                    if score:
+                        total_score += score
                         mached_keywords_groups += 1
 
                 if mached_keywords_groups and mached_keywords_groups == len(registered_callback.keywords):
                     for priority, matched_callback in matched_callbacks:  # If the callback has been matched before but with less score it is overwritten, otherwise it is added
                         if matched_callback.element.callback == registered_callback.callback:
-                            if total_ratio > matched_callback.ratio:
+                            if total_score > matched_callback.score:
                                 matched_callbacks.discard((priority, matched_callback))
-                                matched_callbacks.add((registered_callback.priority, RatioMatch(registered_callback, total_ratio)))
+                                matched_callbacks.add((registered_callback.priority, ScoreMatch(registered_callback, total_score)))
                             break
                     else:
-                        matched_callbacks.add((registered_callback.priority, RatioMatch(registered_callback, total_ratio)))
+                        matched_callbacks.add((registered_callback.priority, ScoreMatch(registered_callback, total_score)))
 
         sorted_matched_callbacks = sorted(matched_callbacks, key=lambda e: e[1])
         sorted_matched_callbacks = sorted(sorted_matched_callbacks, key=lambda e: e[0], reverse=True)
         match sorted_matched_callbacks:
             case [(_priority, single)]:
                 determined_callbacks = always_callbacks | {single.element}
-            case [(first_priority, first), (second_priority, second), *_] if first.ratio >= minimum_ratio_to_match:
-                if first_priority == second_priority and first.ratio == second.ratio:
+            case [(first_priority, first), (second_priority, second), *_] if first.score >= minimum_score_to_match:
+                if first_priority == second_priority and first.score == second.score:
                     raise AmbiguityError(f'\n{first.element.callback}\n{second.element.callback}')
                 determined_callbacks = always_callbacks | {first.element}
             case _:
@@ -705,17 +705,17 @@ class MultiBot(Generic[T], ABC):
             await self._unpenalize_later(mute, self._unmute, message)
 
     @overload
-    def register(self, func_: Callable = None, keywords=(), priority: int | float = 1, min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
+    def register(self, func_: Callable = None, keywords=(), priority: int | float = 1, min_score=constants.PARSE_CALLBACKS_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
     @overload
-    def register(self, keywords=(), priority: int | float = 1, min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
+    def register(self, keywords=(), priority: int | float = 1, min_score=constants.PARSE_CALLBACKS_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
     @shift_args_if_called(exclude_self_types='MultiBot', globals_=globals())
-    def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_ratio=constants.PARSE_CALLBACKS_MIN_RATIO_DEFAULT, always=False, default=False):
+    def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSE_CALLBACKS_MIN_SCORE_DEFAULT, always=False, default=False):
         def decorator(func):
-            self._registered_callbacks.append(RegisteredCallback(func, keywords, priority, min_ratio, always, default))
+            self._registered_callbacks.append(RegisteredCallback(func, keywords, priority, min_score, always, default))
             return func
 
         return decorator(func_) if func_ else decorator
