@@ -443,7 +443,7 @@ class MultiBot(Generic[T], ABC):
                 mached_keywords_groups = 0
                 total_ratio = 0
                 for keywords_group in registered_callback.keywords:
-                    text_words += [original_text_word for original_text_word in original_text_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_ratio=registered_callback.min_ratio)]
+                    text_words |= [original_text_word for original_text_word in original_text_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_ratio=registered_callback.min_ratio)]
                     word_matches = flanautils.cartesian_product_string_matching(text_words, keywords_group, min_ratio=registered_callback.min_ratio)
                     ratio = sum((max(matches.values()) + 1) ** ratio_reward_exponent for matches in word_matches.values())
                     try:
@@ -532,7 +532,7 @@ class MultiBot(Generic[T], ABC):
     async def _on_ready(self):
         flanautils.init_db()
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
-        await flanautils.do_every(constants.CHECK_MESSAGE_EVERY_SECONDS, self.clear_old_database_items)
+        await flanautils.do_every(constants.CLEAR_OLD_DATABASE_ITEMS_EVERY_SECONDS, self.clear_old_database_items)
         await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_bans)
         await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_mutes)
 
@@ -573,8 +573,7 @@ class MultiBot(Generic[T], ABC):
 
     @parse_arguments
     async def edit(self, *args, **kwargs) -> Message:
-        kwargs |= {'edit': True}
-        return await self.send(*args, **kwargs)
+        return await self.send(*args, **kwargs | {'edit': True})
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def find_role(self, role: int | str | Role, group_: int | str | Chat | Message) -> Role | None:
