@@ -443,7 +443,7 @@ class MultiBot(Generic[T], ABC):
                 mached_keywords_groups = 0
                 total_score = 0
                 for keywords_group in registered_callback.keywords:
-                    text_words |= [original_text_word for original_text_word in original_text_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_score=registered_callback.min_score)]
+                    text_words |= {original_text_word for original_text_word in original_text_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_score=registered_callback.min_score)}
                     word_matches = flanautils.cartesian_product_string_matching(text_words, keywords_group, min_score=registered_callback.min_score)
                     score = sum((max(matches.values()) + 1) ** score_reward_exponent for matches in word_matches.values())
                     try:
@@ -745,7 +745,7 @@ class MultiBot(Generic[T], ABC):
         self,
         text='',
         media: Media = None,
-        buttons: list[str | tuple[str, bool] | list[str | tuple[str, bool]]] | None = None,
+        buttons: list[str | tuple[str, bool] | Button | list[str | tuple[str, bool] | Button]] | None = None,
         chat: int | str | User | Chat | Message | None = None,
         message: Message = None,
         *,

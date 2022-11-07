@@ -16,7 +16,7 @@ from flanautils import Media, OrderedSet, return_if_first_empty
 
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
-from multibot.models import Chat, Message, Platform, User
+from multibot.models import Button, Chat, Message, Platform, User
 
 
 # --------------------------------------------------------------------------------------------------- #
@@ -239,7 +239,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         self,
         text='',
         media: Media = None,
-        buttons: list[str | list[str]] | None = None,
+        buttons: list[str | tuple[str, bool] | Button | list[str | tuple[str, bool] | Button]] | None = None,
         chat: int | str | User | Chat | Message | None = None,
         message: Message = None,
         *,
