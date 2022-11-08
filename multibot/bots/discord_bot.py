@@ -7,7 +7,7 @@ import datetime
 import io
 import pathlib
 import random
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 import discord
 import flanautils
@@ -95,6 +95,18 @@ class DiscordBot(MultiBot[Bot]):
             roles=list(current_roles | database_roles),
             original_object=original_user
         )
+
+    # noinspection PyTypeChecker
+    def _distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
+        texts = [f'{text[:constants.DISCORD_BUTTON_MAX_CHARACTERS - 3]}...' if len(text) > constants.DISCORD_BUTTON_MAX_CHARACTERS else text for text in texts]
+
+        if len(texts) <= constants.DISCORD_BUTTONS_MAX:
+            if vertically:
+                return flanautils.chunks(texts, 1)
+            else:
+                return [texts]
+        else:
+            return flanautils.chunks(texts, constants.DISCORD_BUTTONS_MAX)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_author(self, original_message: constants.DISCORD_MESSAGE) -> User | None:

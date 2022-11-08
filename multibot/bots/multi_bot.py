@@ -296,7 +296,7 @@ class MultiBot(Generic[T], ABC):
                 except UserDisconnectedError:
                     pass
 
-    def _distribute_buttons(self, texts: Sequence[str]) -> list[list[str]]:
+    def _distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
         pass
 
     async def _filter_mention_ids(self, text: str | Iterable[str], message: Message, delete_names=False) -> list[str]:

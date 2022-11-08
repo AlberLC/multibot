@@ -6,7 +6,7 @@ import asyncio
 import functools
 import io
 import pathlib
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 import flanautils
 import pymongo
@@ -129,6 +129,13 @@ class TelegramBot(MultiBot[TelegramClient]):
             is_bot=original_user.bot,
             original_object=original_user
         )
+
+    # noinspection PyTypeChecker
+    def _distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
+        if vertically:
+            return flanautils.chunks(texts, 1)
+        else:
+            return [texts]
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_author(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> User | None:
