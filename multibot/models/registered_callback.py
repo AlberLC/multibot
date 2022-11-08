@@ -28,7 +28,7 @@ class RegisteredCallbackBase(FlanaBase):
 
 @dataclass(eq=False)
 class RegisteredCallback(RegisteredCallbackBase):
-    keywords: str | Iterable[str | Iterable[str]]
+    keywords: tuple[tuple[str, ...], ...]
     priority: int | float
     min_score: float
     always: bool
@@ -44,15 +44,28 @@ class RegisteredCallback(RegisteredCallbackBase):
         default=False
     ):
         self.callback = callback
+
         match keywords:
-            case str(keyword):
-                self.keywords = (tuple(keyword.strip().split()),)
+            case str(text):
+                text = flanautils.remove_accents(text.strip().lower())
+                self.keywords = (tuple(text.split()),)
             case [*_, [*_]]:
-                self.keywords = tuple(tuple(keywords_group.strip().split()) if isinstance(keywords_group, str) else tuple(keywords_group) for keywords_group in keywords)
+                def generator():
+                    for element in keywords:
+                        if isinstance(element, str):
+                            text_ = flanautils.remove_accents(element.strip().lower())
+                            keywords_group = tuple(text_.split())
+                        else:
+                            keywords_group = tuple(flanautils.remove_accents(keyword.strip().lower()) for keyword in element)
+                        yield keywords_group
+
+                self.keywords = tuple(generator())
             case [*_, str()]:
-                self.keywords = (tuple(flanautils.flatten_iterator(keyword.strip().split() for keyword in keywords)),)
+                keywords = (flanautils.remove_accents(keyword.strip().lower()) for keyword in keywords)
+                self.keywords = (tuple(flanautils.flatten_iterator(keywords)),)
             case _:
                 self.keywords = tuple(keywords)
+
         self.priority = priority
         self.min_score = min_score
         self.always = always
