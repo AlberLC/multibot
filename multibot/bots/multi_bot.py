@@ -440,19 +440,13 @@ class MultiBot(Generic[T], ABC):
         keywords_lenght_penalty: float = constants.KEYWORDS_LENGHT_PENALTY,
         minimum_score_to_match: float = constants.MINIMUM_SCORE_TO_MATCH
     ) -> OrderedSet[RegisteredCallback]:
-        text = text.lower()
-        original_text_words = OrderedSet()
-        for word in text.split():
-            if len(word) > constants.MAX_WORD_LENGTH:
-                continue
+        text = flanautils.remove_accents(text.lower())
 
-            word = flanautils.replace(word, {'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-                                             'à': 'a', 'è': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u',
-                                             'â': 'a', 'ê': 'e', 'î': 'i', 'ô': 'o', 'û': 'u',
-                                             'ä': 'a', 'ë': 'e', 'ï': 'i', 'ö': 'o', 'ü': 'u'})
-            word = flanautils.translate(word, {'?': ' ', '¿': ' ', '!': ' ', '¡': ' '})
-            original_text_words.add(word)
-        text_words = original_text_words - flanautils.CommonWords.get()
+        original_words = OrderedSet()
+        for word in text.split():
+            if len(word) <= constants.MAX_WORD_LENGTH:
+                original_words.add(word)
+        important_words = original_words - flanautils.CommonWords.get()
 
         matched_callbacks: set[tuple[int, ScoreMatch[RegisteredCallback]]] = set()
         always_callbacks: set[RegisteredCallback] = set()
@@ -466,8 +460,8 @@ class MultiBot(Generic[T], ABC):
                 mached_keywords_groups = 0
                 total_score = 0
                 for keywords_group in registered_callback.keywords:
-                    text_words |= {original_text_word for original_text_word in original_text_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_score=registered_callback.min_score)}
-                    word_matches = flanautils.cartesian_product_string_matching(text_words, keywords_group, min_score=registered_callback.min_score)
+                    important_words |= {original_text_word for original_text_word in original_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_score=registered_callback.min_score)}
+                    word_matches = flanautils.cartesian_product_string_matching(important_words, keywords_group, min_score=registered_callback.min_score)
                     score = sum((max(matches.values()) + 1) ** score_reward_exponent for matches in word_matches.values())
                     try:
                         score /= max(1., keywords_lenght_penalty * len(keywords_group))
