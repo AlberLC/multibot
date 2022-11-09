@@ -135,7 +135,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         if vertically:
             return flanautils.chunks(texts, 1)
         else:
-            return [texts]
+            return flanautils.chunks(texts, constants.TELEGRAM_BUTTONS_MAX_PER_LINE)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_author(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> User | None:
