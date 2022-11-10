@@ -40,16 +40,33 @@ def find_message(func_: Callable = None, /, return_if_not_found=False) -> Callab
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(self: MultiBot, *args, **kwargs):
-            args = (*args, *kwargs.values())
-            if not (message := flanautils.find(args, Message)):
-                if event := flanautils.find(args, constants.MESSAGE_EVENT):
+            def take_arg(type_: Type, args_, kwargs_):
+                object_ = None
+                new_args = []
+                for arg in args_:
+                    if isinstance(arg, type_):
+                        object_ = arg
+                    else:
+                        new_args.append(arg)
+                new_kwargs = {}
+                for k, v in kwargs_.items():
+                    if isinstance(v, type_):
+                        object_ = v
+                    else:
+                        new_kwargs[k] = v
+                return object_, new_args, new_kwargs
+
+            message, args, kwargs = take_arg(Message, args, kwargs)
+            if not message:
+                event, args, kwargs = take_arg(constants.MESSAGE_EVENT, args, kwargs)
+                if event:
                     message = await self._get_message(event)
                 elif return_if_not_found:
                     return
                 else:
                     raise NotFoundError('No message object')
 
-            return await func(self, message)
+            return await func(self, message, *args, **kwargs)
 
         return wrapper
 
@@ -61,10 +78,10 @@ def admin(func_: Callable = None, /, is_=True, send_negative=False) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message):
+        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
             message = message
             if is_ is message.author.is_admin or message.chat.is_private:
-                return await func(self, message)
+                return await func(self, message, *args, **kwargs)
             await self.accept_button_event(message)
             if send_negative:
                 await self.send_negative(message)
@@ -89,9 +106,9 @@ def bot_mentioned(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message):
+        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
             if is_ is self.is_bot_mentioned(message):
-                return await func(self, message)
+                return await func(self, message, *args, **kwargs)
             await self.accept_button_event(message)
 
         return wrapper
@@ -104,9 +121,9 @@ def group(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message):
+        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
             if is_ is message.chat.is_group:
-                return await func(self, message)
+                return await func(self, message, *args, **kwargs)
             await self.accept_button_event(message)
 
         return wrapper
@@ -117,9 +134,9 @@ def group(func_: Callable = None, /, is_=True) -> Callable:
 def ignore_self_message(func: Callable) -> Callable:
     @functools.wraps(func)
     @find_message
-    async def wrapper(self: MultiBot, message: Message):
+    async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
         if message.author.id != self.id:
-            return await func(self, message)
+            return await func(self, message, *args, **kwargs)
         await self.accept_button_event(message)
 
     return wrapper
@@ -130,9 +147,9 @@ def inline(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message):
+        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
             if message.is_inline is None or is_ is message.is_inline:
-                return await func(self, message)
+                return await func(self, message, *args, **kwargs)
             await self.accept_button_event(message)
 
         return wrapper
@@ -243,9 +260,9 @@ def reply(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         @find_message
-        async def wrapper(self: MultiBot, message: Message):
+        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
             if is_ is bool(message.replied_message):
-                return await func(self, message)
+                return await func(self, message, *args, **kwargs)
             await self.accept_button_event(message)
 
         return wrapper
