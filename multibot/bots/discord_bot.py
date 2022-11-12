@@ -323,7 +323,12 @@ class DiscordBot(MultiBot[Bot]):
                 database_message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
+    async def delete_message(
+        self,
+        message_to_delete: int | str | Message,
+        chat: int | str | Chat | Message = None,
+        raise_not_found=False
+    ):
         if isinstance(message_to_delete, self.Message) and message_to_delete.original_object:
             original_message = message_to_delete.original_object
         else:
@@ -335,8 +340,9 @@ class DiscordBot(MultiBot[Bot]):
 
         try:
             await original_message.delete()
-        except discord.errors.NotFound:
-            pass
+        except discord.errors.NotFound as e:
+            if raise_not_found:
+                raise NotFoundError(str(e))
         message_to_delete.is_deleted = True
         message_to_delete.save()
 

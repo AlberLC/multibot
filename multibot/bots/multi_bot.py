@@ -602,7 +602,12 @@ class MultiBot(Generic[T], ABC):
         cls.Message.collection.delete_many({'date': {'$lte': before_date}})
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
+    async def delete_message(
+        self,
+        message_to_delete: int | str | Message,
+        chat: int | str | Chat | Message = None,
+        raise_not_found=False
+    ):
         pass
 
     @parse_arguments

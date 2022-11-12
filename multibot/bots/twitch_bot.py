@@ -157,7 +157,12 @@ class TwitchBot(MultiBot[twitchio.Client]):
                 deleted_message_count += 1
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
+    async def delete_message(
+        self,
+        message_to_delete: int | str | Message,
+        chat: int | str | Chat | Message = None,
+        raise_not_found=False
+    ):
         if isinstance(message_to_delete, self.Message) and message_to_delete.chat.original_object:
             chat = message_to_delete.chat
         else:
