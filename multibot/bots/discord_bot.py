@@ -7,6 +7,7 @@ import datetime
 import io
 import pathlib
 import random
+import traceback
 from typing import Any, Iterable, Sequence
 
 import discord
@@ -340,9 +341,9 @@ class DiscordBot(MultiBot[Bot]):
 
         try:
             await original_message.delete()
-        except discord.errors.NotFound as e:
+        except discord.errors.NotFound:
             if raise_not_found:
-                raise NotFoundError(str(e))
+                raise NotFoundError(traceback.format_exc().splitlines()[-1])
         message_to_delete.is_deleted = True
         message_to_delete.save()
 
