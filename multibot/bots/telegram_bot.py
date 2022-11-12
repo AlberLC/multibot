@@ -333,19 +333,14 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
-        chat = await self.get_chat(chat)
-        match message_to_delete:
-            case int() | str():
-                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
-            case self.Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
-                chat = None
-
-        if chat and chat.original_object:
-            await self.client.delete_messages(chat.original_object, message_to_delete.id)
-        elif message_to_delete.original_object:
+        if isinstance(message_to_delete, self.Message) and message_to_delete.original_object:
             await message_to_delete.original_object.delete()
         else:
-            raise ValueError('The original telegram object of the message or chat is needed')
+            chat = await self.get_chat(chat)
+            chat.pull_from_database()
+            if not isinstance(message_to_delete, Message):
+                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': int(message_to_delete), 'chat': chat.object_id})
+            await self.client.delete_messages(chat.original_object, message_to_delete.id)
 
         message_to_delete.is_deleted = True
         message_to_delete.save()

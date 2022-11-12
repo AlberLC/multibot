@@ -118,9 +118,10 @@ class TwitchBot(MultiBot[twitchio.Client]):
     # ---------------------------------------------- #
     async def _on_ready(self):
         self.platform = Platform.TWITCH
-        self.id = (await self.get_user(self.client.nick)).id
+        self.id = (await self.client.fetch_users([self.client.nick]))[0].id
         self.name = self.client.nick
-        self.owner_id = user.id if (user := await self.get_user(self.owner_name)) else None
+        if self.owner_name:
+            self.owner_id = (await self.client.fetch_users([self.owner_name]))[0].id
         await super()._on_ready()
 
     # -------------------------------------------------------- #
@@ -157,21 +158,15 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
-        chat = await self.get_chat(chat)
-        match message_to_delete:
-            case int() | str():
-                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
-            case self.Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
-                chat = None
-
-        if chat and chat.original_object:
-            message = self.Message(chat=chat)
-        elif message_to_delete.original_object:
-            message = message_to_delete
+        if isinstance(message_to_delete, self.Message) and message_to_delete.chat.original_object:
+            chat = message_to_delete.chat
         else:
-            raise ValueError('The original twitch object of the message or chat is needed')
+            chat = await self.get_chat(chat)
+            chat.pull_from_database()
+            if not isinstance(message_to_delete, Message):
+                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': int(message_to_delete), 'chat': chat.object_id})
 
-        await self.send(f'/delete {message_to_delete.id}', message)
+        await self.send(f'/delete {message_to_delete.id}', chat)
         message_to_delete.is_deleted = True
         message_to_delete.save()
 

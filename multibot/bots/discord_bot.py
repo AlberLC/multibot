@@ -188,12 +188,12 @@ class DiscordBot(MultiBot[Bot]):
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_replied_message(self, original_message: constants.DISCORD_MESSAGE) -> Message | None:
         try:
-            replied_discord_message = original_message.reference.resolved
+            replied_original_message = original_message.reference.resolved
         except AttributeError:
             return
 
-        if not isinstance(replied_discord_message, discord.DeletedReferencedMessage):
-            return await self._get_message(replied_discord_message)
+        if not isinstance(replied_original_message, discord.DeletedReferencedMessage):
+            return await self._get_message(replied_original_message)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_text(self, original_message: constants.DISCORD_MESSAGE) -> str:
@@ -297,7 +297,7 @@ class DiscordBot(MultiBot[Bot]):
             user.save(('roles',))
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def clear(self, n_messages: int, chat: int | str | Chat | Message):  # todo2 test
+    async def clear(self, n_messages: int, chat: int | str | Chat | Message):
         if n_messages > 100:
             raise LimitError('El máximo es 100.')
 
@@ -323,21 +323,20 @@ class DiscordBot(MultiBot[Bot]):
                 database_message_to_delete.save()
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):  # todo2 test
-        chat = await self.get_chat(chat)
-        match message_to_delete:
-            case int() | str():
-                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': str(message_to_delete), 'chat': chat.object_id})
-            case self.Message() if message_to_delete.original_object and message_to_delete.chat and message_to_delete.chat == chat:
-                chat = None
-
-        if chat and chat.original_object:  # todo3 los 3 delete_message son casi identicos y la estructura de match ifs es enrevesada
-            await (await chat.original_object.fetch_message(message_to_delete.id)).delete()
-        elif message_to_delete.original_object:
-            await message_to_delete.original_object.delete()
+    async def delete_message(self, message_to_delete: int | str | Message, chat: int | str | Chat | Message = None):
+        if isinstance(message_to_delete, self.Message) and message_to_delete.original_object:
+            original_message = message_to_delete.original_object
         else:
-            raise ValueError('The original discord object of the message or chat is needed')
+            chat = await self.get_chat(chat)
+            chat.pull_from_database()
+            if not isinstance(message_to_delete, Message):
+                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': int(message_to_delete), 'chat': chat.object_id})
+            original_message = await chat.original_object.fetch_message(message_to_delete.id)
 
+        try:
+            await original_message.delete()
+        except discord.errors.NotFound:
+            pass
         message_to_delete.is_deleted = True
         message_to_delete.save()
 
