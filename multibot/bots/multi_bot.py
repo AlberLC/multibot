@@ -313,29 +313,6 @@ class MultiBot(Generic[T], ABC):
                 except UserDisconnectedError:
                     pass
 
-    def _distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
-        pass
-
-    async def _filter_mention_ids(self, text: str | Iterable[str], message: Message, delete_names=False) -> list[str]:
-        if isinstance(text, str):
-            words = text.split()
-        else:
-            words = text
-
-        ids = []
-        if delete_names:
-            for user in message.mentions:
-                ids.append(user.name.lower())
-                ids.append(user.name.split('#')[0].lower())
-                ids.append(str(user.id))
-        else:
-            for user in message.mentions:
-                ids.append(str(user.id))
-        for role in await self.get_group_roles(message):
-            ids.append(str(role.id))
-
-        return [word for word in words if flanautils.remove_symbols(word).strip() not in ids]
-
     async def _find_users_to_punish(self, message: Message) -> OrderedSet[User]:
         bot_user = await self.get_me(message.chat.group_id)
         users: OrderedSet[User] = OrderedSet(message.mentions)
@@ -610,9 +587,32 @@ class MultiBot(Generic[T], ABC):
     ):
         pass
 
+    def distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
+        pass
+
     @parse_arguments
     async def edit(self, *args, **kwargs) -> Message:
         return await self.send(*args, **kwargs | {'edit': True})
+
+    async def filter_mention_ids(self, text: str | Iterable[str], message: Message, delete_names=False) -> list[str]:
+        if isinstance(text, str):
+            words = text.split()
+        else:
+            words = text
+
+        ids = []
+        if delete_names:
+            for user in message.mentions:
+                ids.append(user.name.lower())
+                ids.append(user.name.split('#')[0].lower())
+                ids.append(str(user.id))
+        else:
+            for user in message.mentions:
+                ids.append(str(user.id))
+        for role in await self.get_group_roles(message):
+            ids.append(str(role.id))
+
+        return [word for word in words if flanautils.remove_symbols(word).strip() not in ids]
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def find_role(self, role: int | str | Role, group_: int | str | Chat | Message) -> Role | None:

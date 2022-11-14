@@ -130,13 +130,6 @@ class TelegramBot(MultiBot[TelegramClient]):
             original_object=original_user
         )
 
-    # noinspection PyTypeChecker
-    def _distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
-        if vertically:
-            return flanautils.chunks(texts, 1)
-        else:
-            return flanautils.chunks(texts, constants.TELEGRAM_BUTTONS_MAX_PER_LINE)
-
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_author(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> User | None:
         return await self._create_user_from_telegram_user(original_message.sender, original_message.chat.id)
@@ -349,6 +342,13 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         message_to_delete.is_deleted = True
         message_to_delete.save()
+
+    # noinspection PyTypeChecker
+    def distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
+        if vertically:
+            return flanautils.chunks(texts, 1)
+        else:
+            return flanautils.chunks(texts, constants.TELEGRAM_BUTTONS_MAX_PER_LINE)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:

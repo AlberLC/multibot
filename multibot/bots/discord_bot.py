@@ -97,14 +97,6 @@ class DiscordBot(MultiBot[Bot]):
             original_object=original_user
         )
 
-    # noinspection PyTypeChecker
-    def _distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
-        texts = [f'{text[:constants.DISCORD_BUTTON_MAX_CHARACTERS - 3]}...' if len(text) > constants.DISCORD_BUTTON_MAX_CHARACTERS else text for text in texts]
-
-        if len(texts) <= constants.DISCORD_BUTTONS_MAX and vertically:
-            return flanautils.chunks(texts, 1)
-        return flanautils.chunks(texts, constants.DISCORD_BUTTONS_MAX)
-
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_author(self, original_message: constants.DISCORD_MESSAGE) -> User | None:
         return await self._create_user_from_discord_user(original_message.author)
@@ -346,6 +338,14 @@ class DiscordBot(MultiBot[Bot]):
                 raise NotFoundError(traceback.format_exc().splitlines()[-1])
         message_to_delete.is_deleted = True
         message_to_delete.save()
+
+    # noinspection PyTypeChecker
+    def distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
+        texts = [f'{text[:constants.DISCORD_BUTTON_MAX_CHARACTERS - 3]}...' if len(text) > constants.DISCORD_BUTTON_MAX_CHARACTERS else text for text in texts]
+
+        if len(texts) <= constants.DISCORD_BUTTONS_MAX and vertically:
+            return flanautils.chunks(texts, 1)
+        return flanautils.chunks(texts, constants.DISCORD_BUTTONS_MAX)
 
     async def find_audit_entries(
         self,
