@@ -223,6 +223,7 @@ def parse_arguments(func: Callable) -> Callable:
                 case _:
                     buttons = parse_buttons(arg)
 
+        message = kwargs.get('message', message)
         chat = await self.get_chat(kwargs.get('chat', chat))
         if 'buttons' in kwargs:
             buttons = parse_buttons(kwargs['buttons'])
