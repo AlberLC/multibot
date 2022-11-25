@@ -596,7 +596,7 @@ class DiscordBot(MultiBot[Bot]):
                 if media is None:
                     message.data = data
                 else:
-                    message.data = {'media': data} | data
+                    message.data = {'media': media.content} | data
 
             message.update_last_edit()
             message.save()
