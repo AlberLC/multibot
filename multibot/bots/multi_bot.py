@@ -791,7 +791,7 @@ class MultiBot(Generic[T], ABC):
         *,
         buttons_key: Any = None,
         reply_to: int | str | Message = None,
-        contents: dict = None,
+        data: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
         edit=False

@@ -548,7 +548,7 @@ class DiscordBot(MultiBot[Bot]):
         *,
         buttons_key: Any = None,
         reply_to: int | str | Message = None,
-        contents: dict = None,
+        data: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
         edit=False
@@ -589,14 +589,14 @@ class DiscordBot(MultiBot[Bot]):
                 message.buttons_info.key = buttons_key
 
             message.original_object = await message.original_object.edit(**kwargs)
-            last_contents = message.contents
-            if media_content := getattr(media, 'content', None):
-                del last_contents['media']
-            message.contents = {'media': media_content}
-            if contents is None:
-                message.contents |= last_contents
+            if data is None:
+                if media is not None:
+                    message.data['media'] = media.content
             else:
-                message.contents |= contents
+                if media is None:
+                    message.data = data
+                else:
+                    message.data = {'media': data} | data
 
             message.update_last_edit()
             message.save()
@@ -620,9 +620,10 @@ class DiscordBot(MultiBot[Bot]):
             raise
 
         bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
-        bot_message.contents = {'media': getattr(media, 'content', None)}
-        if contents is not None:
-            bot_message.contents |= contents
+        if media:
+            bot_message.data['media'] = media.content
+        if data:
+            bot_message.data |= data
 
         bot_message.save()
 
