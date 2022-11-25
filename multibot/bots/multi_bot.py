@@ -629,7 +629,7 @@ class MultiBot(Generic[T], ABC):
                 return flanautils.find(roles, condition=lambda role_: role_.name == role_name)
 
     async def find_users_by_roles(self, roles: Iterable[int | str | Role], group_: int | str | Chat | Message) -> list[User]:
-        pass
+        return []
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
@@ -676,7 +676,7 @@ class MultiBot(Generic[T], ABC):
     async def get_message(self, chat: int | str | User | Chat | Message, message: int | str | Message) -> Message | None:
         pass
 
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    @return_if_first_empty([], exclude_self_types='MultiBot', globals_=globals())
     async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
         return []
 
