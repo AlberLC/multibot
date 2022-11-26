@@ -354,7 +354,11 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def _get_message(self, event: constants.MESSAGE_EVENT) -> Message:
+    async def _get_message(
+        self,
+        event: constants.MESSAGE_EVENT,
+        pull_overwrite_fields: Iterable[str] = ('_id',)
+    ) -> Message:
         original_message = event if isinstance(event, constants.ORIGINAL_MESSAGE) else await self._get_original_message(event)
 
         message = self.Message(
@@ -374,7 +378,7 @@ class MultiBot(Generic[T], ABC):
         if message.buttons_info:
             message.buttons_info.pressed_text = await self._get_button_pressed_text(event)
             message.buttons_info.presser_user = await self._get_button_presser_user(event)
-        message.save(pull_overwrite_fields=('_id', 'config'))
+        message.save(pull_overwrite_fields=pull_overwrite_fields)
 
         return message
 
