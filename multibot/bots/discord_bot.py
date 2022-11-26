@@ -588,7 +588,10 @@ class DiscordBot(MultiBot[Bot]):
             if buttons_key is not None:
                 message.buttons_info.key = buttons_key
 
-            message.original_object = await message.original_object.edit(**kwargs)
+            try:
+                message.original_object = await message.original_object.edit(**kwargs)
+            except discord.errors.NotFound:
+                return
             if data is None:
                 if media is not None:
                     message.data['media'] = media.content

@@ -457,8 +457,9 @@ class TelegramBot(MultiBot[TelegramClient]):
                     message.original_object = await message.original_object.edit(text, **kwargs)
                 except (
                         telethon.errors.rpcerrorlist.PeerIdInvalidError,
-                        telethon.errors.rpcerrorlist.UserIsBlockedError,
-                        telethon.errors.rpcerrorlist.MessageNotModifiedError
+                        telethon.errors.rpcerrorlist.MessageIdInvalidError,
+                        telethon.errors.rpcerrorlist.MessageNotModifiedError,
+                        telethon.errors.rpcerrorlist.UserIsBlockedError
                 ):
                     return
                 else:
