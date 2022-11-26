@@ -336,6 +336,9 @@ class DiscordBot(MultiBot[Bot]):
         except discord.errors.NotFound:
             if raise_not_found:
                 raise NotFoundError(traceback.format_exc().splitlines()[-1])
+        except discord.errors.Forbidden:
+            return
+
         message_to_delete.is_deleted = True
         message_to_delete.save()
 
@@ -592,6 +595,7 @@ class DiscordBot(MultiBot[Bot]):
                 message.original_object = await message.original_object.edit(**kwargs)
             except discord.errors.NotFound:
                 return
+
             if data is None:
                 if media is not None:
                     message.data['media'] = media.content

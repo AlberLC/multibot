@@ -462,18 +462,18 @@ class TelegramBot(MultiBot[TelegramClient]):
                         telethon.errors.rpcerrorlist.UserIsBlockedError
                 ):
                     return
+
+                if data is None:
+                    if media is not None:
+                        message.data['media'] = media.content
                 else:
-                    if data is None:
-                        if media is not None:
-                            message.data['media'] = media.content
+                    if media is None:
+                        message.data = data
                     else:
-                        if media is None:
-                            message.data = data
-                        else:
-                            message.data = {'media': media.content} | data
-                    message.update_last_edit()
-                    message.save()
-                    return message
+                        message.data = {'media': media.content} | data
+                message.update_last_edit()
+                message.save()
+                return message
 
         match reply_to:
             case str():
