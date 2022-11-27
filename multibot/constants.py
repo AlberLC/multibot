@@ -16,7 +16,8 @@ TELEGRAM_USER = telethon.types.User
 TELEGRAM_CHAT = TELEGRAM_USER | telethon.types.Channel | telethon.types.Chat
 TELEGRAM_GROUP = TELEGRAM_CHAT
 TELEGRAM_MESSAGE = telethon.custom.Message
-TELEGRAM_EVENT = telethon.events.common.EventCommon | telethon.events.common.EventBuilder
+TELEGRAM_INLINE_EVENT = telethon.events.InlineQuery.Event
+TELEGRAM_EVENT = telethon.events.common.EventCommon | telethon.events.common.EventBuilder | TELEGRAM_INLINE_EVENT
 
 TWITCH_USER = twitchio.Chatter | twitchio.User
 TWITCH_CHAT = twitchio.Channel | twitchio.ChannelInfo

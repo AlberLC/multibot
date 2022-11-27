@@ -21,10 +21,7 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Generic, Iterable, Sequence, Type, TypeVar, overload
 
-import discord
 import flanautils
-import telethon.events
-import telethon.events.common
 from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, ScoreMatch, return_if_first_empty, shift_args_if_called
 
 from multibot import constants
@@ -369,7 +366,7 @@ class MultiBot(Generic[T], ABC):
             mentions=await self._get_mentions(original_message),
             chat=await self._get_chat(original_message),
             replied_message=await self._get_replied_message(original_message),
-            is_inline=isinstance(event, telethon.events.InlineQuery.Event) if isinstance(event, constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) else None,
+            is_inline=isinstance(event, constants.TELEGRAM_INLINE_EVENT) if isinstance(event, constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) else None,
             original_object=original_message,
             original_event=event
         )
