@@ -403,7 +403,7 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def _manage_exceptions(self, exceptions: BaseException | Iterable[BaseException], context: Chat | Message):
+    async def _manage_exceptions(self, exceptions: Exception | Iterable[Exception], context: Chat | Message):
         if not isinstance(exceptions, Iterable):
             exceptions = (exceptions,)
 
