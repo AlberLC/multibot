@@ -10,7 +10,6 @@ from typing import Any, Callable, Sequence
 
 import flanautils
 import pymongo
-import telethon.events.common
 import telethon.hints
 import telethon.tl.functions.channels
 import telethon.tl.types
@@ -193,7 +192,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     def _get_name_from_entity(self, entity: telethon.hints.EntityLike) -> str:
         if isinstance(entity, telethon.types.User):
             return entity.username or entity.first_name
-        elif isinstance(entity, (telethon.types.Channel, telethon.types.Chat)):
+        elif isinstance(entity, telethon.types.Channel | telethon.types.Chat):
             return entity.title
 
         return ''

@@ -421,7 +421,7 @@ class DiscordBot(MultiBot[Bot]):
     async def get_current_roles(self, user: int | str | User | constants.DISCORD_USER, group_: int | str | Chat | Message = None) -> list[Role]:
         if isinstance(user, User) and not group_:
             original_user = user.original_object
-        elif isinstance(user, (int, str, User)):
+        elif isinstance(user, int | str | User):
             original_user = (await self.get_user(user, group_)).original_object
         elif isinstance(user, constants.DISCORD_USER):
             original_user = user
