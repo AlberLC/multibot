@@ -8,9 +8,9 @@ import twitchio
 DISCORD_USER = discord.User | discord.Member | discord.ClientUser
 DISCORD_CHAT = discord.abc.Messageable | discord.ext.commands.Context | discord.channel.DMChannel | discord.channel.GroupChannel | discord.Member | discord.channel.TextChannel | discord.abc.User
 DISCORD_GROUP = discord.Guild
+DISCORD_ROLE = discord.Role
 DISCORD_MESSAGE = discord.Message
 DISCORD_EVENT = DISCORD_MESSAGE | discord.Interaction
-DISCORD_ROLE = discord.Role
 
 TELEGRAM_USER = telethon.types.User
 TELEGRAM_CHAT = TELEGRAM_USER | telethon.types.Channel | telethon.types.Chat
@@ -28,10 +28,9 @@ TWITCH_EVENT = TWITCH_MESSAGE
 ORIGINAL_USER = DISCORD_USER | TELEGRAM_USER | TWITCH_USER
 ORIGINAL_CHAT = DISCORD_CHAT | TELEGRAM_CHAT | TWITCH_CHAT
 ORIGINAL_GROUP = DISCORD_GROUP | TELEGRAM_GROUP | TWITCH_GROUP
+ROLE = DISCORD_ROLE
 ORIGINAL_MESSAGE = DISCORD_MESSAGE | TELEGRAM_MESSAGE | TWITCH_MESSAGE
 MESSAGE_EVENT = DISCORD_EVENT | TELEGRAM_EVENT | TWITCH_EVENT | TELEGRAM_MESSAGE
-
-ROLE = DISCORD_ROLE
 
 CHECK_MUTES_EVERY_SECONDS = datetime.timedelta(hours=1).total_seconds()
 CLEAR_OLD_DATABASE_ITEMS_EVERY_SECONDS = datetime.timedelta(days=1).total_seconds()
