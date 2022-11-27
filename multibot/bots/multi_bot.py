@@ -803,9 +803,9 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @parse_arguments
-    async def send_error(self, *args, exceptions_to_capture: Type[BaseException] | Iterable[Type[BaseException]] = (), **kwargs) -> constants.ORIGINAL_MESSAGE:
+    async def send_error(self, *args, **kwargs) -> constants.ORIGINAL_MESSAGE:
         bot_message = await self.send(*args, **kwargs)
-        await flanautils.do_later(constants.ERROR_MESSAGE_DURATION, self.delete_message, bot_message, exceptions_to_capture=exceptions_to_capture or discord.errors.NotFound)
+        await flanautils.do_later(constants.ERROR_MESSAGE_DURATION, self.delete_message, bot_message)
         return bot_message
 
     @inline
