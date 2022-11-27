@@ -439,6 +439,8 @@ class TelegramBot(MultiBot[TelegramClient]):
                 word_matches = flanautils.cartesian_product_string_matching(message.text, constants.KEYWORDS['send_as_file'], min_score=constants.TELEGRAM_SEND_AS_FILE_MIN_SCORE)
                 send_as_file_score = sum(max(matches.values()) for text_word, matches in word_matches.items())
                 kwargs['force_document'] = bool(send_as_file_score)
+            else:
+                kwargs['force_document'] = send_as_file
 
             if message.is_inline:
                 if media:
