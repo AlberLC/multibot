@@ -8,6 +8,7 @@ import io
 import pathlib
 import random
 import traceback
+from collections.abc import Coroutine
 from typing import Any, Iterable, Sequence
 
 import discord
@@ -636,7 +637,7 @@ class DiscordBot(MultiBot[Bot]):
 
         return bot_message
 
-    def start(self):
+    def start(self) -> Coroutine | None:
         async def start_():
             await self.client.start(self.token)
 

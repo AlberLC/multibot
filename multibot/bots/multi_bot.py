@@ -19,6 +19,7 @@ import functools
 import random
 import traceback
 from abc import ABC, abstractmethod
+from collections.abc import Coroutine
 from typing import Any, Callable, Generic, Iterable, Sequence, Type, TypeVar, overload
 
 import flanautils
@@ -816,7 +817,7 @@ class MultiBot(Generic[T], ABC):
         return await self.send(random.choice(constants.NO_PHRASES), message)
 
     @abstractmethod
-    async def start(self):
+    async def start(self) -> Coroutine | None:
         pass
 
     async def typing_delay(self, message: Message):

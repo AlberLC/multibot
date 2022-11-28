@@ -6,6 +6,7 @@ import asyncio
 import datetime
 import re
 from collections import defaultdict
+from collections.abc import Coroutine
 from typing import Any, Iterable, Iterator
 
 import flanautils
@@ -248,7 +249,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         data: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
-        edit=False,
+        edit=False
     ):
         match reply_to:
             case str(message_id):
@@ -261,7 +262,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
             case _:
                 await chat.original_object.send(text)
 
-    def start(self):
+    def start(self) -> Coroutine | None:
         async def start_():
             await asyncio.create_task(self.client.connect())
             # noinspection PyProtectedMember

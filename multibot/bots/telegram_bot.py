@@ -6,6 +6,7 @@ import asyncio
 import functools
 import io
 import pathlib
+from collections.abc import Coroutine
 from typing import Any, Callable, Sequence
 
 import flanautils
@@ -418,7 +419,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         data: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
-        edit=False,
+        edit=False
     ) -> Message | None:
         file = await self._prepare_media_to_send(media)
         telegram_buttons = None
@@ -527,7 +528,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             except (KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
                 pass
 
-    def start(self):
+    def start(self) -> Coroutine | None:
         async def start_():
             await self.client.connect()
 
