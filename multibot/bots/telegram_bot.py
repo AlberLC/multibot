@@ -162,6 +162,9 @@ class TelegramBot(MultiBot[TelegramClient]):
         except AttributeError:
             return list(mentions)
 
+        if replied_message := await self._get_replied_message(original_message):
+            mentions.add(replied_message.author)
+
         text = await self._get_text(original_message)
         chat = await self._get_chat(original_message)
 
