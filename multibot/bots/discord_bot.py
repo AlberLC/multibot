@@ -444,7 +444,7 @@ class DiscordBot(MultiBot[Bot]):
             return await self.get_user(user, group_)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_message(self, chat: int | str | User | Chat | Message, message: int | str | Message) -> Message | None:
+    async def get_message(self, message: int | str | Message, chat: int | str | User | Chat | Message) -> Message | None:
         match message:
             case int(message_id):
                 pass

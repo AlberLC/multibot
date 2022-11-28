@@ -39,6 +39,11 @@ class TwitchBot(MultiBot[twitchio.Client]):
         self.client._events['event_ready'].append(self._on_ready)
         self.client._events['event_message'].append(self._on_new_message_raw)
 
+    async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
+        user_name = self.get_user_name(user)
+        chat = await self.get_chat(group_)
+        await self.send(f'/ban {user_name}', self.Message(chat=chat) or message)
+
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _create_chat_from_twitch_chat(self, original_chat: constants.TWITCH_CHAT) -> Chat | None:
         channel_name = original_chat.name
@@ -114,6 +119,11 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def _get_text(self, original_message: constants.TWITCH_MESSAGE) -> str:
         return original_message.content
 
+    async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
+        user_name = self.get_user_name(user)
+        chat = await self.get_chat(group_)
+        await self.send(f'/unban {user_name}', self.Message(chat=chat) or message)
+
     # ---------------------------------------------- #
     #                    HANDLERS                    #
     # ---------------------------------------------- #
@@ -128,11 +138,6 @@ class TwitchBot(MultiBot[twitchio.Client]):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
-        user_name = self.get_user_name(user)
-        chat = await self.get_chat(group_)
-        await self.send(f'/ban {user_name}', self.Message(chat=chat) or message)
-
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
         chat = await self.get_chat(chat)
@@ -197,11 +202,6 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
         return await self._create_chat_from_twitch_chat(self.client.get_channel(group_name) or await self.client.fetch_channel(group_name))
 
-    @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
-        chat = await self.get_chat(group_)
-        return list(OrderedSet([await self._create_user_from_twitch_user(chatter) for chatter in chat.original_object.chatters]))
-
     async def get_me(self, group_: int | str | Chat = None) -> User | None:
         return await self.get_user(self.id, group_)
 
@@ -228,6 +228,11 @@ class TwitchBot(MultiBot[twitchio.Client]):
         else:
             is_admin = None
         return await self._create_user_from_twitch_user(original_user, is_admin=is_admin)
+
+    @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
+    async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
+        chat = await self.get_chat(group_)
+        return list(OrderedSet([await self._create_user_from_twitch_user(chatter) for chatter in chat.original_object.chatters]))
 
     async def join(self, chat_name: str | Iterable[str]):
         await self.client.join_channels((chat_name,) if isinstance(chat_name, str) else chat_name)
@@ -273,8 +278,3 @@ class TwitchBot(MultiBot[twitchio.Client]):
             return start_()
         except RuntimeError:
             self.client.run()
-
-    async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
-        user_name = self.get_user_name(user)
-        chat = await self.get_chat(group_)
-        await self.send(f'/unban {user_name}', self.Message(chat=chat) or message)

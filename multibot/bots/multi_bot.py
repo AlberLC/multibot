@@ -675,7 +675,7 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_message(self, chat: int | str | User | Chat | Message, message: int | str | Message) -> Message | None:
+    async def get_message(self, message: int | str | Message, chat: int | str | User | Chat | Message) -> Message | None:
         pass
 
     @return_if_first_empty([], exclude_self_types='MultiBot', globals_=globals())

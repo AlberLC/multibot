@@ -379,7 +379,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         return await self._create_user_from_telegram_user(await self.client.get_me(), group_)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def get_message(self, chat: int | str | User | Chat | Message, message: int | str | Message) -> Message | None:
+    async def get_message(self, message: int | str | Message, chat: int | str | User | Chat | Message) -> Message | None:
         match message:
             case int(message_id):
                 pass
