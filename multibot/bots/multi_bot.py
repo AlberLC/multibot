@@ -9,6 +9,7 @@ __all__ = [
     'ignore_self_message',
     'inline',
     'out_of_service',
+    'owner',
     'parse_arguments',
     'reply',
     'MultiBot'
@@ -77,7 +78,6 @@ def admin(func_: Callable = None, /, is_=True, send_negative=False) -> Callable:
         @functools.wraps(func)
         @find_message
         async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
-            message = message
             if is_ is message.author.is_admin or message.chat.is_private:
                 return await func(self, message, *args, **kwargs)
             await self.accept_button_event(message)
@@ -164,6 +164,23 @@ def out_of_service(func: Callable) -> Callable:
         await self.accept_button_event(message)
 
     return wrapper
+
+
+@shift_args_if_called
+def owner(func_: Callable = None, /, is_=True, send_negative=False) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        @find_message
+        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
+            if is_ is (message.author.id == self.owner_id):
+                return await func(self, message, *args, **kwargs)
+            await self.accept_button_event(message)
+            if send_negative:
+                await self.send_negative(message)
+
+        return wrapper
+
+    return decorator(func_) if func_ else decorator
 
 
 def parse_arguments(func: Callable) -> Callable:
@@ -670,6 +687,17 @@ class MultiBot(Generic[T], ABC):
                 return chat.group_name
             case self.Message() as message:
                 return message.chat.group_name
+
+    @overload
+    def get_last_database_messages(self, n_messages: int, lazy: Literal[False] = False) -> list[Message]:
+        pass
+
+    @overload
+    def get_last_database_messages(self, n_messages: int, lazy: Literal[True] = False) -> Iterator[Message]:
+        pass
+
+    def get_last_database_messages(self, n_messages: int, lazy=False) -> Iterator[Message] | list[Message]:
+        return self.Message.find(sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages, lazy=lazy)
 
     async def get_me(self, group_: int | str | Chat | Message = None) -> User | None:
         pass
