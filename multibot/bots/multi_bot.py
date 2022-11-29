@@ -20,10 +20,11 @@ import functools
 import random
 import traceback
 from abc import ABC, abstractmethod
-from collections.abc import Coroutine
-from typing import Any, Callable, Generic, Iterable, Sequence, Type, TypeVar, overload
+from collections.abc import Coroutine, Iterator
+from typing import Any, Callable, Generic, Iterable, Literal, Sequence, Type, TypeVar, overload
 
 import flanautils
+import pymongo
 from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, ScoreMatch, return_if_first_empty, shift_args_if_called
 
 from multibot import constants
@@ -657,6 +658,37 @@ class MultiBot(Generic[T], ABC):
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_current_roles(self, user: int | str | User | constants.ORIGINAL_USER, group_: int | str | Chat | Message = None) -> list[Role]:
         pass
+
+    def get_formatted_last_database_messages(self, n_messages: int, name_limit=20, platform_limit=10, chat_limit=10, text_limit=30, timezone=None, simple=False) -> str:
+        counter = 0
+
+        if simple:
+            title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<12}"
+
+            def generator_():
+                nonlocal counter
+                for i, message in enumerate(self.get_last_database_messages(n_messages, lazy=True), start=1):
+                    counter += 1
+                    name = message.author.name.split('#')[0]
+                    text = repr(message.text).replace('`', '').strip("'")
+                    date = message.date.astimezone(timezone).strftime('%d  %H:%M')
+                    yield f"{i:>4}.  {name[:name_limit]:<{name_limit}}  {text[:text_limit]:<{text_limit}}  {date}"
+        else:
+            title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Plataforma'[:platform_limit]:<{platform_limit}}  {'Chat'[:chat_limit]:<{chat_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<20}"
+
+            def generator_():
+                nonlocal counter
+                for i, message in enumerate(self.get_last_database_messages(n_messages, lazy=True), start=1):
+                    counter += 1
+                    name = message.author.name.split('#')[0]
+                    platform = Platform(message.platform).name
+                    chat = message.chat.name
+                    text = repr(message.text).replace('`', '').strip("'")
+                    date = message.date.astimezone(timezone).strftime('%d/%m/%Y  %H:%M:%S')
+                    yield f"{i:>4}.  {name[:name_limit]:<{name_limit}}  {platform[:platform_limit]:<{platform_limit}}  {chat[:chat_limit]:<{chat_limit}}  {text[:text_limit]:<{text_limit}}  {date}"
+
+        joined_text = '\n'.join(generator_())
+        return f"­<code><code><code>{title}\n\n{joined_text}</code></code></code>"
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     def get_group_id(self, group_: int | str | Chat | Message) -> int | None:
