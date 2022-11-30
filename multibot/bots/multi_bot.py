@@ -539,6 +539,7 @@ class MultiBot(Generic[T], ABC):
     @find_message
     async def _on_button_press_raw(self, message: Message):
         if getattr(message.buttons_info, 'key', None) is None:
+            await self.accept_button_event(message)
             return
 
         for registered_callback in self._registered_button_callbacks:
