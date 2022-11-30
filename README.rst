@@ -208,8 +208,8 @@ The entire library is ready to be easily configured to use your MongoDB_ databas
 
 To use a MongoDB_ database, just add environment variables:
  - :code:`DATABASE_NAME` (required)
- - :code:`MONGO_HOST` (optional, defaults to :code:`'localhost'`)
- - :code:`MONGO_PORT` (optional, defaults to :code:`27017`)
+ - :code:`MONGO_HOST` (optional. Defaults to :code:`'localhost'`)
+ - :code:`MONGO_PORT` (optional. Defaults to :code:`27017`)
  - :code:`MONGO_USER` (optional)
  - :code:`MONGO_PASSWORD` (optional)
 
