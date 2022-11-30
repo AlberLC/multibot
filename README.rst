@@ -262,12 +262,12 @@ A) Simple form
         await bot.send('Hi!', message)  # response in same chat of received message context
 
 
-    @bot.register('multibot', min_ratio=1)
+    @bot.register('multibot', min_score=1)
     async def function_name_2(message: Message):
         """
         This function will be executed when someone types exactly "multibot".
 
-        min_ratio=0.93 by default.
+        min_score=0.93 by default.
         """
 
         await bot.delete_message(message)  # deletes the received message
@@ -353,7 +353,7 @@ B) Extensible form
         def _add_handlers(self):
             super()._add_handlers()
             self.register(self.function_name_1, 'hello')
-            self.register(self.function_name_2, 'multibot', min_ratio=1)
+            self.register(self.function_name_2, 'multibot', min_score=1)
             self.register(self.function_name_3, ('house', 'home'))
             self.register(self.function_name_4, (('hello', 'hi'), ('world',)))  # <-- note that is Iterable[Iterable[str]]
             self.register(self.function_name_5, 'troll')
@@ -373,7 +373,7 @@ B) Extensible form
             """
             This function will be executed when someone types exactly "multibot".
 
-            min_ratio=0.93 by default.
+            min_score=0.93 by default.
             """
 
             await self.delete_message(message)  # deletes the received message
