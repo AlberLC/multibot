@@ -597,7 +597,7 @@ class MultiBot(Generic[T], ABC):
     @classmethod
     async def clear_old_database_items(cls):
         before_date = datetime.datetime.now(datetime.timezone.utc) - constants.MESSAGE_EXPIRATION_TIME
-        cls.Message.collection.delete_many({'date': {'$lte': before_date}})
+        cls.Message.delete_many_raw({'date': {'$lte': before_date}})
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def delete_message(

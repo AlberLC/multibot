@@ -83,7 +83,7 @@ class DiscordBot(MultiBot[Bot]):
         except AttributeError:
             current_roles = OrderedSet()
 
-        if database_user_data := self.User.collection.find_one({'platform': self.platform.value, 'id': original_user.id}):
+        if database_user_data := self.User.find_one_raw({'platform': self.platform.value, 'id': original_user.id}):
             database_roles = OrderedSet(Role.find({'_id': {'$in': database_user_data['roles']}}))
         else:
             database_roles = OrderedSet()
