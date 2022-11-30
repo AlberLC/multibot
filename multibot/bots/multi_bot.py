@@ -530,7 +530,7 @@ class MultiBot(Generic[T], ABC):
         pass
 
     async def _unpenalize_later(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
-        if penalty.time and datetime.timedelta() <= penalty.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPUNISH:
+        if penalty.time and penalty.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPUNISH:
             await flanautils.do_later(penalty.time, self._remove_penalty, penalty, unpenalize_method, message)
 
     # ---------------------------------------------- #
@@ -563,7 +563,7 @@ class MultiBot(Generic[T], ABC):
                     await self._manage_exceptions(e, message)
 
     async def _on_ready(self):
-        flanautils.init_db()
+        flanautils.init_database()
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
         await flanautils.do_every(constants.CLEAR_OLD_DATABASE_ITEMS_EVERY_SECONDS, self.clear_old_database_items)
         await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_bans)
