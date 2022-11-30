@@ -28,7 +28,6 @@ Discord
 
 You will need create an discord application at https://discord.com/developers/applications and generate a **BOT_TOKEN** for your bot.
 
-
 You will have to select the **bot** and **applications.commands** scopes and the **Administrator** permission. And as for the Discord Intents (in the Bot/Build-A-Bot panel) you must activate **PRESENCE INTENT**, **SERVER MEMBERS INTENT** and **MESSAGE CONTENT INTENT**.
 
 .. code-block:: python
@@ -199,6 +198,20 @@ Run multiple bots
 
 
     asyncio.run(main())
+
+|
+
+Database
+--------
+
+The entire library is ready to be easily configured to use your MongoDB_ database. It will automatically record all the information handled by the bot: messages, chats, users, etc.
+
+To use a MongoDB_ database, just add environment variables:
+ - :code:`DATABASE_NAME` (required)
+ - :code:`MONGO_HOST` (optional, defaults to :code:`'localhost'`)
+ - :code:`MONGO_PORT` (optional, defaults to :code:`27017`)
+ - :code:`MONGO_USER` (optional)
+ - :code:`MONGO_PASSWORD` (optional)
 
 |
 
@@ -444,3 +457,4 @@ For both a normal bot and a user bot (bot using your "human" account) you will n
     :alt: my.telegram.org
 
 .. _BotFather: https://t.me/botfather
+.. _MongoDB: https://www.mongodb.com/
