@@ -295,18 +295,17 @@ T = TypeVar('T')
 
 
 class MultiBot(Generic[T], ABC):
-    client: T
     Chat = Chat
     Message = Message
     User = User
 
-    def __init__(self, bot_token: str, bot_client: T):
+    def __init__(self, token: str, client: T):
         self.platform: Platform | None = None
         self.id: int | None = None
         self.name: str | None = None
         self.owner_id: int | None = None
-        self.token: str = bot_token
-        self.client: T = bot_client
+        self.token: str = token
+        self.client: T = client
         self._registered_callbacks: list[RegisteredCallback] = []
         self._registered_button_callbacks: dict[Any, list[Callable]] = defaultdict(list)
         self._buttons_infos: dict[tuple[int, int], ButtonsInfo] = {}

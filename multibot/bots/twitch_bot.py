@@ -24,9 +24,9 @@ from multibot.models import Button, Chat, Message, Platform, User
 # ------------------------------------------- DISCORD_BOT ------------------------------------------- #
 # --------------------------------------------------------------------------------------------------- #
 class TwitchBot(MultiBot[twitchio.Client]):
-    def __init__(self, bot_token: str, initial_channels: Iterable[str] = None, owner_name: str = None):
-        super().__init__(bot_token=bot_token,
-                         bot_client=twitchio.ext.commands.Bot(token=bot_token, prefix='/', initial_channels=initial_channels))
+    def __init__(self, token: str, initial_channels: Iterable[str] = None, owner_name: str = None):
+        super().__init__(token=token,
+                         client=twitchio.ext.commands.Bot(token=token, prefix='/', initial_channels=initial_channels))
         self.owner_name = owner_name
 
     # ----------------------------------------------------------- #
@@ -275,6 +275,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
         try:
             asyncio.get_running_loop()
-            return start_()
         except RuntimeError:
             self.client.run()
+        else:
+            return start_()

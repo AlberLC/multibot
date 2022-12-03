@@ -11,9 +11,8 @@ from typing import Any, Callable, Sequence
 
 import flanautils
 import pymongo
+import telethon
 import telethon.hints
-import telethon.tl.functions.channels
-import telethon.tl.types
 from flanautils import Media, MediaType, OrderedSet, Source, return_if_first_empty, shift_args_if_called
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -44,7 +43,7 @@ def user_client(func_: Callable = None, /, is_=True) -> Callable:
 # ------------------------------------------- TELEGRAM_BOT ------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------- #
 class TelegramBot(MultiBot[TelegramClient]):
-    def __init__(self, api_id: int | str, api_hash: int | str, phone: int | str = None, bot_token: str = None, bot_session: str = None, user_session: str = None):
+    def __init__(self, api_id: int | str, api_hash: int | str, bot_token: str = None, phone: int | str = None, bot_session: str = None, user_session: str = None):
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone = phone
@@ -64,8 +63,8 @@ class TelegramBot(MultiBot[TelegramClient]):
         else:
             self.user_client = None
 
-        super().__init__(bot_token=bot_token,
-                         bot_client=bot_client)
+        super().__init__(token=bot_token,
+                         client=bot_client)
 
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #

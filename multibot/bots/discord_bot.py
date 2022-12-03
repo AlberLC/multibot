@@ -27,9 +27,9 @@ from multibot.models import Button, ButtonsInfo, Chat, Message, Mute, Platform, 
 # ------------------------------------------- DISCORD_BOT ------------------------------------------- #
 # --------------------------------------------------------------------------------------------------- #
 class DiscordBot(MultiBot[Bot]):
-    def __init__(self, bot_token: str):
-        super().__init__(bot_token=bot_token,
-                         bot_client=Bot(command_prefix=constants.DISCORD_COMMAND_PREFIX, intents=discord.Intents.all()))
+    def __init__(self, token: str):
+        super().__init__(token=token,
+                         client=Bot(command_prefix=constants.DISCORD_COMMAND_PREFIX, intents=discord.Intents.all()))
 
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #
@@ -656,9 +656,10 @@ class DiscordBot(MultiBot[Bot]):
 
         try:
             asyncio.get_running_loop()
-            return start_()
         except RuntimeError:
             asyncio.run(start_())
+        else:
+            return start_()
 
     async def typing_delay(self, message: Message):
         async with message.chat.original_object.typing():
