@@ -551,6 +551,7 @@ class DiscordBot(MultiBot[Bot]):
         message: Message = None,
         *,
         buttons_key: Any = None,
+        buttons_data: dict = None,
         reply_to: int | str | Message = None,
         data: dict = None,
         silent: bool = False,
@@ -586,11 +587,18 @@ class DiscordBot(MultiBot[Bot]):
                 kwargs['content'] = text
             if file:
                 kwargs['attachments'] = [file]
-            if buttons is not None:
-                kwargs['view'] = view
-                message.buttons_info.buttons = buttons
-            if buttons_key is not None:
-                message.buttons_info.key = buttons_key
+            try:
+                if buttons is not None:
+                    kwargs['view'] = view
+                    self._buttons_infos[message.id, chat.id].buttons = buttons
+                if buttons_key is not None:
+                    self._buttons_infos[message.id, chat.id].key = buttons_key
+            except KeyError:
+                self._buttons_infos[message.id, chat.id] = ButtonsInfo(
+                    buttons=buttons,
+                    key=buttons_key,
+                    data=buttons_data
+                )
 
             try:
                 message.original_object = await message.original_object.edit(**kwargs)
@@ -627,7 +635,12 @@ class DiscordBot(MultiBot[Bot]):
                 return
             raise
 
-        bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
+        if buttons:
+            self._buttons_infos[bot_message.id, chat.id] = ButtonsInfo(
+                buttons=buttons,
+                key=buttons_key,
+                data=buttons_data
+            )
         if media:
             bot_message.data['media'] = media.content
         if data:

@@ -20,8 +20,9 @@ import functools
 import random
 import traceback
 from abc import ABC, abstractmethod
-from collections.abc import Coroutine, Iterator
-from typing import Any, Callable, Generic, Iterable, Literal, Sequence, Type, TypeVar, overload
+from collections import defaultdict
+from collections.abc import Callable, Coroutine, Iterable, Iterator, Sequence
+from typing import Any, Generic, Literal, TypeVar, overload
 
 import flanautils
 import pymongo
@@ -29,7 +30,7 @@ from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, ScoreMa
 
 from multibot import constants
 from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
-from multibot.models import Ban, Button, Chat, Message, Mute, Penalty, Platform, RegisteredButtonCallback, RegisteredCallback, Role, User
+from multibot.models import Ban, Button, ButtonsInfo, Chat, Message, Mute, Penalty, Platform, RegisteredCallback, Role, User
 
 
 # ---------------------------------------------------------- #
@@ -307,7 +308,8 @@ class MultiBot(Generic[T], ABC):
         self.token: str = bot_token
         self.client: T = bot_client
         self._registered_callbacks: list[RegisteredCallback] = []
-        self._registered_button_callbacks: list[RegisteredButtonCallback] = []
+        self._registered_button_callbacks: dict[Any, list[Callable]] = defaultdict(list)
+        self._buttons_infos: dict[tuple[int, int], ButtonsInfo] = {}
 
         self._add_handlers()
 
@@ -377,13 +379,24 @@ class MultiBot(Generic[T], ABC):
     ) -> Message:
         original_message = event if isinstance(event, constants.ORIGINAL_MESSAGE) else await self._get_original_message(event)
 
+        message_id = await self._get_message_id(original_message)
+        chat = await self._get_chat(original_message)
+        try:
+            buttons_info = self._buttons_infos[message_id, chat.id]
+        except KeyError:
+            buttons_info = None
+        else:
+            buttons_info.pressed_text = await self._get_button_pressed_text(event)
+            buttons_info.presser_user = await self._get_button_presser_user(event)
+
         message = self.Message(
             platform=self.platform,
-            id=await self._get_message_id(original_message),
+            id=message_id,
             author=await self._get_author(original_message),
             text=await self._get_text(original_message),
             mentions=await self._get_mentions(original_message),
-            chat=await self._get_chat(original_message),
+            chat=chat,
+            buttons_info=buttons_info,
             replied_message=await self._get_replied_message(original_message),
             is_inline=isinstance(event, constants.TELEGRAM_INLINE_EVENT) if isinstance(event, constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) else None,
             original_object=original_message,
@@ -538,16 +551,14 @@ class MultiBot(Generic[T], ABC):
     # ---------------------------------------------- #
     @find_message
     async def _on_button_press_raw(self, message: Message):
-        if getattr(message.buttons_info, 'key', None) is None:
-            await self.accept_button_event(message)
+        if not message.buttons_info:
             return
 
-        for registered_callback in self._registered_button_callbacks:
-            if registered_callback.key == message.buttons_info.key:
-                try:
-                    await registered_callback(message)
-                except Exception as e:
-                    await self._manage_exceptions(e, message)
+        for callback in self._registered_button_callbacks[message.buttons_info.key]:
+            try:
+                await callback(message)
+            except Exception as e:
+                await self._manage_exceptions(e, message)
 
     @ignore_self_message
     async def _on_new_message_raw(self, message: Message):
@@ -834,7 +845,7 @@ class MultiBot(Generic[T], ABC):
     @shift_args_if_called(exclude_self_types='MultiBot', globals_=globals())
     def register_button(self, func_: Callable = None, key: Any = None):
         def decorator(func):
-            self._registered_button_callbacks.append(RegisteredButtonCallback(func, key))
+            self._registered_button_callbacks[key].append(func)
             return func
 
         return decorator(func_) if func_ else decorator
@@ -853,6 +864,7 @@ class MultiBot(Generic[T], ABC):
         message: Message = None,
         *,
         buttons_key: Any = None,
+        buttons_data: dict = None,
         reply_to: int | str | Message = None,
         data: dict = None,
         silent: bool = False,

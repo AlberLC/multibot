@@ -1,5 +1,6 @@
 __all__ = ['Button', 'ButtonsInfo']
 
+import datetime
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -8,7 +9,7 @@ from flanautils import FlanaBase
 from multibot.models.user import User
 
 
-@dataclass(eq=False)
+@dataclass
 class Button(FlanaBase):
     text: str = None
     is_checked: bool = False
@@ -17,12 +18,14 @@ class Button(FlanaBase):
         return bytes(self)
 
 
-@dataclass(eq=False)
+@dataclass
 class ButtonsInfo(FlanaBase):
     pressed_text: str = None
     presser_user: User = None
     buttons: list[list[Button]] = field(default_factory=lambda: [[]])
     key: Any = None
+    data: dict = field(default_factory=dict)
+    date: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     def __getitem__(self, item) -> Button | None:
         if not item:

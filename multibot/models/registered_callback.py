@@ -9,25 +9,8 @@ from flanautils import FlanaBase
 from multibot import constants
 
 
-@dataclass
-class RegisteredCallbackBase(FlanaBase):
+class RegisteredCallback(FlanaBase):
     callback: Callable
-
-    def __call__(self, *args, **kwargs):
-        return self.callback(*args, **kwargs)
-
-    def __eq__(self, other):
-        if isinstance(other, RegisteredCallback):
-            return self.callback == other.callback
-        else:
-            return self.callback == other
-
-    def __hash__(self):
-        return hash(self.callback)
-
-
-@dataclass(eq=False)
-class RegisteredCallback(RegisteredCallbackBase):
     keywords: tuple[tuple[str, ...], ...]
     priority: int | float
     min_score: float
@@ -71,7 +54,14 @@ class RegisteredCallback(RegisteredCallbackBase):
         self.always = always
         self.default = default
 
+    def __call__(self, *args, **kwargs):
+        return self.callback(*args, **kwargs)
 
-@dataclass(eq=False)
-class RegisteredButtonCallback(RegisteredCallbackBase):
-    key: any
+    def __eq__(self, other):
+        if isinstance(other, RegisteredCallback):
+            return self.callback == other.callback
+        else:
+            return self.callback == other
+
+    def __hash__(self):
+        return hash(self.callback)
