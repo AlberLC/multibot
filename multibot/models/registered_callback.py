@@ -22,7 +22,7 @@ class RegisteredCallback(FlanaBase):
         callback: Callable,
         keywords: str | Iterable[str | Iterable[str]] = (),
         priority: int | float = 1,
-        min_score: float = constants.PARSE_CALLBACKS_MIN_SCORE_DEFAULT,
+        min_score: float = constants.PARSER_MIN_SCORE_DEFAULT,
         always=False,
         default=False
     ):

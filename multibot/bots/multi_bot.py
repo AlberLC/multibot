@@ -460,15 +460,15 @@ class MultiBot(Generic[T], ABC):
     def _parse_callbacks(
         text: str,
         registered_callbacks: list[RegisteredCallback],
-        score_reward_exponent: float = constants.SCORE_REWARD_EXPONENT,
-        keywords_lenght_penalty: float = constants.KEYWORDS_LENGHT_PENALTY,
-        minimum_score_to_match: float = constants.MINIMUM_SCORE_TO_MATCH
+        score_reward_exponent: float = constants.PARSER_SCORE_REWARD_EXPONENT,
+        keywords_lenght_penalty: float = constants.PARSER_KEYWORDS_LENGHT_PENALTY,
+        minimum_score_to_match: float = constants.PARSER_MIN_SCORE_TO_MATCH
     ) -> OrderedSet[RegisteredCallback]:
         text = flanautils.remove_accents(text.lower())
 
         original_words = OrderedSet()
         for word in text.split():
-            if len(word) <= constants.MAX_WORD_LENGTH:
+            if len(word) <= constants.PARSER_MAX_WORD_LENGTH:
                 original_words.add(word)
         important_words = original_words - flanautils.CommonWords.get()
 
@@ -827,15 +827,15 @@ class MultiBot(Generic[T], ABC):
             await self._unpenalize_later(mute, self._unmute, message)
 
     @overload
-    def register(self, func_: Callable = None, keywords=(), priority: int | float = 1, min_score=constants.PARSE_CALLBACKS_MIN_SCORE_DEFAULT, always=False, default=False):
+    def register(self, func_: Callable = None, keywords=(), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
     @overload
-    def register(self, keywords=(), priority: int | float = 1, min_score=constants.PARSE_CALLBACKS_MIN_SCORE_DEFAULT, always=False, default=False):
+    def register(self, keywords=(), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
     @shift_args_if_called(exclude_self_types='MultiBot', globals_=globals())
-    def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSE_CALLBACKS_MIN_SCORE_DEFAULT, always=False, default=False):
+    def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         def decorator(func):
             self._registered_callbacks.append(RegisteredCallback(func, keywords, priority, min_score, always, default))
             return func
