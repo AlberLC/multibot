@@ -576,6 +576,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     def string_sessions(self) -> dict[str, str] | Coroutine:
         async def string_session_() -> dict[str, str]:
             await self.sign_in()
+            # noinspection PyUnresolvedReferences
             return {
                 'bot_session': StringSession.save(self.client.session) if self.client else None,
                 'user_session': StringSession.save(self.user_client.session) if self.user_client else None
