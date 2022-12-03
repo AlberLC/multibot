@@ -576,9 +576,10 @@ class MultiBot(Generic[T], ABC):
     async def _on_ready(self):
         flanautils.init_database()
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
-        await flanautils.do_every(constants.CLEAR_OLD_DATABASE_ITEMS_EVERY_SECONDS, self.clear_old_database_items)
-        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_bans)
-        await flanautils.do_every(constants.CHECK_MUTES_EVERY_SECONDS, self.check_mutes)
+        await flanautils.do_every(constants.CHECK_OLD_BUTTONS_INFOS_EVERY_SECONDS, self.check_old_buttons_infos)
+        await flanautils.do_every(constants.CHECK_OLD_DATABASE_MESSAGES_EVERY_SECONDS, self.check_old_database_messages)
+        await flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_bans)
+        await flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_mutes)
 
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
@@ -602,14 +603,25 @@ class MultiBot(Generic[T], ABC):
     async def check_mutes(self):
         await self._check_penalties(Mute, self._unmute)
 
+    def check_old_buttons_infos(self):
+        keys_to_delete = []
+        for k, v in self._buttons_infos.items():
+            if datetime.datetime.now(datetime.timezone.utc) < v.date + constants.BUTTONS_INFOS_EXPIRATION_TIME:
+                break
+
+            keys_to_delete.append(k)
+
+        for key in keys_to_delete:
+            del self._buttons_infos[key]
+
+    @classmethod
+    def check_old_database_messages(cls):
+        before_date = datetime.datetime.now(datetime.timezone.utc) - constants.DATABASE_MESSAGE_EXPIRATION_TIME
+        cls.Message.delete_many_raw({'date': {'$lte': before_date}})
+
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
         pass
-
-    @classmethod
-    async def clear_old_database_items(cls):
-        before_date = datetime.datetime.now(datetime.timezone.utc) - constants.MESSAGE_EXPIRATION_TIME
-        cls.Message.delete_many_raw({'date': {'$lte': before_date}})
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def delete_message(
