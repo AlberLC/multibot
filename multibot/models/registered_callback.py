@@ -1,4 +1,4 @@
-__all__ = ['RegisteredCallbackBase', 'RegisteredCallback', 'RegisteredButtonCallback']
+__all__ = ['RegisteredCallback']
 
 from collections.abc import Callable, Iterable
 
