@@ -217,7 +217,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     async def _get_replied_message(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> Message | None:
         try:
             return await self._get_message(await original_message.get_reply_message())
-        except AttributeError:
+        except (AttributeError, telethon.errors.rpcerrorlist.BotMethodInvalidError):
             pass
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
