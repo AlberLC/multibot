@@ -1,7 +1,6 @@
 __all__ = ['RegisteredCallbackBase', 'RegisteredCallback', 'RegisteredButtonCallback']
 
-from dataclasses import dataclass
-from typing import Callable, Iterable
+from collections.abc import Callable, Iterable
 
 import flanautils
 from flanautils import FlanaBase

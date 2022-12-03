@@ -41,7 +41,7 @@ def find_message(func_: Callable = None, /, return_if_not_found=False) -> Callab
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(self: MultiBot, *args, **kwargs):
-            def take_arg(type_: Type, args_, kwargs_):
+            def take_arg(type_: type, args_, kwargs_):
                 object_ = None
                 new_args = []
                 for arg in args_:
@@ -322,7 +322,7 @@ class MultiBot(Generic[T], ABC):
     async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
 
-    async def _check_penalties(self, penalty_class: Type[Penalty], unpenalize_method: Callable):
+    async def _check_penalties(self, penalty_class: type[Penalty], unpenalize_method: Callable):
         penalties = penalty_class.find({'platform': self.platform.value}, lazy=True)
 
         for penalty in penalties:

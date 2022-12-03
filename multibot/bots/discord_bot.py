@@ -8,8 +8,8 @@ import io
 import pathlib
 import random
 import traceback
-from collections.abc import Coroutine
-from typing import Any, Iterable, Sequence
+from collections.abc import Coroutine, Iterable, Sequence
+from typing import Any
 
 import discord
 import flanautils
