@@ -541,30 +541,52 @@ class TelegramBot(MultiBot[TelegramClient]):
             except (KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
                 pass
 
+    async def sign_in(self):
+        await self.client.connect()
+
+        if not self.bot_session:
+            print('----- Bot client -----')
+            if not self.token:
+                self.token = input('Enter the bot token: ').strip()
+            await self.client.sign_in(bot_token=self.token)
+            print('Done.')
+        if not self.user_session and self.user_client:
+            await self.user_client.connect()
+            print('----- User client -----')
+            if not await self.user_client.is_user_authorized():
+                await self.user_client.sign_in(self.phone)
+                code = input('Enter the login code: ')
+                await self.user_client.sign_in(self.phone, code)
+            print('Done.')
+
     def start(self) -> Coroutine | None:
         async def start_():
-            await self.client.connect()
-
-            if not self.bot_session:
-                print('----- Bot client -----')
-                if not self.token:
-                    self.token = input('Enter a bot token: ').strip()
-                await self.client.sign_in(bot_token=self.token)
-                print('Done.')
-            if not self.user_session and self.user_client:
-                print('----- User client -----')
-                async with self.user_client:
-                    await self.user_client.sign_in(phone=self.phone)
-                print('Done.')
-
+            await self.sign_in()
             await self._on_ready()
             await self.client.run_until_disconnected()
 
         try:
             asyncio.get_running_loop()
-            return start_()
         except RuntimeError:
             asyncio.run(start_())
+        else:
+            return start_()
+
+    @property
+    def string_sessions(self) -> dict[str, str] | Coroutine:
+        async def string_session_() -> dict[str, str]:
+            await self.sign_in()
+            return {
+                'bot_session': StringSession.save(self.client.session) if self.client else None,
+                'user_session': StringSession.save(self.user_client.session) if self.user_client else None
+            }
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(string_session_())
+        else:
+            return string_session_()
 
     # async def unban(self, user: int | str | User, chat: int | str | Chat | Message):  # todo4 test en grupo de pruebas
     # if isinstance(user, User):
