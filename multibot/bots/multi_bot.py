@@ -403,10 +403,6 @@ class MultiBot(Generic[T], ABC):
             original_event=event
         )
         message.resolve()
-        message.pull_from_database()
-        if message.buttons_info:
-            message.buttons_info.pressed_text = await self._get_button_pressed_text(event)
-            message.buttons_info.presser_user = await self._get_button_presser_user(event)
         message.save(pull_overwrite_fields=pull_overwrite_fields)
 
         return message
