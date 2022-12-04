@@ -169,8 +169,8 @@ You will need your own **BOT_TOKEN** which you can generate on: https://twitchap
 
 |
 
-Database
---------
+Database (optional)
+-------------------
 
 The entire library is ready to be easily configured to use your MongoDB_ database. It will automatically record all the information handled by the bot: messages, chats, users, etc.
 
