@@ -652,6 +652,7 @@ class DiscordBot(MultiBot[Bot]):
 
     def start(self) -> Coroutine | None:
         async def start_():
+            self._add_handlers()
             await self.client.start(self.token)
 
         try:

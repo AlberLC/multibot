@@ -310,8 +310,6 @@ class MultiBot(Generic[T], ABC):
         self._registered_button_callbacks: dict[Any, list[Callable]] = defaultdict(list)
         self._buttons_infos: dict[tuple[int, int], ButtonsInfo] = {}
 
-        self._add_handlers()
-
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #
     # ----------------------------------------------------------- #
