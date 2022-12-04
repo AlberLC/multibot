@@ -67,9 +67,11 @@ class TelegramBot(MultiBot[TelegramClient]):
         self.inline_call_index = 0
 
         if self.bot_session:
-            bot_client = TelegramClient(StringSession(bot_session), self.api_id, self.api_hash)
+            client = TelegramClient(StringSession(bot_session), self.api_id, self.api_hash)
+        elif bot_token:
+            client = TelegramClient('bot_session', self.api_id, self.api_hash)
         else:
-            bot_client = TelegramClient('bot_session', self.api_id, self.api_hash)
+            client = None
 
         if self.user_session:
             self.user_client = TelegramClient(StringSession(user_session), self.api_id, self.api_hash)
@@ -79,7 +81,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             self.user_client = None
 
         super().__init__(token=bot_token,
-                         client=bot_client)
+                         client=client)
 
     # ----------------------------------------------------------- #
     # -------------------- PROTECTED METHODS -------------------- #
@@ -102,7 +104,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         buttons_data: dict = None,
         data: dict = None
     ) -> Message | None:
-        original_message._sender = await self.client.get_entity(self.id)
+        original_message._sender = await self.client.get_me()
         original_message._chat = chat.original_object
         bot_message = await self._get_message(original_message)
         if buttons:
@@ -158,7 +160,10 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_author(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> User | None:
-        return await self._create_user_from_telegram_user(original_message.sender, original_message.chat.id)
+        if original_message.sender:
+            return await self._create_user_from_telegram_user(original_message.sender, original_message.chat.id)
+        else:
+            return await self.get_user(original_message.sender_id, original_message.chat_id)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_button_pressed_text(self, event: constants.TELEGRAM_EVENT) -> str | None:
@@ -173,7 +178,10 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_chat(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> Chat | None:
-        return await self._create_chat_from_telegram_chat(original_message.chat)
+        if original_message.chat:
+            return await self._create_chat_from_telegram_chat(original_message.chat)
+        else:
+            return await self.get_chat(original_message.chat_id)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> list[User]:
@@ -557,22 +565,25 @@ class TelegramBot(MultiBot[TelegramClient]):
                 pass
 
     async def sign_in(self):
-        await self.client.connect()
-
-        if not self.bot_session:
+        if not self.bot_session and self.client:
             print('----- Bot client -----')
-            if not self.token:
-                self.token = input('Enter the bot token: ').strip()
+            await self.client.connect()
             await self.client.sign_in(bot_token=self.token)
             print('Done.')
+
         if not self.user_session and self.user_client:
-            await self.user_client.connect()
             print('----- User client -----')
+            await self.user_client.connect()
             if not await self.user_client.is_user_authorized():
                 await self.user_client.sign_in(self.phone)
                 code = input('Enter the login code: ')
                 await self.user_client.sign_in(self.phone, code)
             print('Done.')
+
+        if not self.client:
+            self.client = self.user_client
+
+        await self.client.connect()
 
     def start(self) -> Coroutine | None:
         async def start_():
