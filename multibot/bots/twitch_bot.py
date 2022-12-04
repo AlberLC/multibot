@@ -269,9 +269,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
     def start(self) -> Coroutine | None:
         async def start_():
-            await asyncio.create_task(self.client.connect())
-            # noinspection PyProtectedMember
-            await self.client._connection._keep_alive()
+            await self.client.start()
 
         try:
             asyncio.get_running_loop()
