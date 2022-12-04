@@ -169,45 +169,6 @@ You will need your own **BOT_TOKEN** which you can generate on: https://twitchap
 
 |
 
-Run multiple bots
------------------
-
-.. code-block:: python
-
-    import asyncio
-    import os
-
-    from multibot import DiscordBot, TelegramBot, TwitchBot
-
-
-    async def main():
-        discord_bot = DiscordBot(os.environ['DISCORD_BOT_TOKEN'])
-
-        telegram_bot = TelegramBot(
-            api_id=os.environ['TELEGRAM_API_ID'],
-            api_hash=os.environ['TELEGRAM_API_HASH'],
-            bot_token=os.environ['TELEGRAM_BOT_TOKEN']
-        )
-
-        # If you run a TwitchBot in an asyncio loop you must create it inside the loop like below.
-        # Other bots like DiscordBot or TelegramBot don't have this need and can be created at the module level.
-        twitch_bot = TwitchBot(
-            bot_token=os.environ['TWITCH_ACCESS_TOKEN'],
-            initial_channels=['channel_name'],
-            owner_name='owner_name'
-        )
-
-        await asyncio.gather(
-            discord_bot.start(),
-            telegram_bot.start(),
-            twitch_bot.start()
-        )
-
-
-    asyncio.run(main())
-
-|
-
 Database
 --------
 
@@ -423,6 +384,127 @@ B) Extensible form
 
 
     MyBot().start()
+
+|
+
+Buttons
+~~~~~~~
+
+A) Simple form
+..............
+
+.. code-block:: python
+
+    import os
+
+    from multibot import DiscordBot, Message
+
+    discord_bot = DiscordBot(os.environ['DISCORD_BOT_TOKEN'])
+
+
+    @discord_bot.register('hello')
+    async def function_name_1(message: Message):
+        await discord_bot.send('Hi!', ['A button', 'Other button'], message, buttons_key='a_key')
+
+
+    @discord_bot.register_button('a_key')
+    async def function_name_2(message: Message):
+        await discord_bot.accept_button_event(message)
+        await discord_bot.send(message.buttons_info.pressed_text, message)
+
+
+    discord_bot.start()
+
+|
+
+B) Extensible form
+..................
+
+.. code-block:: python
+
+    import os
+
+    from multibot import DiscordBot, Message
+
+
+    class MyBot(DiscordBot):
+        def __init__(self):
+            super().__init__(os.environ['DISCORD_BOT_TOKEN'])
+
+        def _add_handlers(self):
+            super()._add_handlers()
+            self.register(self.function_name_1, 'hello')
+            self.register_button(self.function_name_2, 'a_key')
+
+        async def function_name_1(self, message: Message):
+            await self.send('Hi!', ['A button', 'Other button'], message, buttons_key='a_key')
+
+        async def function_name_2(self, message: Message):
+            await self.accept_button_event(message)
+            await self.send(message.buttons_info.pressed_text, message)
+
+
+    MyBot().start()
+
+|
+
+Run multiple bots
+~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    import asyncio
+    import os
+
+    from multibot import DiscordBot, Message, MultiBot, TelegramBot, TwitchBot
+
+
+    class MyMultiBot(MultiBot):
+        def _add_handlers(self):
+            super()._add_handlers()
+            self.register(self.function_name_1, 'hello')
+
+        async def function_name_1(self, message: Message):
+            await self.send('Hi!', message)
+
+
+    class MyDiscordBot(MyMultiBot, DiscordBot):
+        pass
+
+
+    class MyTelegramBot(MyMultiBot, TelegramBot):
+        pass
+
+
+    class MyTwitchBot(MyMultiBot, TwitchBot):
+        pass
+
+
+    async def main():
+        discord_bot = MyDiscordBot(os.environ['DISCORD_BOT_TOKEN'])
+
+        telegram_bot = MyTelegramBot(
+            api_id=os.environ['TELEGRAM_API_ID'],
+            api_hash=os.environ['TELEGRAM_API_HASH'],
+            bot_token=os.environ['TELEGRAM_BOT_TOKEN']
+        )
+
+        # If you run a TwitchBot in an asyncio loop you must create it inside the loop like below.
+        # Other bots like DiscordBot or TelegramBot don't have this need and can be created at the module level.
+        twitch_bot = MyTwitchBot(
+            token=os.environ['TWITCH_ACCESS_TOKEN'],
+            initial_channels=['channel_name'],
+            owner_name='owner_name'
+        )
+
+        await asyncio.gather(
+            discord_bot.start(),
+            telegram_bot.start(),
+            twitch_bot.start()
+        )
+
+
+    asyncio.run(main())
 
 |
 
