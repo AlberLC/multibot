@@ -3,6 +3,7 @@ from __future__ import annotations  # todo0 remove when it's by default
 __all__ = ['user_client', 'TelegramBot']
 
 import asyncio
+import contextlib
 import functools
 import io
 import pathlib
@@ -23,9 +24,23 @@ from multibot.exceptions import LimitError
 from multibot.models import Button, ButtonsInfo, Chat, Message, Platform, User
 
 
-# ---------------------------------------------------------- #
-# ----------------------- DECORATORS ----------------------- #
-# ---------------------------------------------------------- #
+# ---------------------------------------------------- #
+# ----------------- CONTEXT MANAGERS ----------------- #
+# ---------------------------------------------------- #
+@contextlib.asynccontextmanager
+async def use_user_client(telegram_bot: TelegramBot):
+    if telegram_bot.client != telegram_bot.user_client:
+        await telegram_bot.user_client.connect()
+
+    yield telegram_bot.user_client
+
+    if telegram_bot.client != telegram_bot.user_client:
+        await telegram_bot.user_client.disconnect()
+
+
+# ---------------------------------------------------- #
+# -------------------- DECORATORS -------------------- #
+# ---------------------------------------------------- #
 @shift_args_if_called
 def user_client(func_: Callable = None, /, is_=True) -> Callable:
     def decorator(func: Callable) -> Callable:
@@ -273,7 +288,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         self.id = me.id
         self.name = me.username
         if self.user_client:
-            async with self.user_client:
+            async with use_user_client(self):
                 self.owner_id = (await self.user_client.get_me()).id
         await super()._on_ready()
 
@@ -325,7 +340,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         chat = await self.get_chat(chat)
         n_messages += 1
 
-        async with self.user_client:
+        async with use_user_client(self):
             owner_user = await self._create_user_from_telegram_user(await self.user_client.get_me(), chat.group_id)
             if owner_user not in await self.get_users(chat):
                 return

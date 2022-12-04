@@ -33,9 +33,9 @@ from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconn
 from multibot.models import Ban, Button, ButtonsInfo, Chat, Message, Mute, Penalty, Platform, RegisteredCallback, Role, User
 
 
-# ---------------------------------------------------------- #
-# ----------------------- DECORATORS ----------------------- #
-# ---------------------------------------------------------- #
+# ---------------------------------------------------- #
+# -------------------- DECORATORS -------------------- #
+# ---------------------------------------------------- #
 @shift_args_if_called
 def find_message(func_: Callable = None, /, return_if_not_found=False) -> Callable:
     def decorator(func: Callable) -> Callable:
