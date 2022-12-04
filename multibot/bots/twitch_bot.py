@@ -269,9 +269,9 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
     def start(self) -> Coroutine | None:
         async def start_():
-            self._add_handlers()
             await self.client.start()
 
+        self._add_handlers()
         try:
             asyncio.get_running_loop()
         except RuntimeError:
