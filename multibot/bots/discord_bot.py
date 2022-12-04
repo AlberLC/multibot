@@ -173,7 +173,7 @@ class DiscordBot(MultiBot[Bot]):
         return original_message.id
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_original_message(self, event: constants.DISCORD_EVENT) -> discord.Message:
+    async def _get_original_message(self, event: constants.DISCORD_EVENT) -> constants.DISCORD_MESSAGE:
         if isinstance(event, discord.Interaction):
             return event.message
         else:
