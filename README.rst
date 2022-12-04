@@ -394,8 +394,8 @@ Add buttons to the messages you send with your bot, specify a key, and register 
 
 You can register multiple methods for the same key, as well as one method for multiple keys.
 
-A) Simple form
-..............
+A) Simple form example
+......................
 
 .. code-block:: python
 
@@ -421,8 +421,8 @@ A) Simple form
 
 |
 
-B) Extensible form
-..................
+B) Extensible form example
+..........................
 
 .. code-block:: python
 
