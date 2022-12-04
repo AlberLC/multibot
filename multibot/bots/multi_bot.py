@@ -19,7 +19,7 @@ import datetime
 import functools
 import random
 import traceback
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections import defaultdict
 from collections.abc import Callable, Coroutine, Iterable, Iterator, Sequence
 from typing import Any, Generic, Literal, TypeVar, overload
@@ -347,7 +347,6 @@ class MultiBot(Generic[T], ABC):
 
         return users - bot_user
 
-    @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_author(self, original_message: constants.ORIGINAL_MESSAGE) -> User | None:
         pass
@@ -360,12 +359,10 @@ class MultiBot(Generic[T], ABC):
     async def _get_button_presser_user(self, event: constants.MESSAGE_EVENT) -> User | None:
         pass
 
-    @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_chat(self, original_message: constants.ORIGINAL_MESSAGE) -> Chat | None:
         pass
 
-    @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.ORIGINAL_MESSAGE) -> list[User]:
         pass
@@ -406,22 +403,18 @@ class MultiBot(Generic[T], ABC):
 
         return message
 
-    @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_message_id(self, original_message: constants.ORIGINAL_MESSAGE) -> int | str | None:
         pass
 
-    @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_original_message(self, event: constants.MESSAGE_EVENT) -> constants.ORIGINAL_MESSAGE:
         pass
 
-    @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_replied_message(self, original_message: constants.ORIGINAL_MESSAGE) -> Message | None:
         pass
 
-    @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_text(self, original_message: constants.ORIGINAL_MESSAGE) -> str:
         pass
@@ -765,7 +758,6 @@ class MultiBot(Generic[T], ABC):
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
         pass
 
-    @abstractmethod
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
         pass
@@ -860,7 +852,6 @@ class MultiBot(Generic[T], ABC):
     async def remove_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
         pass
 
-    @abstractmethod
     @parse_arguments
     async def send(
         self,
@@ -896,7 +887,6 @@ class MultiBot(Generic[T], ABC):
     async def send_negative(self, message: Message) -> constants.ORIGINAL_MESSAGE:
         return await self.send(random.choice(constants.NO_PHRASES), message)
 
-    @abstractmethod
     async def start(self) -> Coroutine | None:
         pass
 
