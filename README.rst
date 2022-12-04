@@ -83,14 +83,21 @@ The session will be saved locally using SQLite.
 
 |
 
-You can save the session data in a string (string session). This serves to facilitate the use of sessions when hosting the application in cloud services with ephemeral file systems:
+You can save the session data in a string (string session). This serves to facilitate the use of sessions when hosting the application in cloud services with ephemeral file systems. Just change the :code:`.start()` line to the following:
 
 .. code-block:: python
 
-    from telethon.sessions import StringSession
+    # telegram_bot.start()
+    print(telegram_bot.string_sessions)
 
-    ...
-    string_session = StringSession.save(telegram_bot.bot_client.session)
+This will print a dictionary with the bot sessions to the console:
+
+.. code-block:: python
+
+    {
+        'bot_session': '................',
+        'user_session': None
+    }
 
 |
 
