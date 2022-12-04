@@ -231,7 +231,9 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_original_message(self, event: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE:
-        if isinstance(event, telethon.events.CallbackQuery.Event):
+        if isinstance(event, constants.TELEGRAM_MESSAGE):
+            return event
+        elif isinstance(event, telethon.events.CallbackQuery.Event):
             return await event.get_message()
         else:
             return getattr(event, 'message', event)

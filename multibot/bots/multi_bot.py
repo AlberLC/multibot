@@ -371,7 +371,7 @@ class MultiBot(Generic[T], ABC):
         event: constants.MESSAGE_EVENT,
         pull_overwrite_fields: Iterable[str] = ('_id',)
     ) -> Message:
-        original_message = event if isinstance(event, constants.ORIGINAL_MESSAGE) else await self._get_original_message(event)
+        original_message = await self._get_original_message(event)
 
         message_id = await self._get_message_id(original_message)
         chat = await self._get_chat(original_message)
