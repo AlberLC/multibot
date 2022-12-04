@@ -43,11 +43,11 @@ def user_client(func_: Callable = None, /, is_=True) -> Callable:
 # ------------------------------------------- TELEGRAM_BOT ------------------------------------------- #
 # ---------------------------------------------------------------------------------------------------- #
 class TelegramBot(MultiBot[TelegramClient]):
-    def __init__(self, api_id: int | str, api_hash: int | str, bot_token: str = None, phone: int | str = None, bot_session: str = None, user_session: str = None):
+    def __init__(self, api_id: int | str, api_hash: int | str, bot_token: str = None, bot_session: str = None, phone: int | str = None, user_session: str = None):
         self.api_id = api_id
         self.api_hash = api_hash
-        self.phone = phone
         self.bot_session = bot_session
+        self.phone = phone
         self.user_session = user_session
         self.inline_call_index = 0
 
