@@ -222,8 +222,8 @@ To use a MongoDB_ database, just add environment variables:
 
 |
 
-Extended tutorial
------------------
+Extended guide
+--------------
 
 How the bot works
 ~~~~~~~~~~~~~~~~~
