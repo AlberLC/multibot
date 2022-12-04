@@ -154,7 +154,7 @@ You will need your own **BOT_TOKEN** which you can generate on: https://twitchap
     from multibot import Message, TwitchBot
 
     twitch_bot = TwitchBot(
-        bot_token=os.environ['TWITCH_ACCESS_TOKEN'],
+        token=os.environ['TWITCH_ACCESS_TOKEN'],
         initial_channels=['channel_name'],  # Optional. You can later make the bot join a chat with join() method
         owner_name='owner_name'  # Optional. So the bot knows who to respect. Although keep in mind that the streamer cannot be punished
     )
