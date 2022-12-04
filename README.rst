@@ -390,6 +390,10 @@ B) Extensible form
 Buttons
 ~~~~~~~
 
+Add buttons to the messages you send with your bot, specify a key, and register that key to a method with :code:`Multibot.register_button()`. In this way, when a user presses a button associated with a key, the bot infrastructure will know which callbacks to call.
+
+You can register multiple methods for the same key, as well as one method for multiple keys.
+
 A) Simple form
 ..............
 
