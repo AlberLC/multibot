@@ -124,7 +124,7 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _create_chat_from_telegram_chat(self, original_chat: constants.TELEGRAM_CHAT) -> Chat | None:
-        chat_name = self._get_name_from_entity(original_chat)
+        chat_name = self._get_entity_name(original_chat)
         if isinstance(original_chat, constants.TELEGRAM_USER):
             group_id = None
             group_name = None
@@ -152,7 +152,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         return self.User(
             platform=self.platform,
             id=original_user.id,
-            name=self._get_name_from_entity(original_user),
+            name=self._get_entity_name(original_user),
             is_admin=is_admin,
             is_bot=original_user.bot,
             original_object=original_user
@@ -183,6 +183,15 @@ class TelegramBot(MultiBot[TelegramClient]):
         else:
             return await self.get_chat(original_message.chat_id)
 
+    @return_if_first_empty('', exclude_self_types='TelegramBot', globals_=globals())
+    def _get_entity_name(self, entity: telethon.hints.EntityLike) -> str:
+        if isinstance(entity, telethon.types.User):
+            return entity.username or entity.first_name
+        elif isinstance(entity, telethon.types.Channel | telethon.types.Chat):
+            return entity.title
+
+        return ''
+
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> list[User]:
         mentions = OrderedSet()
@@ -207,7 +216,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         words = text.lower().split()
 
         for participant in await self.client.get_participants(chat.original_object):
-            user_name = self._get_name_from_entity(participant).lower()
+            user_name = self._get_entity_name(participant).lower()
             if user_name in words:
                 mentions.add(await self._create_user_from_telegram_user(participant, chat))
         if chat.is_private:
@@ -219,15 +228,6 @@ class TelegramBot(MultiBot[TelegramClient]):
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_message_id(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> int | None:
         return original_message.id
-
-    @return_if_first_empty('', exclude_self_types='TelegramBot', globals_=globals())
-    def _get_name_from_entity(self, entity: telethon.hints.EntityLike) -> str:
-        if isinstance(entity, telethon.types.User):
-            return entity.username or entity.first_name
-        elif isinstance(entity, telethon.types.Channel | telethon.types.Chat):
-            return entity.title
-
-        return ''
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_original_message(self, event: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE:
