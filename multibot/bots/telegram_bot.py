@@ -398,15 +398,15 @@ class TelegramBot(MultiBot[TelegramClient]):
             case self.User() as user:
                 if user.original_object:
                     return await self._create_chat_from_telegram_chat(user.original_object)
-                chat = user.id
+                chat_id_or_name = user.id
             case self.Chat():
                 return chat
             case self.Message() as message:
                 return message.chat
-            case _:
+            case _ as chat_id_or_name:
                 pass
 
-        return await self._create_chat_from_telegram_chat(await self.client.get_entity(chat))
+        return await self._create_chat_from_telegram_chat(await self.client.get_entity(chat_id_or_name))
 
     async def get_me(self, group_: int | str | Chat = None):
         return await self._create_user_from_telegram_user(await self.client.get_me(), group_)
