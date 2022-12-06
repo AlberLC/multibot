@@ -28,14 +28,14 @@ from multibot.models import Button, ButtonsInfo, Chat, Message, Platform, User
 # ----------------- CONTEXT MANAGERS ----------------- #
 # ---------------------------------------------------- #
 @contextlib.asynccontextmanager
-async def use_user_client(telegram_bot: TelegramBot):
-    if telegram_bot.client != telegram_bot.user_client:
-        await telegram_bot.user_client.connect()
+async def use_user_client(self: TelegramBot):
+    if await self.client.is_bot():
+        await self.user_client.connect()
 
-    yield telegram_bot.user_client
+    yield self.user_client
 
-    if telegram_bot.client != telegram_bot.user_client:
-        await telegram_bot.user_client.disconnect()
+    if await self.client.is_bot():
+        await self.user_client.disconnect()
 
 
 # ---------------------------------------------------- #
