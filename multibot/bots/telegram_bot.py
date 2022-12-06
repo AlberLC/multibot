@@ -160,10 +160,7 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_author(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> User | None:
-        if original_message.sender:
-            return await self._create_user_from_telegram_user(original_message.sender, original_message.chat.id)
-        else:
-            return await self.get_user(original_message.sender_id, original_message.chat_id)
+        return await self._create_user_from_telegram_user(await original_message.get_sender(), original_message.chat_id)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_button_pressed_text(self, event: constants.TELEGRAM_EVENT) -> str | None:
@@ -174,14 +171,11 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_button_presser_user(self, event: constants.TELEGRAM_EVENT) -> User | None:
-        return await self._create_user_from_telegram_user(event.sender, event.chat.id)
+        return await self._get_author(event)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_chat(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> Chat | None:
-        if original_message.chat:
-            return await self._create_chat_from_telegram_chat(original_message.chat)
-        else:
-            return await self.get_chat(original_message.chat_id)
+        return await self._create_chat_from_telegram_chat(await original_message.get_chat())
 
     @return_if_first_empty('', exclude_self_types='TelegramBot', globals_=globals())
     def _get_entity_name(self, entity: telethon.hints.EntityLike) -> str:
@@ -194,11 +188,10 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> list[User]:
+        if isinstance(original_message, constants.TELEGRAM_INLINE_EVENT):
+            return []
+
         mentions = OrderedSet()
-        try:
-            entities = original_message.entities or ()
-        except AttributeError:
-            return list(mentions)
 
         if replied_message := await self._get_replied_message(original_message):
             mentions.add(replied_message.author)
@@ -206,7 +199,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         text = await self._get_text(original_message)
         chat = await self._get_chat(original_message)
 
-        for entity in entities:
+        for entity in original_message.entities or ():
             try:
                 mentions.add(await self.get_user(text[entity.offset:entity.offset + entity.length], chat.group_id))
             except ValueError:
@@ -231,12 +224,12 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_original_message(self, event: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE:
-        if isinstance(event, constants.TELEGRAM_MESSAGE):
+        if isinstance(event, telethon.events.NewMessage.Event):
+            return event.message
+        elif isinstance(event, constants.TELEGRAM_MESSAGE | constants.TELEGRAM_INLINE_EVENT):
             return event
         elif isinstance(event, telethon.events.CallbackQuery.Event):
             return await event.get_message()
-        else:
-            return getattr(event, 'message', event)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_replied_message(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> Message | None:
