@@ -296,7 +296,8 @@ class DiscordBot(MultiBot[Bot]):
             raise LimitError('El máximo es 100.')
 
         chat = await self.get_chat(chat)
-        n_messages += 1
+        if chat.is_private:
+            return
 
         while n_messages > 0:
             if n_messages > 100:

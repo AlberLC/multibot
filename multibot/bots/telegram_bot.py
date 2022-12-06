@@ -348,7 +348,6 @@ class TelegramBot(MultiBot[TelegramClient]):
             raise LimitError('El máximo es 100.')
 
         chat = await self.get_chat(chat)
-        n_messages += 1
 
         async with use_user_client(self):
             user_client_user = await self._create_user_from_telegram_user(await self.user_client.get_me(), chat.group_id)
