@@ -428,10 +428,16 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
-        group_id = self.get_group_id(group_)
+        match user:
+            case self.User() if user.original_object:
+                original_user = user.original_object
+            case self.User():
+                original_user = await self.client.get_entity(user.id)
+            case _:
+                original_user = await self.client.get_entity(user)
 
         with flanautils.suppress_stderr():
-            return await self._create_user_from_telegram_user(await self.client.get_entity(user), group_id)
+            return await self._create_user_from_telegram_user(original_user, group_)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
