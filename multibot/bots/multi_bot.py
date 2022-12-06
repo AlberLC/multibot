@@ -425,8 +425,6 @@ class MultiBot(Generic[T], ABC):
         for exception in exceptions:
             try:
                 raise exception
-            except ValueError:
-                await self.delete_message(context)
             except LimitError as e:
                 await self.delete_message(context)
                 await self.send_error(str(e), context)
