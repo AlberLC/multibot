@@ -3,7 +3,6 @@ from __future__ import annotations  # todo0 remove when it's by default
 __all__ = ['TwitchBot']
 
 import asyncio
-import datetime
 import re
 from collections import defaultdict
 from collections.abc import Coroutine
@@ -142,25 +141,20 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
         chat = await self.get_chat(chat)
 
-        owner_user = self.User.find_one({'platform': self.platform.value, 'name': self.owner_name})
-        messages_to_delete: Iterator[Message] = self.Message.find({
-            'platform': self.platform.value,
-            'author': {'$ne': owner_user.object_id},
-            'chat': chat.object_id,
-            'is_deleted': False,
-            'date': {'$gt': datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)}
-        }, sort_keys=(('date', pymongo.DESCENDING),), lazy=True)
+        messages_to_delete: Iterator[Message] = self.Message.find(
+            {
+                'platform': self.platform.value,
+                'chat': chat.object_id,
+                'is_deleted': False
+            },
+            sort_keys=(('date', pymongo.DESCENDING),),
+            limit=n_messages,
+            lazy=True
+        )
 
-        deleted_message_count = 0
-        while deleted_message_count < n_messages:
-            try:
-                message_to_delete = next(messages_to_delete)
-            except StopIteration:
-                break
-
+        for message_to_delete in messages_to_delete:
             if not message_to_delete.author.is_admin:
                 await self.delete_message(message_to_delete, chat)
-                deleted_message_count += 1
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def delete_message(
