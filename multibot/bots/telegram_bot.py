@@ -226,10 +226,10 @@ class TelegramBot(MultiBot[TelegramClient]):
     async def _get_original_message(self, event: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE:
         if isinstance(event, constants.TELEGRAM_NEW_MESSAGE_EVENT):
             return event.message
-        elif isinstance(event, constants.TELEGRAM_MESSAGE | constants.TELEGRAM_INLINE_EVENT):
-            return event
         elif isinstance(event, constants.TELEGRAM_BUTTON_EVENT):
             return await event.get_message()
+        else:
+            return event
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_replied_message(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> Message | None:
