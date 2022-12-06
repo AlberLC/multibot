@@ -179,9 +179,9 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty('', exclude_self_types='TelegramBot', globals_=globals())
     def _get_entity_name(self, entity: telethon.hints.EntityLike) -> str:
-        if isinstance(entity, telethon.types.User):
+        if isinstance(entity, constants.TELEGRAM_USER):
             return entity.username or entity.first_name
-        elif isinstance(entity, telethon.types.Channel | telethon.types.Chat):
+        elif isinstance(entity, constants.TELEGRAM_CHAT):
             return entity.title
 
         return ''
@@ -224,11 +224,11 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_original_message(self, event: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE:
-        if isinstance(event, telethon.events.NewMessage.Event):
+        if isinstance(event, constants.TELEGRAM_NEW_MESSAGE_EVENT):
             return event.message
         elif isinstance(event, constants.TELEGRAM_MESSAGE | constants.TELEGRAM_INLINE_EVENT):
             return event
-        elif isinstance(event, telethon.events.CallbackQuery.Event):
+        elif isinstance(event, constants.TELEGRAM_BUTTON_EVENT):
             return await event.get_message()
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())

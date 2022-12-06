@@ -208,7 +208,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
             case _ as user_id_or_name:
                 pass
 
-        original_user: twitchio.User | twitchio.Chatter
+        original_user: constants.TWITCH_USER
         if not (original_user := next(iter(await self.client.fetch_users([user_id_or_name])), None)):
             return
 
