@@ -216,8 +216,10 @@ A) Simple form
     bot = TelegramBot(
         api_id=os.environ['TELEGRAM_API_ID'],
         api_hash=os.environ['TELEGRAM_API_HASH'],
-        bot_token=os.environ['TELEGRAM_BOT_TOKEN']
+        bot_session=os.environ['TELEGRAM_BOT_SESSION'],
+        user_session=os.environ['TELEGRAM_USER_SESSION']
     )
+
 
     @bot.register('hello')
     async def function_name_1(message: Message):
@@ -241,27 +243,26 @@ A) Simple form
         await bot.delete_message(message)  # deletes the received message
         bot_message = await bot.send('Message deleted.', message)  # keep the response message
 
-        await flanautils.do_later(10, bot.delete_message, bot_message)  # delete the response message after 10 seconds
+        await flanautils.do_later(3, bot.delete_message, bot_message)  # delete the response message after 3 seconds
 
 
-    @bot.register(('house', 'home'))
+    @bot.register('house home')
     # @bot.register(['house', 'home'])  <-- same
-    # @bot.register('house home')       <-- same
+    # @bot.register(('house', 'home'))  <-- same
     async def function_name_3(message: Message):
         """This function will be executed when someone types "house" or/and "home"."""
 
-        await bot.clear(5, message)  # delete last 5 message (only works if a user_bot is activated in current chat)
+        await bot.clear(5, message)  # delete last 5 message (in telegram only works if a user_bot is activated in current chat)
 
 
-    @bot.register((('hello', 'hi'), ('world',)))  # <-- note that is Iterable[Iterable[str]]
-    # @bot.register([('hello', 'hi'), ('world',)])  <-- same
+    @bot.register([['hello', 'hi'], ['world']])  #  <-- note that is Iterable[Iterable[str]]
+    # @bot.register((('hello', 'hi'), ('world',)))  <-- same
     # @bot.register(['hello hi', ['world']])        <-- same
     # @bot.register(['hello hi', 'world'])          !!! NOT same, this is "or" logic (like previous case)
     async def function_name_4(message: Message):
         """This function will be executed when someone types ("hello" or/and "hi") and "world"."""
 
-        message.chat = await bot.get_chat('@user_name')  # get chat object from id or user_name and insert it to message context
-        await bot.send('I <3 to kill you.', message)
+        await bot.send('🫡', chat='user_name')
 
 
     @bot.register('troll')
@@ -271,7 +272,7 @@ A) Simple form
         if not message.author.is_admin:
             return
 
-        await bot.ban('@user_name', message)
+        await bot.ban('user_name', message)
 
 
     @bot.register(always=True)
@@ -281,7 +282,7 @@ A) Simple form
         if not bot.is_bot_mentioned(message):
             return
 
-        await bot.send('shut up.', message)
+        await bot.send('Shut up.', message)
 
 
     @bot.register(default=True)
@@ -314,16 +315,19 @@ B) Extensible form
 
     class MyBot(TelegramBot):
         def __init__(self):
-            super().__init__(api_id=os.environ['TELEGRAM_API_ID'],
-                             api_hash=os.environ['TELEGRAM_API_HASH'],
-                             bot_token=os.environ['TELEGRAM_BOT_TOKEN'])
+            super().__init__(
+                api_id=os.environ['TELEGRAM_API_ID'],
+                api_hash=os.environ['TELEGRAM_API_HASH'],
+                bot_session=os.environ['TELEGRAM_BOT_SESSION'],
+                user_session=os.environ['TELEGRAM_USER_SESSION']
+            )
 
         def _add_handlers(self):
             super()._add_handlers()
             self.register(self.function_name_1, 'hello')
             self.register(self.function_name_2, 'multibot', min_score=1)
-            self.register(self.function_name_3, ('house', 'home'))
-            self.register(self.function_name_4, (('hello', 'hi'), ('world',)))  # <-- note that is Iterable[Iterable[str]]
+            self.register(self.function_name_3, 'house home')
+            self.register(self.function_name_4, [['hello', 'hi'], ['world']])  # <-- note that is Iterable[Iterable[str]]
             self.register(self.function_name_5, 'troll')
             self.register(self.function_name_6, always=True)
             self.register(self.function_name_7, default=True)
@@ -347,7 +351,7 @@ B) Extensible form
             await self.delete_message(message)  # deletes the received message
             bot_message = await self.send('Message deleted.', message)  # keep the response message
 
-            await flanautils.do_later(10, self.delete_message, bot_message)  # delete the response message after 10 seconds
+            await flanautils.do_later(3, self.delete_message, bot_message)  # delete the response message after 3 seconds
 
         async def function_name_3(self, message: Message):
             """This function will be executed when someone types "house" or/and "home"."""
@@ -357,20 +361,19 @@ B) Extensible form
         async def function_name_4(self, message: Message):
             """This function will be executed when someone types ("hello" or/and "hi") and "world"."""
 
-            message.chat = await self.get_chat('@user_name')  # get chat object from id or user_name and insert it to message context
-            await self.send('I <3 to kill you.', message)
+            await self.send('🫡', chat='user_name')
 
         @admin
         async def function_name_5(self, message: Message):
             """This function will be executed when someone types "troll" but returns if he isn't an admin."""
 
-            await self.ban('@user_name', message)
+            await self.ban('user_name', message)
 
         @bot_mentioned
         async def function_name_6(self, message: Message):
             """This function will be executed always but returns if bot isn't mentioned."""
 
-            await self.send('shut up.', message)
+            await self.send('Shut up.', message)
 
         async def function_name_7(self, message: Message):
             """
