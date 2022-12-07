@@ -5,6 +5,7 @@ __all__ = ['DiscordBot']
 import asyncio
 import datetime
 import io
+import logging
 import pathlib
 import random
 import traceback
@@ -262,6 +263,7 @@ class DiscordBot(MultiBot[Bot]):
         self.id = self.client.user.id
         self.name = self.client.user.name
         self.owner_id = (await self.client.application_info()).owner.id
+        discord.utils.setup_logging(level=logging.ERROR)
         await super()._on_ready()
 
     # -------------------------------------------------------- #
@@ -654,7 +656,8 @@ class DiscordBot(MultiBot[Bot]):
     def start(self) -> Coroutine | None:
         async def start_():
             self._add_handlers()
-            await self.client.start(self.token)
+            async with self.client:
+                await self.client.start(self.token)
 
         try:
             asyncio.get_running_loop()
