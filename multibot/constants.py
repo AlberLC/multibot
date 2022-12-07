@@ -1,4 +1,5 @@
 import datetime
+import os
 
 import discord.ext.commands
 import flanautils
@@ -126,3 +127,9 @@ OUT_OF_SERVICES_PHRASES = ('Estoy fuera de servicio.', 'Estoy fuera de servicio.
                            'Que estoy fuera de servicioooo', 'ahora mismo no puedo', 'dehame', 'estoy indispuesto',
                            'estoy malito, me están arreglando', 'https://www.youtube.com/watch?v=4KfpmQBqNZY',
                            'no estoy bien', 'no funciono', 'no me encuentro muy bien..', *SAD_EMOJIS)
+
+
+def init():
+    global SEND_EXCEPTION_MESSAGE_LINES
+
+    SEND_EXCEPTION_MESSAGE_LINES = os.environ.get('SEND_EXCEPTION_MESSAGE_LINES', 0)
