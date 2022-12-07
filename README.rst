@@ -356,7 +356,7 @@ B) Extensible form
         async def function_name_3(self, message: Message):
             """This function will be executed when someone types "house" or/and "home"."""
 
-            await self.clear(5, message)  # delete last 5 messages (only works if a user_bot is activated in current chat)
+            await self.clear(5, message)  # delete last 5 messages (in telegram only works if a user_bot is activated in current chat)
 
         async def function_name_4(self, message: Message):
             """This function will be executed when someone types ("hello" or/and "hi") and "world"."""
