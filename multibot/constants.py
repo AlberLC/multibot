@@ -132,4 +132,4 @@ OUT_OF_SERVICES_PHRASES = ('Estoy fuera de servicio.', 'Estoy fuera de servicio.
 def init():
     global SEND_EXCEPTION_MESSAGE_LINES
 
-    SEND_EXCEPTION_MESSAGE_LINES = os.environ.get('SEND_EXCEPTION_MESSAGE_LINES', 0)
+    SEND_EXCEPTION_MESSAGE_LINES = int(os.environ.get('SEND_EXCEPTION_MESSAGE_LINES', 0))
