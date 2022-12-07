@@ -43,7 +43,7 @@ class RegisteredCallback(FlanaBase):
 
                 self.keywords = tuple(generator())
             case [*_, str()]:
-                keywords = (flanautils.remove_accents(keyword.strip().lower()) for keyword in keywords)
+                keywords = (flanautils.remove_accents(keyword.strip().lower()).split() for keyword in keywords)
                 self.keywords = (tuple(flanautils.flatten_iterator(keywords)),)
             case _:
                 self.keywords = tuple(keywords)
