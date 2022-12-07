@@ -93,6 +93,12 @@ class TelegramBot(MultiBot[TelegramClient]):
         self.client.add_event_handler(self._on_inline_query_raw, telethon.events.InlineQuery)
         self.client.add_event_handler(self._on_new_message_raw, telethon.events.NewMessage)
 
+    async def _ban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
+        user = await self.get_user(user, group_)
+        chat = await self.get_chat(group_)
+
+        await self.client.edit_permissions(chat.original_object, user.original_object, view_messages=False)
+
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _create_bot_message_from_telegram_bot_message(
         self,
@@ -295,6 +301,12 @@ class TelegramBot(MultiBot[TelegramClient]):
                 self.owner_id = (await self.user_client.get_me()).id
         await super()._on_ready()
 
+    async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
+        user = await self.get_user(user, group_)
+        chat = await self.get_chat(group_)
+
+        await self.client.edit_permissions(chat.original_object, user.original_object)
+
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
@@ -307,32 +319,6 @@ class TelegramBot(MultiBot[TelegramClient]):
             await event.answer()
         except AttributeError:
             pass
-
-    # async def ban(self, user: int | str | User, chat: int | str | Chat | Message, seconds: int | datetime.timedelta = None):  # todo4 test en grupo de pruebas
-    # if isinstance(user, User):
-    #     user = user.original_object
-    # if isinstance(chat, Chat):
-    #     chat = chat.original_object
-    # if isinstance(seconds, int):
-    #     seconds = datetime.timedelta(seconds=seconds)
-    #
-    # rights = telethon.tl.types.ChatBannedRights(
-    #     until_date=datetime.datetime.now(datetime.timezone.utc) + seconds if seconds else None,
-    #     view_messages=True,
-    #     send_messages=True,
-    #     send_media=True,
-    #     send_stickers=True,
-    #     send_gifs=True,
-    #     send_games=True,
-    #     send_inline=True,
-    #     embed_links=True,
-    #     send_polls=True,
-    #     change_info=True,
-    #     invite_users=True,
-    #     pin_messages=True
-    # )
-    #
-    # await self.bot_client(telethon.tl.functions.channels.EditBannedRequest(chat, user, rights))
 
     @user_client
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
@@ -618,26 +604,3 @@ class TelegramBot(MultiBot[TelegramClient]):
             return asyncio.run(string_session_())
         else:
             return string_session_()
-
-    # async def unban(self, user: int | str | User, chat: int | str | Chat | Message):  # todo4 test en grupo de pruebas
-    # if isinstance(user, User):
-    #     user = user.original_object
-    # if isinstance(chat, Chat):
-    #     chat = chat.original_object
-    #
-    # rights = telethon.tl.types.ChatBannedRights(
-    #     view_messages=False,
-    #     send_messages=False,
-    #     send_media=False,
-    #     send_stickers=False,
-    #     send_gifs=False,
-    #     send_games=False,
-    #     send_inline=False,
-    #     embed_links=False,
-    #     send_polls=False,
-    #     change_info=False,
-    #     invite_users=False,
-    #     pin_messages=False
-    # )
-    #
-    # await self.bot_client(telethon.tl.functions.channels.EditBannedRequest(chat, user, rights))
