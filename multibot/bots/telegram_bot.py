@@ -278,6 +278,12 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         return file
 
+    async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
+        user = await self.get_user(user, group_)
+        chat = await self.get_chat(group_)
+
+        await self.client.edit_permissions(chat.original_object, user.original_object)
+
     # ---------------------------------------------- #
     #                    HANDLERS                    #
     # ---------------------------------------------- #
@@ -300,12 +306,6 @@ class TelegramBot(MultiBot[TelegramClient]):
             async with use_user_client(self):
                 self.owner_id = (await self.user_client.get_me()).id
         await super()._on_ready()
-
-    async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
-        user = await self.get_user(user, group_)
-        chat = await self.get_chat(group_)
-
-        await self.client.edit_permissions(chat.original_object, user.original_object)
 
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
