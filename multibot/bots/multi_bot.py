@@ -666,7 +666,7 @@ class MultiBot(Generic[T], ABC):
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_current_roles(self, user: int | str | User | constants.ORIGINAL_USER, group_: int | str | Chat | Message = None) -> list[Role]:
-        pass
+        return []
 
     def get_formatted_last_database_messages(self, n_messages: int, name_limit=20, platform_limit=10, chat_limit=10, text_limit=30, timezone=None, simple=False) -> str:
         counter = 0
