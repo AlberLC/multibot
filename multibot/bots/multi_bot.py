@@ -558,7 +558,7 @@ class MultiBot(Generic[T], ABC):
                     await self._manage_exceptions(e, message)
 
     async def _on_ready(self):
-        constants.init()
+        constants.load_environment()
         flanautils.init_database()
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
         await flanautils.do_every(constants.CHECK_OLD_BUTTONS_INFOS_EVERY_SECONDS, self.check_old_buttons_infos)

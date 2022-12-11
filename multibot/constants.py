@@ -129,7 +129,7 @@ OUT_OF_SERVICES_PHRASES = ('Estoy fuera de servicio.', 'Estoy fuera de servicio.
                            'no estoy bien', 'no funciono', 'no me encuentro muy bien..', *SAD_EMOJIS)
 
 
-def init():
+def load_environment():
     global SEND_EXCEPTION_MESSAGE_LINES
 
     SEND_EXCEPTION_MESSAGE_LINES = int(os.environ.get('SEND_EXCEPTION_MESSAGE_LINES', 0))
