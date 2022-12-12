@@ -15,6 +15,7 @@ __all__ = [
     'MultiBot'
 ]
 
+import asyncio
 import datetime
 import functools
 import random
@@ -887,8 +888,14 @@ class MultiBot(Generic[T], ABC):
     async def send_negative(self, message: Message) -> constants.ORIGINAL_MESSAGE:
         return await self.send(random.choice(constants.NO_PHRASES), message)
 
-    async def start(self) -> Coroutine | None:
-        pass
+    def start(self) -> Coroutine | None:
+        self._add_handlers()
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(self._start())
+        else:
+            return self._start()
 
     async def typing_delay(self, message: Message):
         pass
