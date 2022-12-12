@@ -9,13 +9,13 @@ import logging
 import pathlib
 import random
 import traceback
-from collections.abc import Coroutine, Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from typing import Any
 
 import discord
+import discord.ext
 import flanautils
 import pymongo
-from discord.ext.commands import Bot
 from flanautils import Media, MediaType, NotFoundError, OrderedSet, return_if_first_empty
 
 from multibot import constants
@@ -27,14 +27,14 @@ from multibot.models import Button, ButtonsInfo, Chat, Message, Mute, Platform, 
 # --------------------------------------------------------------------------------------------------- #
 # ------------------------------------------- DISCORD_BOT ------------------------------------------- #
 # --------------------------------------------------------------------------------------------------- #
-class DiscordBot(MultiBot[Bot]):
+class DiscordBot(MultiBot[discord.ext.commands.Bot]):
     def __init__(self, token: str):
         super().__init__(token=token,
-                         client=Bot(command_prefix=constants.DISCORD_COMMAND_PREFIX, intents=discord.Intents.all()))
+                         client=discord.ext.commands.Bot(command_prefix=constants.DISCORD_COMMAND_PREFIX, intents=discord.Intents.all()))
 
-    # ----------------------------------------------------------- #
-    # -------------------- PROTECTED METHODS -------------------- #
-    # ----------------------------------------------------------- #
+    # -------------------------------------------------------- #
+    # ------------------- PROTECTED METHODS ------------------ #
+    # -------------------------------------------------------- #
     def _add_handlers(self):
         super()._add_handlers()
         self.client.add_listener(self._on_ready, 'on_ready')
@@ -242,6 +242,10 @@ class DiscordBot(MultiBot[Bot]):
             if len(bytes_) > constants.DISCORD_MEDIA_MAX_BYTES:
                 raise LimitError
             return discord.File(fp=io.BytesIO(bytes_), filename=file_name)
+
+    async def _start(self):
+        async with self.client:
+            await self.client.start(self.token)
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user = await self.get_user(user)
@@ -652,19 +656,6 @@ class DiscordBot(MultiBot[Bot]):
         bot_message.save()
 
         return bot_message
-
-    def start(self) -> Coroutine | None:
-        async def start_():
-            self._add_handlers()
-            async with self.client:
-                await self.client.start(self.token)
-
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(start_())
-        else:
-            return start_()
 
     async def typing_delay(self, message: Message):
         async with message.chat.original_object.typing():

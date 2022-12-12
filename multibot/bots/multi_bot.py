@@ -310,9 +310,9 @@ class MultiBot(Generic[T], ABC):
         self._registered_button_callbacks: dict[Any, list[Callable]] = defaultdict(list)
         self._buttons_infos: dict[tuple[int, int], ButtonsInfo] = {}
 
-    # ----------------------------------------------------------- #
-    # -------------------- PROTECTED METHODS -------------------- #
-    # ----------------------------------------------------------- #
+    # -------------------------------------------------------- #
+    # ------------------- PROTECTED METHODS ------------------ #
+    # -------------------------------------------------------- #
     def _add_handlers(self):
         pass
 
@@ -519,6 +519,9 @@ class MultiBot(Generic[T], ABC):
             if delete:
                 penalty.pull_from_database()
                 penalty.delete()
+
+    async def _start(self):
+        pass
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass

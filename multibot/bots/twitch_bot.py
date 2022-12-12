@@ -2,10 +2,8 @@ from __future__ import annotations  # todo0 remove when it's by default
 
 __all__ = ['TwitchBot']
 
-import asyncio
 import re
 from collections import defaultdict
-from collections.abc import Coroutine
 from typing import Any, Iterable, Iterator
 
 import flanautils
@@ -28,9 +26,9 @@ class TwitchBot(MultiBot[twitchio.Client]):
                          client=twitchio.ext.commands.Bot(token=token, prefix='/', initial_channels=initial_channels))
         self.owner_name = owner_name
 
-    # ----------------------------------------------------------- #
-    # -------------------- PROTECTED METHODS -------------------- #
-    # ----------------------------------------------------------- #
+    # -------------------------------------------------------- #
+    # ------------------- PROTECTED METHODS ------------------ #
+    # -------------------------------------------------------- #
     # noinspection PyProtectedMember
     def _add_handlers(self):
         super()._add_handlers()
@@ -117,6 +115,9 @@ class TwitchBot(MultiBot[twitchio.Client]):
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_text(self, original_message: constants.TWITCH_MESSAGE) -> str:
         return original_message.content
+
+    async def _start(self):
+        await self.client.start()
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user_name = self.get_user_name(user)
@@ -260,15 +261,3 @@ class TwitchBot(MultiBot[twitchio.Client]):
                 await context.reply(text)
             case _:
                 await chat.original_object.send(text)
-
-    def start(self) -> Coroutine | None:
-        async def start_():
-            await self.client.start()
-
-        self._add_handlers()
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            self.client.run()
-        else:
-            return start_()

@@ -83,9 +83,9 @@ class TelegramBot(MultiBot[TelegramClient]):
         super().__init__(token=bot_token,
                          client=client)
 
-    # ----------------------------------------------------------- #
-    # -------------------- PROTECTED METHODS -------------------- #
-    # ----------------------------------------------------------- #
+    # -------------------------------------------------------- #
+    # ------------------- PROTECTED METHODS ------------------ #
+    # -------------------------------------------------------- #
     # noinspection PyTypeChecker
     def _add_handlers(self):
         super()._add_handlers()
@@ -277,6 +277,12 @@ class TelegramBot(MultiBot[TelegramClient]):
             file = url_file() or await bytes_file()
 
         return file
+
+    async def _start(self):
+        await self.sign_in()
+        self._add_handlers()
+        await self._on_ready()
+        await self.client.run_until_disconnected()
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user = await self.get_user(user, group_)
@@ -574,25 +580,10 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         await self.client.connect()
 
-    def start(self) -> Coroutine | None:
-        async def start_():
-            await self.sign_in()
-            self._add_handlers()
-            await self._on_ready()
-            await self.client.run_until_disconnected()
-
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            asyncio.run(start_())
-        else:
-            return start_()
-
     @property
     def string_sessions(self) -> dict[str, str] | Coroutine:
         async def string_session_() -> dict[str, str]:
             await self.sign_in()
-            # noinspection PyUnresolvedReferences
             return {
                 'bot_session': StringSession.save(self.client.session) if self.client else None,
                 'user_session': StringSession.save(self.user_client.session) if self.user_client else None
