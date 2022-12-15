@@ -101,7 +101,7 @@ KEYWORDS = {
     'hello': ('alo', 'aloh', 'buenas', 'dias', 'hello', 'hey', 'hi', 'hola', 'holaaaaaa', 'ola', 'saludos', 'tardes'),
     'help': ('ayuda', 'help'),
     'last': ('last', 'ultima', 'ultimo'),
-    'message': ('comentario', 'comment', 'mensaje', 'message', 'original'),
+    'message': ('comentario', 'comment', 'mensaje', 'mensajes', 'message', 'messages', 'original'),
     'mute': ('calla', 'calle', 'cierra', 'close', 'mute', 'mutea', 'mutealo', 'noise', 'ruido', 'shut', 'silence',
              'silencia'),
     'negate': ('no', 'ocurra', 'ocurre'),
