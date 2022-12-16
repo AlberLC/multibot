@@ -284,7 +284,6 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     async def _start(self):
         await self.sign_in()
-        self._add_handlers()
         await self._on_ready()
         await self.client.run_until_disconnected()
 
