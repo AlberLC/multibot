@@ -30,7 +30,7 @@ import pymongo
 from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, ScoreMatch, return_if_first_empty, shift_args_if_called
 
 from multibot import constants
-from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
+from multibot.exceptions import LimitError, SendError, UserDisconnectedError
 from multibot.models import Ban, Button, ButtonsInfo, Chat, Message, Mute, Penalty, Platform, RegisteredCallback, Role, User
 
 
@@ -419,11 +419,18 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def _manage_exceptions(self, exceptions: Exception | Iterable[Exception], context: Chat | Message):
+    async def _manage_exceptions(
+        self,
+        exceptions: Exception | Iterable[Exception],
+        context: Chat | Message,
+        reraise=False,
+        print_traceback=False
+    ):
         if not isinstance(exceptions, Iterable):
             exceptions = (exceptions,)
 
         for exception in exceptions:
+            # noinspection PyBroadException
             try:
                 raise exception
             except LimitError as e:
@@ -440,7 +447,10 @@ class MultiBot(Generic[T], ABC):
                 if constants.SEND_EXCEPTION_MESSAGE_LINES:
                     traceback_message = '\n'.join(traceback.format_exc().splitlines()[-constants.SEND_EXCEPTION_MESSAGE_LINES:])
                     await self.send(f'{random.choice(constants.EXCEPTION_PHRASES)}\n\n...\n{traceback_message}', context)
-                raise
+                if print_traceback:
+                    print(traceback.format_exc())
+                if reraise:
+                    raise
 
     async def _mute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
@@ -508,18 +518,12 @@ class MultiBot(Generic[T], ABC):
 
         return OrderedSet(registered_callback for registered_callback in registered_callbacks if registered_callback in determined_callbacks)
 
-    async def _remove_penalty(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None, delete=True):
-        try:
-            await unpenalize_method(penalty.user_id, penalty.group_id)
-        except (BadRoleError, UserDisconnectedError) as e:
-            if message and message.chat.original_object:
-                await self._manage_exceptions(e, message)
-            else:
-                raise e
-        else:
-            if delete:
-                penalty.pull_from_database()
-                penalty.delete()
+    @staticmethod
+    async def _remove_penalty(penalty: Penalty, unpenalize_method: Callable, message: Message = None, delete=True):
+        await unpenalize_method(penalty.user_id, penalty.group_id, message)
+        if delete:
+            penalty.pull_from_database()
+            penalty.delete()
 
     async def _start(self):
         pass
@@ -546,20 +550,20 @@ class MultiBot(Generic[T], ABC):
             try:
                 await callback(message)
             except Exception as e:
-                await self._manage_exceptions(e, message)
+                await self._manage_exceptions(e, message, reraise=True)
 
     @ignore_self_message
     async def _on_new_message_raw(self, message: Message):
         try:
             registered_callbacks = self._parse_callbacks(message.text, self._registered_callbacks)
         except AmbiguityError as e:
-            await self._manage_exceptions(e, message)
+            await self._manage_exceptions(e, message, reraise=True)
         else:
             for registered_callback in registered_callbacks:
                 try:
                     await registered_callback(message)
                 except Exception as e:
-                    await self._manage_exceptions(e, message)
+                    await self._manage_exceptions(e, message, reraise=True)
 
     async def _on_ready(self):
         constants.load_environment()
@@ -807,16 +811,9 @@ class MultiBot(Generic[T], ABC):
     async def mute(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
         # noinspection PyTypeChecker
         mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_), time)
-        try:
-            await self._mute(mute.user_id, mute.group_id)
-        except UserDisconnectedError as e:
-            if message and message.chat.original_object:
-                await self._manage_exceptions(e, message)
-            else:
-                raise e
-        else:
-            mute.save(pull_exclude_fields=('until',))
-            await self._unpenalize_later(mute, self._unmute, message)
+        await self._mute(mute.user_id, mute.group_id, message)
+        mute.save(pull_exclude_fields=('until',))
+        await self._unpenalize_later(mute, self._unmute, message)
 
     @overload
     def register(self, func_: Callable = None, keywords=(), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
