@@ -30,7 +30,7 @@ import pymongo
 from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, ScoreMatch, return_if_first_empty, shift_args_if_called
 
 from multibot import constants
-from multibot.exceptions import LimitError, SendError, UserDisconnectedError
+from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
 from multibot.models import Ban, Button, ButtonsInfo, Chat, Message, Mute, Penalty, Platform, RegisteredCallback, Role, User
 
 
@@ -518,12 +518,18 @@ class MultiBot(Generic[T], ABC):
 
         return OrderedSet(registered_callback for registered_callback in registered_callbacks if registered_callback in determined_callbacks)
 
-    @staticmethod
-    async def _remove_penalty(penalty: Penalty, unpenalize_method: Callable, message: Message = None, delete=True):
-        await unpenalize_method(penalty.user_id, penalty.group_id, message)
-        if delete:
-            penalty.pull_from_database()
-            penalty.delete()
+    async def _remove_penalty(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None, delete=True):
+        try:
+            await unpenalize_method(penalty.user_id, penalty.group_id)
+        except (BadRoleError, UserDisconnectedError) as e:
+            if message and message.chat.original_object:
+                await self._manage_exceptions(e, message)
+            else:
+                raise e
+        else:
+            if delete:
+                penalty.pull_from_database()
+                penalty.delete()
 
     async def _start(self):
         pass
