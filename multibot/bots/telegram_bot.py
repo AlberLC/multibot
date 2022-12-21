@@ -64,7 +64,6 @@ class TelegramBot(MultiBot[TelegramClient]):
         self.bot_session = bot_session
         self.phone = phone
         self.user_session = user_session
-        self.inline_call_index = 0
 
         if self.bot_session:
             client = TelegramClient(StringSession(bot_session), self.api_id, self.api_hash)
@@ -269,7 +268,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             if media.title or is_inline:
                 try:
                     bytes_ = await flanautils.edit_metadata(bytes_, {'title': file_stem}, overwrite=False)
-                except ValueError:
+                except FileNotFoundError:
                     pass
             file_ = io.BytesIO(bytes_)
             file_.name = f"{file_stem}{f'.{media.extension}' if media.extension else ''}"
@@ -530,7 +529,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                         parse_retries -= 1
                     else:
                         raise
-                except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
+                except (telethon.errors.rpcerrorlist.MediaEmptyError, telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                     return
                 else:
                     break
@@ -553,7 +552,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                     await message.original_event.answer([await create_result(media) for media in message.data['inline_media']])
                 except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
                     await message.original_event.answer([await create_result(media, prefer_bytes=True) for media in message.data['inline_media']])
-            except (KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
+            except (AttributeError, KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
                 pass
 
     async def sign_in(self):

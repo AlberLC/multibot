@@ -243,7 +243,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             if media.title:
                 try:
                     bytes_ = await flanautils.edit_metadata(bytes_, {'title': file_stem}, overwrite=False)
-                except ValueError:
+                except FileNotFoundError:
                     pass
             if len(bytes_) > constants.DISCORD_MEDIA_MAX_BYTES:
                 raise LimitError
@@ -579,11 +579,23 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             await self._manage_exceptions(SendError(error_message), chat)
 
         text = self._parse_html_to_discord_markdown(text)
-        try:
-            file = await self._prepare_media_to_send(media)
-        except LimitError:
-            await file_too_large()
-            return
+        if (
+                media
+                and
+                media.url
+                and
+                media.type_ is MediaType.GIF
+                and
+                any(domain.lower() in media.url for domain in constants.GIF_DOMAINS)
+        ):
+            text = f'{text} {media.url}' if text else media.url
+            file = None
+        else:
+            try:
+                file = await self._prepare_media_to_send(media)
+            except LimitError:
+                await file_too_large()
+                return
         view = None
 
         if buttons:

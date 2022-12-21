@@ -50,7 +50,6 @@ DISCORD_BUTTONS_MAX = 5
 DISCORD_COMMAND_PREFIX = flanautils.random_string()
 DISCORD_MEDIA_MAX_BYTES = 8000000
 ERROR_MESSAGE_DURATION = 10
-INLINE_DELAY_SECONDS = 2
 MAX_FILE_EXTENSION_LENGHT = 5
 PARSER_KEYWORDS_LENGHT_PENALTY = 0.001
 PARSER_MAX_WORD_LENGTH = 25
@@ -74,6 +73,8 @@ EXCEPTION_PHRASES = ('A ver como lo digo...', 'Anda mira que error más bonito.'
                      'Me hice caca', 'Me rompí', 'No funciono', 'No me siento muy bien...', 'Pues me he roto',
                      'Pues no ha salido muy bien la cosa', 'Todo iba bien hasta que dejó de ir bien', 'Toma error',
                      'me rompido')
+
+GIF_DOMAINS = ('Gfycat', 'Gifbin', 'Giphy', 'Imgur', 'ReactionGifs', 'Tenor')
 
 INTERROGATION_PHRASES = ('?', 'que?', 'que dise', 'no entiendo', 'no entender', 'mi no entender', 'ein?', '🤔', '🤨',
                          '🧐', '🙄', '🙃')
