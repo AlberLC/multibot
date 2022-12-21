@@ -298,13 +298,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     # ---------------------------------------------- #
     @find_message
     async def _on_inline_query_raw(self, message: Message):
-        self.inline_call_index += 1
-        inline_call_index = self.inline_call_index
-        await asyncio.sleep(constants.INLINE_DELAY_SECONDS)
-
-        if inline_call_index == self.inline_call_index:
-            self.inline_call_index = 0
-            await self._on_new_message_raw(message)
+        await super()._on_new_message_raw(message)
 
     async def _on_ready(self):
         self.platform = Platform.TELEGRAM
