@@ -545,7 +545,7 @@ For both a normal bot and a user bot (bot using your "human" account) you will n
     :target: https://www.python.org/downloads/
     :alt: PyPI - Python Version
 
-.. |multiBot_class_diagram| image:: https://user-images.githubusercontent.com/37489786/204900317-048c9174-da6b-4b54-9344-b5fecf985f5b.png
+.. |multiBot_class_diagram| image:: https://user-images.githubusercontent.com/37489786/209089099-dcc5c818-8fcc-49df-9a8d-6fb599780e5a.png
     :alt: multiBot_class_diagram
 
 .. |my.telegram.org_app| image:: https://user-images.githubusercontent.com/37489786/149607226-36b0e3d6-6e21-4852-a08f-16ce52d3a7dc.png
