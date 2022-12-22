@@ -31,7 +31,7 @@ from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, ScoreMa
 
 from multibot import constants
 from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
-from multibot.models import Ban, Button, ButtonsInfo, Chat, Message, Mute, Penalty, Platform, RegisteredCallback, Role, User
+from multibot.models import Ban, Button, Chat, Message, Mute, Penalty, Platform, RegisteredCallback, Role, User
 
 
 # ---------------------------------------------------- #
@@ -309,7 +309,9 @@ class MultiBot(Generic[T], ABC):
         self.client: T = client
         self._registered_callbacks: list[RegisteredCallback] = []
         self._registered_button_callbacks: dict[Any, list[Callable]] = defaultdict(list)
-        self._buttons_infos: dict[tuple[int, int], ButtonsInfo] = {}
+        # noinspection PyPep8Naming
+        MessageType = self.Message
+        self._message_cache: dict[tuple[int, int], MessageType] = {}
 
     # -------------------------------------------------------- #
     # ------------------- PROTECTED METHODS ------------------ #
@@ -377,30 +379,30 @@ class MultiBot(Generic[T], ABC):
         message_id = await self._get_message_id(original_message)
         chat = await self._get_chat(original_message)
         try:
-            buttons_info = self._buttons_infos[message_id, chat.id]
+            cached_message = self._message_cache[message_id, chat.id]
         except KeyError:
-            buttons_info = None
-        else:
-            buttons_info.pressed_text = await self._get_button_pressed_text(event)
-            buttons_info.presser_user = await self._get_button_presser_user(event)
+            message = self.Message(
+                platform=self.platform,
+                id=message_id,
+                author=await self._get_author(original_message),
+                text=await self._get_text(original_message),
+                mentions=await self._get_mentions(original_message),
+                chat=chat,
+                replied_message=await self._get_replied_message(original_message),
+                is_inline=isinstance(event, constants.TELEGRAM_INLINE_EVENT) if isinstance(event, constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) else None,
+                original_object=original_message,
+                original_event=event
+            )
+            message.resolve()
+            message.save(pull_overwrite_fields=pull_overwrite_fields)
+            return message
 
-        message = self.Message(
-            platform=self.platform,
-            id=message_id,
-            author=await self._get_author(original_message),
-            text=await self._get_text(original_message),
-            mentions=await self._get_mentions(original_message),
-            chat=chat,
-            buttons_info=buttons_info,
-            replied_message=await self._get_replied_message(original_message),
-            is_inline=isinstance(event, constants.TELEGRAM_INLINE_EVENT) if isinstance(event, constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) else None,
-            original_object=original_message,
-            original_event=event
-        )
-        message.resolve()
-        message.save(pull_overwrite_fields=pull_overwrite_fields)
-
-        return message
+        if cached_message.buttons_info:
+            cached_message.buttons_info.pressed_text = await self._get_button_pressed_text(event)
+            cached_message.buttons_info.presser_user = await self._get_button_presser_user(event)
+        cached_message.original_object = original_message
+        cached_message.original_event = event
+        return cached_message
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_message_id(self, original_message: constants.ORIGINAL_MESSAGE) -> int | str | None:
@@ -604,14 +606,14 @@ class MultiBot(Generic[T], ABC):
 
     def check_old_buttons_infos(self):
         keys_to_delete = []
-        for k, v in self._buttons_infos.items():
+        for k, v in self._message_cache.items():
             if datetime.datetime.now(datetime.timezone.utc) < v.date + constants.BUTTONS_INFOS_EXPIRATION_TIME:
                 break
 
             keys_to_delete.append(k)
 
         for key in keys_to_delete:
-            del self._buttons_infos[key]
+            del self._message_cache[key]
 
     @classmethod
     def check_old_database_messages(cls):
@@ -866,7 +868,6 @@ class MultiBot(Generic[T], ABC):
         message: Message = None,
         *,
         buttons_key: Any = None,
-        buttons_data: dict = None,
         reply_to: int | str | Message = None,
         data: dict = None,
         silent: bool = False,

@@ -4,6 +4,9 @@ __all__ = ['Message']
 
 import datetime
 from dataclasses import dataclass, field
+from typing import Any
+
+from flanautils import Media
 
 from multibot import constants
 from multibot.models.buttons import ButtonsInfo
@@ -24,16 +27,20 @@ class Message(EventComponent):
     author: User = None
     text: str = None
     mentions: list[User] = field(default_factory=list)
+    medias: list[Media] = field(default_factory=list)
     buttons_info: ButtonsInfo = None
-    chat: Chat = None
-    replied_message: Message = None
+    data: dict = field(default_factory=dict)
     date: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
     last_edit: datetime.datetime = None
     is_inline: bool = None
-    data: dict = field(default_factory=dict)
     is_deleted: bool = False
+    chat: Chat = None
+    replied_message: Message = None
     original_object: constants.ORIGINAL_MESSAGE = None
     original_event: constants.MESSAGE_EVENT = None
+
+    def _mongo_repr(self) -> Any:
+        return {k: v.to_dict() if isinstance(v, Media) else v for k, v in super()._mongo_repr().items() if k not in ('buttons_info', 'data')}
 
     def update_last_edit(self):
         self.last_edit = datetime.datetime.now(datetime.timezone.utc)

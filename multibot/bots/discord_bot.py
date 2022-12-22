@@ -564,7 +564,6 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         message: Message = None,
         *,
         buttons_key: Any = None,
-        buttons_data: dict = None,
         reply_to: int | str | Message = None,
         data: dict = None,
         silent: bool = False,
@@ -596,8 +595,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             except LimitError:
                 await file_too_large()
                 return
-        view = None
 
+        view = None
         if buttons:
             view = discord.ui.View(timeout=None)
             for i, row in enumerate(buttons):
@@ -612,32 +611,26 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 kwargs['content'] = text
             if file:
                 kwargs['attachments'] = [file]
-            try:
-                if buttons is not None:
-                    kwargs['view'] = view
-                    self._buttons_infos[message.id, chat.id].buttons = buttons
-                if buttons_key is not None:
-                    self._buttons_infos[message.id, chat.id].key = buttons_key
-            except KeyError:
-                self._buttons_infos[message.id, chat.id] = ButtonsInfo(
-                    buttons=buttons,
-                    key=buttons_key,
-                    data=buttons_data
-                )
+            if buttons is not None:
+                kwargs['view'] = view
 
             try:
                 message.original_object = await message.original_object.edit(**kwargs)
             except discord.errors.NotFound:
                 return
 
-            if data is None:
-                if media is not None:
-                    message.data['media'] = media.content
-            else:
-                if media is None:
-                    message.data = data
-                else:
-                    message.data = {'media': media.content} | data
+            if media is not None:
+                message.medias = [media]
+            try:
+                if buttons is not None:
+                    self._message_cache[message.id, chat.id].buttons_info.buttons = buttons
+                if buttons_key is not None:
+                    self._message_cache[message.id, chat.id].buttons_info.key = buttons_key
+            except (AttributeError, KeyError):
+                message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
+                self._message_cache[message.id, chat.id] = message
+            if data is not None:
+                message.data = data
 
             message.update_last_edit()
             message.save()
@@ -661,15 +654,13 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             raise
 
         if buttons:
-            self._buttons_infos[bot_message.id, chat.id] = ButtonsInfo(
-                buttons=buttons,
-                key=buttons_key,
-                data=buttons_data
-            )
+            bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
         if media:
-            bot_message.data['media'] = media.content
+            bot_message.medias.append(media)
         if data:
-            bot_message.data |= data
+            bot_message.data = data
+        if bot_message.buttons_info or bot_message.data:
+            self._message_cache[bot_message.id, chat.id] = bot_message
 
         bot_message.save()
 

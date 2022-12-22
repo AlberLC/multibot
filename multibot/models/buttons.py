@@ -24,8 +24,6 @@ class ButtonsInfo(FlanaBase):
     presser_user: User = None
     buttons: list[list[Button]] = field(default_factory=lambda: [[]])
     key: Any = None
-    data: dict = field(default_factory=dict)
-    date: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
 
     def __getitem__(self, item) -> Button | None:
         if not item:
