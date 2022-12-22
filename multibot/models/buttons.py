@@ -1,6 +1,5 @@
 __all__ = ['Button', 'ButtonsInfo']
 
-import datetime
 from dataclasses import dataclass, field
 from typing import Any
 
