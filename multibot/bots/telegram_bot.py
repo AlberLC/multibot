@@ -205,7 +205,8 @@ class TelegramBot(MultiBot[TelegramClient]):
             try:
                 mentions.add(await self.get_user(text[entity.offset:entity.offset + entity.length], chat.group_id))
             except ValueError:
-                pass
+                if getattr(entity, 'user_id', None):
+                    mentions.add(await self.get_user(entity.user_id, chat.group_id))
 
         text = flanautils.remove_symbols(text, replace_with=' ')
         words = text.lower().split()
