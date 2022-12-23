@@ -249,7 +249,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 raise LimitError
             return discord.File(fp=io.BytesIO(bytes_), filename=file_name)
 
-    async def _start(self):
+    async def _start_async(self):
         async with self.client:
             await self.client.start(self.token)
 

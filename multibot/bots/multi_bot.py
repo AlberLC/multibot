@@ -533,8 +533,11 @@ class MultiBot(Generic[T], ABC):
                 penalty.pull_from_database()
                 penalty.delete()
 
-    async def _start(self):
+    async def _start_async(self):
         pass
+
+    def _start_sync(self):
+        asyncio.run(self._start_async())
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
@@ -900,9 +903,9 @@ class MultiBot(Generic[T], ABC):
         try:
             asyncio.get_running_loop()
         except RuntimeError:
-            asyncio.run(self._start())
+            self._start_sync()
         else:
-            return self._start()
+            return self._start_async()
 
     async def typing_delay(self, message: Message):
         pass

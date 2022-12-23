@@ -279,7 +279,7 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         return file
 
-    async def _start(self):
+    async def _start_async(self):
         await self.sign_in()
         await self._on_ready()
         await self.client.run_until_disconnected()

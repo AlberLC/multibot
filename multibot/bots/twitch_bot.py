@@ -116,8 +116,11 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def _get_text(self, original_message: constants.TWITCH_MESSAGE) -> str:
         return original_message.content
 
-    async def _start(self):
+    async def _start_async(self):
         await self.client.start()
+
+    def _start_sync(self):
+        self.client.run()
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user_name = self.get_user_name(user)
