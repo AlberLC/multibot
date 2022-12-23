@@ -816,6 +816,9 @@ class MultiBot(Generic[T], ABC):
     async def is_self_muted(self, user: int | str | User, group_: int | str | Chat | Message) -> bool:
         pass
 
+    async def make_mention(self, user: int | str | User) -> str:
+        pass
+
     async def mute(self, user: int | str | User, group_: int | str | Chat | Message, time: int | datetime.timedelta = None, message: Message = None):
         # noinspection PyTypeChecker
         mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_), time)

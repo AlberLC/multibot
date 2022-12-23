@@ -539,6 +539,15 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         except AttributeError:
             raise UserDisconnectedError(user.name)
 
+    async def make_mention(self, user: int | str | User) -> str:
+        match user:
+            case int(id):
+                return f'<@{id}>'
+            case str(name):
+                user = await self.get_user(name)
+
+        return f'<@{user.id}>'
+
     async def remove_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
         user = await self.get_user(user, group_)
         role = await self.find_role(role, group_)
