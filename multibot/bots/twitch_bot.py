@@ -235,6 +235,16 @@ class TwitchBot(MultiBot[twitchio.Client]):
     async def leave(self, chat_name: str | Iterable[str]):
         await self.client.part_channels((chat_name,) if isinstance(chat_name, str) else chat_name)
 
+    async def make_mention(self, user: int | str | User, group_: int | str | Chat | Message = None) -> str:
+        if isinstance(user, str):
+            name = user
+        else:
+            if isinstance(user, int):
+                user = await self.get_user(user, group_)
+            name = user.name
+
+        return f'@{name}'
+
     @parse_arguments
     async def send(
         self,
