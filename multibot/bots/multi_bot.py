@@ -577,7 +577,7 @@ class MultiBot(Generic[T], ABC):
         constants.load_environment()
         flanautils.init_database()
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
-        await flanautils.do_every(constants.CHECK_OLD_BUTTONS_INFOS_EVERY_SECONDS, self.check_old_buttons_infos)
+        await flanautils.do_every(constants.CHECK_OLD_CACHE_MESSAGES_EVERY_SECONDS, self.check_old_cache_messages)
         await flanautils.do_every(constants.CHECK_OLD_DATABASE_MESSAGES_EVERY_SECONDS, self.check_old_database_messages)
         await flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_bans)
         await flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_mutes)
@@ -604,7 +604,7 @@ class MultiBot(Generic[T], ABC):
     async def check_mutes(self):
         await self._check_penalties(Mute, self._unmute)
 
-    def check_old_buttons_infos(self):
+    def check_old_cache_messages(self):
         keys_to_delete = []
         for k, v in self._message_cache.items():
             if datetime.datetime.now(datetime.timezone.utc) < v.date + constants.BUTTONS_INFOS_EXPIRATION_TIME:
