@@ -481,7 +481,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
-        user_id = self.get_user_id(user)
+        if not (user_id := self.get_user_id(user)):
+            return
 
         if group_ is None:
             original_user = self.client.get_user(user_id) or await self.client.fetch_user(user_id)
