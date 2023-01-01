@@ -394,7 +394,7 @@ class MultiBot(Generic[T], ABC):
                 original_event=event
             )
             message.resolve()
-            message.save(pull_overwrite_fields=pull_overwrite_fields)
+            message.save(pull_overwrite_fields=pull_overwrite_fields, pull_lazy=False)
             return message
 
         if cached_message.buttons_info:
