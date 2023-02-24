@@ -657,7 +657,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 reply_to = message_to_reply.original_object
 
         try:
-            bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=view, reference=reply_to))
+            bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=view, reference=reply_to, silent=silent))
         except discord.errors.HTTPException as e:
             if 'too large' in str(e).lower():
                 await file_too_large()
