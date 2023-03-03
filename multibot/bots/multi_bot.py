@@ -618,10 +618,9 @@ class MultiBot(Generic[T], ABC):
         for key in keys_to_delete:
             del self._message_cache[key]
 
-    @classmethod
-    def check_old_database_messages(cls):
+    def check_old_database_messages(self):
         before_date = datetime.datetime.now(datetime.timezone.utc) - constants.DATABASE_MESSAGE_EXPIRATION_TIME
-        cls.Message.delete_many_raw({'date': {'$lte': before_date}})
+        self.Message.delete_many_raw({'platform': self.platform.value, 'date': {'$lte': before_date}})
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
