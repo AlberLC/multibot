@@ -143,6 +143,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
     # -------------------------------------------------------- #
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def clear(self, n_messages: int, chat: int | str | Chat | Message):
+        n_messages = int(n_messages)
         chat = await self.get_chat(chat)
 
         messages_to_delete: Iterator[Message] = self.Message.find(

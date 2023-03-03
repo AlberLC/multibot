@@ -326,6 +326,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         if n_messages > constants.DELETE_MESSAGE_LIMIT:
             raise LimitError('El máximo es 100.')
 
+        n_messages = int(n_messages)
         chat = await self.get_chat(chat)
 
         async with use_user_client(self):
