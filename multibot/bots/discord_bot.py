@@ -355,7 +355,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             return
 
         message_to_delete.is_deleted = True
-        message_to_delete.save()
+        message_to_delete.save(('is_deleted',))
 
     # noinspection PyTypeChecker
     def distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:

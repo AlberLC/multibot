@@ -363,7 +363,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             await self.client.delete_messages(chat.original_object, message_to_delete.id)
 
         message_to_delete.is_deleted = True
-        message_to_delete.save()
+        message_to_delete.save(('is_deleted',))
 
     # noinspection PyTypeChecker
     def distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:

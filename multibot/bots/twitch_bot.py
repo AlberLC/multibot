@@ -178,7 +178,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
 
         await self.send(f'/delete {message_to_delete.id}', chat)
         message_to_delete.is_deleted = True
-        message_to_delete.save()
+        message_to_delete.save(('is_deleted',))
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message = None) -> Chat | None:
