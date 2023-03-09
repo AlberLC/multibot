@@ -341,10 +341,10 @@ class TelegramBot(MultiBot[TelegramClient]):
 
             message_ids = [message.id async for message in self.user_client.iter_messages(original_chat, n_messages)]
             await self.user_client.delete_messages(original_chat, message_ids)
-            database_messages_to_delete_generator = self.Message.find({'platform': self.platform.value, 'chat': chat.object_id}, sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages, lazy=True)
-            for database_message_to_delete in database_messages_to_delete_generator:
-                database_message_to_delete.is_deleted = True
-                database_message_to_delete.save()
+            deleted_messages_generator = self.Message.find({'platform': self.platform.value, 'chat': chat.object_id}, sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages, lazy=True)
+            for deleted_message in deleted_messages_generator:
+                deleted_message.is_deleted = True
+                deleted_message.save()
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def delete_message(
