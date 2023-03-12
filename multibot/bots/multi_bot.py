@@ -686,16 +686,12 @@ class MultiBot(Generic[T], ABC):
     async def get_current_roles(self, user: int | str | User | constants.ORIGINAL_USER, group_: int | str | Chat | Message = None) -> list[Role]:
         return []
 
-    def get_formatted_last_database_messages(self, n_messages: int, name_limit=20, platform_limit=10, chat_limit=10, text_limit=30, timezone=None, simple=False) -> str:
-        counter = 0
-
+    def get_formatted_last_database_messages(self, n_messages: int, name_limit=10, platform_limit=10, chat_limit=10, text_limit=40, timezone=None, simple=False) -> str:
         if simple:
             title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<12}"
 
             def generator_():
-                nonlocal counter
                 for i, message in enumerate(self.get_last_database_messages(n_messages, lazy=True), start=1):
-                    counter += 1
                     name = message.author.name.split('#')[0]
                     text = repr(message.text).replace('`', '').strip("'")
                     date = message.date.astimezone(timezone).strftime('%d  %H:%M')
@@ -704,9 +700,7 @@ class MultiBot(Generic[T], ABC):
             title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Plataforma'[:platform_limit]:<{platform_limit}}  {'Chat'[:chat_limit]:<{chat_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<20}"
 
             def generator_():
-                nonlocal counter
                 for i, message in enumerate(self.get_last_database_messages(n_messages, lazy=True), start=1):
-                    counter += 1
                     name = message.author.name.split('#')[0]
                     platform = Platform(message.platform).name
                     chat = message.chat.name
