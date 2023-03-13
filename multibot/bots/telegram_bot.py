@@ -389,7 +389,7 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         try:
             return await self._create_chat_from_telegram_chat(await self.client.get_entity(chat_id_or_name))
-        except ValueError:
+        except (ValueError, telethon.errors.rpcerrorlist.UsernameInvalidError):
             pass
 
     async def get_me(self, group_: int | str | Chat = None):
@@ -429,7 +429,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                         pass
                 try:
                     original_user = await self.client.get_entity(user_id_or_name)
-                except ValueError:
+                except (ValueError, telethon.errors.rpcerrorlist.UsernameInvalidError):
                     return
 
         return await self._create_user_from_telegram_user(original_user, group_)
