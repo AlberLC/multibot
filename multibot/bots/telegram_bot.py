@@ -7,6 +7,7 @@ import contextlib
 import functools
 import io
 import pathlib
+import struct
 from collections.abc import Coroutine
 from typing import Any, Callable, Sequence
 
@@ -386,13 +387,19 @@ class TelegramBot(MultiBot[TelegramClient]):
             case _ as chat_id_or_name:
                 pass
 
-        return await self._create_chat_from_telegram_chat(await self.client.get_entity(chat_id_or_name))
+        try:
+            return await self._create_chat_from_telegram_chat(await self.client.get_entity(chat_id_or_name))
+        except ValueError:
+            pass
 
     async def get_me(self, group_: int | str | Chat = None):
         return await self._create_user_from_telegram_user(await self.client.get_me(), group_)
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def get_message(self, message: int | str | Message, chat: int | str | User | Chat | Message) -> Message | None:
+        if not (chat := await self.get_chat(chat)):
+            return
+
         match message:
             case int(message_id):
                 pass
@@ -403,18 +410,27 @@ class TelegramBot(MultiBot[TelegramClient]):
             case _:
                 raise TypeError('bad arguments')
 
-        chat = await self.get_chat(chat)
-        return await self._get_message(await self.client.get_messages(chat.original_object, ids=message_id))
+        try:
+            with flanautils.suppress_low_level_stderr():
+                return await self._get_message(await self.client.get_messages(chat.original_object, ids=message_id))
+        except (TypeError, struct.error):
+            pass
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
         match user:
             case self.User() if user.original_object:
                 original_user = user.original_object
-            case self.User():
-                original_user = await self.client.get_entity(user.id)
             case _:
-                original_user = await self.client.get_entity(user)
+                match user:
+                    case self.User():
+                        user_id_or_name = user.id
+                    case user_id_or_name:
+                        pass
+                try:
+                    original_user = await self.client.get_entity(user_id_or_name)
+                except ValueError:
+                    return
 
         return await self._create_user_from_telegram_user(original_user, group_)
 
