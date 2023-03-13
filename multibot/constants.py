@@ -80,8 +80,9 @@ INTERROGATION_PHRASES = ('?', 'que?', 'que dise', 'no entiendo', 'no entender', 
                          '🧐', '🙄', '🙃')
 
 KEYWORDS = {
-    'activate': ('activa', 'activar', 'activate', 'add', 'añade', 'añadir', 'dale', 'deja', 'dejale', 'devuelve',
-                 'devuelvele', 'enable', 'encender', 'enciende', 'habilita', 'habilitar', 'permite'),
+    'activate': ('abre', 'activa', 'activar', 'activate', 'add', 'añade', 'añadir', 'dale', 'deja', 'dejale',
+                 'devuelve', 'devuelvele', 'enable', 'encender', 'enciende', 'habilita', 'habilitar', 'open',
+                 'permite', 'return'),
     'all': ('all', 'complete', 'completo', 'entero', 'full', 'toda', 'todas', 'todo', 'todos'),
     'audio': ('audio', 'music', 'musica', 'sonido', 'sound'),
     'audit': ('audit', 'auditoria', 'desconectado', 'disconnect', 'log', 'move', 'mover', 'movido', 'registro'),
@@ -96,8 +97,8 @@ KEYWORDS = {
     'date': ('ayer', 'de', 'domingo', 'fin', 'finde', 'friday', 'hoy', 'jueves', 'lunes', 'martes', 'mañana',
              'miercoles', 'monday', 'pasado', 'sabado', 'saturday', 'semana', 'sunday', 'thursday', 'today', 'tomorrow',
              'tuesday', 'viernes', 'wednesday', 'week', 'weekend', 'yesterday'),
-    'deactivate': ('apaga', 'apagar', 'cancel', 'cancela', 'deactivate', 'deactivate', 'desactivar', 'deshabilita',
-                   'deshabilitar', 'disable', 'forbids', 'prohibe', 'quita', 'remove', 'return'),
+    'deactivate': ('apaga', 'apagar', 'cancel', 'cancela', 'cierra', 'close', 'deactivate', 'deactivate', 'desactivar',
+                   'deshabilita', 'deshabilitar', 'disable', 'forbids', 'prohibe', 'quita', 'remove'),
     'delete': ('borra', 'borrado', 'borres', 'clear', 'delete', 'elimina', 'limpia', 'remove'),
     'hello': ('alo', 'aloh', 'buenas', 'dias', 'hello', 'hey', 'hi', 'hola', 'holaaaaaa', 'ola', 'saludos', 'tardes'),
     'help': ('ayuda', 'help'),
