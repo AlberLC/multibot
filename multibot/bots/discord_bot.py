@@ -418,7 +418,10 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             case int(chat_id):
                 pass
             case str(chat_name):
-                chat_id = self.Chat.find_one({'platform': self.platform.value, 'name': chat_name}).id
+                if chat := self.Chat.find_one({'platform': self.platform.value, 'name': chat_name}):
+                    chat_id = chat.id
+                else:
+                    return
             case self.User() as user:
                 return await self._create_chat_from_discord_chat(await user.original_object.create_dm())
             case self.Chat():
@@ -428,8 +431,11 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             case _:
                 raise TypeError('bad arguments')
 
-        # noinspection PyTypeChecker
-        return await self._create_chat_from_discord_chat(self.client.get_channel(chat_id) or await self.client.fetch_channel(chat_id))
+        try:
+            # noinspection PyTypeChecker
+            return await self._create_chat_from_discord_chat(self.client.get_channel(chat_id) or await self.client.fetch_channel(chat_id))
+        except discord.errors.NotFound:
+            pass
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_current_roles(self, user: int | str | User | constants.DISCORD_USER, group_: int | str | Chat | Message = None) -> list[Role]:
@@ -458,6 +464,9 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_message(self, message: int | str | Message, chat: int | str | User | Chat | Message) -> Message | None:
+        if not (chat := await self.get_chat(chat)):
+            return
+
         match message:
             case int(message_id):
                 pass
@@ -468,8 +477,10 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             case _:
                 raise TypeError('bad arguments')
 
-        chat = await self.get_chat(chat)
-        return await self._get_message(await chat.original_object.fetch_message(message_id))
+        try:
+            return await self._get_message(await chat.original_object.fetch_message(message_id))
+        except discord.errors.NotFound:
+            return
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
@@ -484,11 +495,13 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         if not (user_id := self.get_user_id(user)):
             return
 
-        if group_ is None:
-            original_user = self.client.get_user(user_id) or await self.client.fetch_user(user_id)
-        else:
-            discord_group = await self._get_discord_group(group_)
-            original_user = discord_group.get_member(user_id)
+        try:
+            if group_ is None:
+                original_user = self.client.get_user(user_id) or await self.client.fetch_user(user_id)
+            elif not (discord_group := await self._get_discord_group(group_)) or not (original_user := discord_group.get_member(user_id)):
+                return
+        except discord.errors.NotFound:
+            return
 
         return await self._create_user_from_discord_user(original_user)
 
