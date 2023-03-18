@@ -485,7 +485,7 @@ class MultiBot(Generic[T], ABC):
                 mached_keywords_groups = 0
                 total_score = 0
                 for keywords_group in registered_callback.keywords:
-                    important_words |= {original_text_word for original_text_word in original_words if flanautils.cartesian_product_string_matching(original_text_word, keywords_group, min_score=registered_callback.min_score)}
+                    important_words |= {original_word for original_word in original_words if flanautils.cartesian_product_string_matching(original_word, keywords_group, min_score=registered_callback.min_score)}
                     word_matches = flanautils.cartesian_product_string_matching(important_words, keywords_group, min_score=registered_callback.min_score)
                     score = sum((max(matches.values()) + 1) ** score_reward_exponent for matches in word_matches.values())
                     try:

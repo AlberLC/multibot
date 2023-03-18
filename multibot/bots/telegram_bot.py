@@ -263,7 +263,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 return
 
             bytes_ = media.bytes_
-            file_stem = f"{media.title or 'bot_media'}"
+            file_stem = media.title or 'bot_media'
             if media.title or is_inline:
                 try:
                     bytes_ = await flanautils.edit_metadata(bytes_, {'title': file_stem}, overwrite=False)

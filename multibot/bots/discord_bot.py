@@ -224,7 +224,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         if not media:
             return
 
-        file_stem = f"{media.title or 'bot_media'}"
+        file_stem = media.title or 'bot_media'
         file_name = f"{file_stem}{f'.{media.extension}' if media.extension else ''}"
 
         if media.url:
