@@ -336,7 +336,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 return
 
             if chat.is_group:
-                original_chat = chat.original_object
+                original_chat = await self.user_client.get_entity(chat.original_object)
             else:
                 original_chat = await self.user_client.get_input_entity(self.name)
 
