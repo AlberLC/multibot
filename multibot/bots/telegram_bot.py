@@ -482,7 +482,8 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         kwargs = {
             'file': file,
-            'parse_mode': 'html'
+            'parse_mode': 'html',
+            'supports_streaming': True
         }
 
         if message:
@@ -536,19 +537,31 @@ class TelegramBot(MultiBot[TelegramClient]):
                 reply_to = message_to_reply.original_object
 
         with flanautils.suppress_stderr():
-            parse_retries = 1
+            retries = 1
             while True:
                 try:
                     original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
-                except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
+                except telethon.errors.VideoContentTypeInvalidError:
+                    if retries:
+                        try:
+                            del kwargs['supports_streaming']
+                        except KeyError:
+                            pass
+                        retries -= 1
+                    else:
+                        raise
+                except telethon.errors.WebpageCurlFailedError:
                     if media.bytes_:
                         kwargs['file'] = await self._prepare_media_to_send(media, prefer_bytes=True)
                     else:
                         raise
                 except ValueError as e:
-                    if 'parse' in str(e).lower() and parse_retries:
-                        del kwargs['parse_mode']
-                        parse_retries -= 1
+                    if 'parse' in str(e).lower() and retries:
+                        try:
+                            del kwargs['parse_mode']
+                        except KeyError:
+                            pass
+                        retries -= 1
                     else:
                         raise
                 except (telethon.errors.rpcerrorlist.MediaEmptyError, telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
