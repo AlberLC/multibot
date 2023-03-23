@@ -2,7 +2,7 @@ from __future__ import annotations  # todo0 remove when it's by default
 
 __all__ = ['DiscordBot']
 
-import asyncio
+import contextlib
 import datetime
 import io
 import logging
@@ -690,6 +690,6 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
 
         return bot_message
 
-    async def typing_delay(self, message: Message):
-        async with message.chat.original_object.typing():
-            await asyncio.sleep(random.randint(1, 3))
+    async def typing(self, chat: int | str | User | Chat | Message) -> contextlib.AbstractAsyncContextManager:
+        chat = await self.get_chat(chat)
+        return chat.original_object.typing()

@@ -613,3 +613,7 @@ class TelegramBot(MultiBot[TelegramClient]):
             return asyncio.run(string_session_())
         else:
             return string_session_()
+
+    async def typing(self, chat: int | str | User | Chat | Message) -> contextlib.AbstractAsyncContextManager:
+        chat = await self.get_chat(chat)
+        return self.client.action(chat.original_object, 'typing')

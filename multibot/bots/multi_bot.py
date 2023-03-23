@@ -16,6 +16,7 @@ __all__ = [
 ]
 
 import asyncio
+import contextlib
 import datetime
 import functools
 import random
@@ -902,7 +903,7 @@ class MultiBot(Generic[T], ABC):
         else:
             return self._start_async()
 
-    async def typing_delay(self, message: Message):
+    async def typing(self, chat: int | str | User | Chat | Message) -> contextlib.AbstractAsyncContextManager:
         pass
 
     async def unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
