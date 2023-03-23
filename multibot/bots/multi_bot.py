@@ -885,11 +885,13 @@ class MultiBot(Generic[T], ABC):
     async def send_inline_results(self, message: Message):
         pass
 
-    async def send_interrogation(self, message: Message) -> constants.ORIGINAL_MESSAGE:
-        return await self.send(random.choice(constants.INTERROGATION_PHRASES), message)
+    async def send_interrogation(self, chat: int | str | User | Chat | Message) -> constants.ORIGINAL_MESSAGE:
+        chat = await self.get_chat(chat)
+        return await self.send(random.choice(constants.INTERROGATION_PHRASES), chat)
 
-    async def send_negative(self, message: Message) -> constants.ORIGINAL_MESSAGE:
-        return await self.send(random.choice(constants.NO_PHRASES), message)
+    async def send_negative(self, chat: int | str | User | Chat | Message) -> constants.ORIGINAL_MESSAGE:
+        chat = await self.get_chat(chat)
+        return await self.send(random.choice(constants.NO_PHRASES), chat)
 
     def start(self) -> Coroutine | None:
         self._add_handlers()
