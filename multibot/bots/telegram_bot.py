@@ -537,17 +537,16 @@ class TelegramBot(MultiBot[TelegramClient]):
                 reply_to = message_to_reply.original_object
 
         with flanautils.suppress_stderr():
-            retries = 1
-            while True:
+            attempts = 2
+            for attempt in range(attempts - 1, -1, -1):
                 try:
                     original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
                 except telethon.errors.VideoContentTypeInvalidError:
-                    if retries:
+                    if attempt:
                         try:
                             del kwargs['supports_streaming']
                         except KeyError:
                             pass
-                        retries -= 1
                     else:
                         raise
                 except telethon.errors.WebpageCurlFailedError:
@@ -556,12 +555,11 @@ class TelegramBot(MultiBot[TelegramClient]):
                     else:
                         raise
                 except ValueError as e:
-                    if 'parse' in str(e).lower() and retries:
+                    if 'parse' in str(e).lower() and attempt:
                         try:
                             del kwargs['parse_mode']
                         except KeyError:
                             pass
-                        retries -= 1
                     else:
                         raise
                 except (telethon.errors.rpcerrorlist.MediaEmptyError, telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
