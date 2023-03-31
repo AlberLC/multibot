@@ -549,7 +549,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                             pass
                     else:
                         raise
-                except (telethon.errors.rpcerrorlist.MediaEmptyError, telethon.errors.WebpageCurlFailedError):
+                except telethon.errors.WebpageCurlFailedError:
                     if media.bytes_:
                         kwargs['file'] = await self._prepare_media_to_send(media, prefer_bytes=True)
                     else:
@@ -562,6 +562,11 @@ class TelegramBot(MultiBot[TelegramClient]):
                             pass
                     else:
                         raise
+                except telethon.errors.rpcerrorlist.MediaEmptyError:
+                    if media.bytes_:
+                        kwargs['file'] = await self._prepare_media_to_send(media, prefer_bytes=True)
+                    else:
+                        return
                 except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                     return
                 else:
