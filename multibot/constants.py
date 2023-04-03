@@ -109,7 +109,7 @@ KEYWORDS = {
     'permission': ('permiso', 'permission'),
     'reset': ('recover', 'recovery', 'recupera', 'reinicia', 'reset', 'resetea', 'restart'),
     'role': ('rol', 'role', 'roles'),
-    'send_as_file': ('arhivo', 'calidad', 'compress', 'compression', 'comprimir', 'file', 'quality'),
+    'send_as_file': ('arhivo', 'calidad', 'compresion', 'compress', 'compression', 'comprimir', 'file', 'quality'),
     'show': ('actual', 'enseña', 'estado', 'how', 'muestra', 'show', 'como'),
     'simple': ('sencillo', 'simple'),
     'sound': ('hablar', 'hable', 'micro', 'microfono', 'microphone', 'sonido', 'sound', 'talk', 'volumen'),
