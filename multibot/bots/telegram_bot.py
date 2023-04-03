@@ -15,7 +15,7 @@ import flanautils
 import pymongo
 import telethon
 import telethon.hints
-from flanautils import Media, MediaType, OrderedSet, Source, return_if_first_empty, shift_args_if_called
+from flanautils import Media, MediaType, OrderedSet, ResponseError, Source, return_if_first_empty, shift_args_if_called
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
@@ -260,7 +260,10 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         async def bytes_file() -> io.BytesIO | None:
             if not media.bytes_:
-                return
+                try:
+                    media.bytes_ = await flanautils.get_request(media.url)
+                except ResponseError:
+                    return
 
             bytes_ = media.bytes_
             file_stem = media.title or 'bot_media'
@@ -550,8 +553,8 @@ class TelegramBot(MultiBot[TelegramClient]):
                     else:
                         raise
                 except telethon.errors.WebpageCurlFailedError:
-                    if media.bytes_:
-                        kwargs['file'] = await self._prepare_media_to_send(media, prefer_bytes=True)
+                    if bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True):
+                        kwargs['file'] = bytes_
                     else:
                         raise
                 except ValueError as e:
@@ -563,8 +566,8 @@ class TelegramBot(MultiBot[TelegramClient]):
                     else:
                         raise
                 except telethon.errors.rpcerrorlist.MediaEmptyError:
-                    if media.bytes_:
-                        kwargs['file'] = await self._prepare_media_to_send(media, prefer_bytes=True)
+                    if bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True):
+                        kwargs['file'] = bytes_
                     else:
                         return
                 except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
