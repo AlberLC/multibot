@@ -27,7 +27,9 @@ class RegisteredCallback(FlanaBase):
     ):
         self.callback = callback
 
-        if isinstance(keywords, str):
+        if not keywords:
+            keywords = ()
+        elif isinstance(keywords, str):
             text = flanautils.remove_accents(keywords.strip().lower())
             self.keywords = (tuple(text.split()),)
         elif isinstance(keywords, Iterable) and any(not isinstance(keyword, str) and isinstance(keyword, Iterable) for keyword in keywords):
@@ -44,8 +46,6 @@ class RegisteredCallback(FlanaBase):
         elif isinstance(keywords, Iterable) and any(isinstance(keyword, str) for keyword in keywords):
             keywords = (flanautils.remove_accents(keyword.strip().lower()).split() for keyword in keywords)
             self.keywords = (tuple(flanautils.flatten(keywords, lazy=True)),)
-        elif not keywords:
-            keywords = ()
         else:
             raise TypeError('bad arguments')
 
