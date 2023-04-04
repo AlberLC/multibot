@@ -27,26 +27,25 @@ class RegisteredCallback(FlanaBase):
     ):
         self.callback = callback
 
-        match keywords:
-            case str(text):
-                text = flanautils.remove_accents(text.strip().lower())
-                self.keywords = (tuple(text.split()),)
-            case [*_, [*_]]:
-                def generator():
-                    for element in keywords:
-                        if isinstance(element, str):
-                            text_ = flanautils.remove_accents(element.strip().lower())
-                            keywords_group = tuple(text_.split())
-                        else:
-                            keywords_group = tuple(flanautils.remove_accents(keyword.strip().lower()) for keyword in element)
-                        yield keywords_group
+        if isinstance(keywords, str):
+            text = flanautils.remove_accents(keywords.strip().lower())
+            self.keywords = (tuple(text.split()),)
+        elif isinstance(keywords, Iterable) and any(not isinstance(keyword, str) and isinstance(keyword, Iterable) for keyword in keywords):
+            def generator():
+                for element in keywords:
+                    if isinstance(element, str):
+                        text_ = flanautils.remove_accents(element.strip().lower())
+                        keywords_group = tuple(text_.split())
+                    else:
+                        keywords_group = tuple(flanautils.remove_accents(keyword.strip().lower()) for keyword in element)
+                    yield keywords_group
 
-                self.keywords = tuple(generator())
-            case [*_, str()]:
-                keywords = (flanautils.remove_accents(keyword.strip().lower()).split() for keyword in keywords)
-                self.keywords = (tuple(flanautils.flatten(keywords, lazy=True)),)
-            case _:
-                self.keywords = tuple(keywords)
+            self.keywords = tuple(generator())
+        elif isinstance(keywords, Iterable) and any(isinstance(keyword, str) for keyword in keywords):
+            keywords = (flanautils.remove_accents(keyword.strip().lower()).split() for keyword in keywords)
+            self.keywords = (tuple(flanautils.flatten(keywords, lazy=True)),)
+        else:
+            raise TypeError('bad arguments')
 
         self.priority = priority
         self.min_score = min_score
