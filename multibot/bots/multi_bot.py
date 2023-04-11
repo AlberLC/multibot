@@ -306,6 +306,7 @@ class MultiBot(Generic[T], ABC):
         self.id: int | None = None
         self.name: str | None = None
         self.owner_id: int | None = None
+        self._owner_chat: Chat | None = None
         self.token: str = token
         self.client: T = client
         self._registered_callbacks: list[RegisteredCallback] = []
@@ -822,6 +823,12 @@ class MultiBot(Generic[T], ABC):
         await self._mute(mute.user_id, mute.group_id, message)
         mute.save(pull_exclude_fields=('until',))
         await self._unpenalize_later(mute, self._unmute, message)
+
+    @property
+    async def owner_chat(self) -> Chat:
+        if not self._owner_chat:
+            self._owner_chat = await self.get_chat(self.owner_id) or await self.get_chat(await self.get_user(self.owner_id))
+        return self._owner_chat
 
     @overload
     def register(self, func_: Callable = None, keywords=(), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
