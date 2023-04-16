@@ -15,6 +15,7 @@ import flanautils
 import pymongo
 import telethon
 import telethon.hints
+import telethon.tl.types
 from flanautils import Media, MediaType, OrderedSet, ResponseError, Source, return_if_first_empty, shift_args_if_called
 from telethon import TelegramClient
 from telethon.sessions import StringSession
@@ -203,10 +204,14 @@ class TelegramBot(MultiBot[TelegramClient]):
         chat = await self._get_chat(original_message)
 
         for entity in original_message.entities or ():
+            if not isinstance(entity, telethon.tl.types.MessageEntityMention):
+                continue
+
             try:
                 mentions.add(await self.get_user(text[entity.offset:entity.offset + entity.length], chat.group_id))
             except ValueError:
                 if getattr(entity, 'user_id', None):
+                    # noinspection PyUnresolvedReferences
                     mentions.add(await self.get_user(entity.user_id, chat.group_id))
 
         text = flanautils.remove_symbols(text, replace_with=' ')
