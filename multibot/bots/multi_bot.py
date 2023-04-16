@@ -549,7 +549,7 @@ class MultiBot(Generic[T], ABC):
 
     async def _unpenalize_later(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
         if penalty.time and penalty.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPUNISH:
-            await flanautils.do_later(penalty.time, self._remove_penalty, penalty, unpenalize_method, message)
+            flanautils.do_later(penalty.time, self._remove_penalty, penalty, unpenalize_method, message)
 
     # ---------------------------------------------- #
     #                    HANDLERS                    #
@@ -582,10 +582,10 @@ class MultiBot(Generic[T], ABC):
         constants.load_environment()
         flanautils.init_database()
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
-        await flanautils.do_every(constants.CHECK_OLD_CACHE_MESSAGES_EVERY_SECONDS, self.check_old_cache_messages)
-        await flanautils.do_every(constants.CHECK_OLD_DATABASE_MESSAGES_EVERY_SECONDS, self.check_old_database_messages)
-        await flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_bans)
-        await flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_mutes)
+        flanautils.do_every(constants.CHECK_OLD_CACHE_MESSAGES_EVERY_SECONDS, self.check_old_cache_messages)
+        flanautils.do_every(constants.CHECK_OLD_DATABASE_MESSAGES_EVERY_SECONDS, self.check_old_database_messages)
+        flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_bans)
+        flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_mutes)
 
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
@@ -886,7 +886,7 @@ class MultiBot(Generic[T], ABC):
     @parse_arguments
     async def send_error(self, *args, **kwargs) -> constants.ORIGINAL_MESSAGE:
         bot_message = await self.send(*args, **kwargs)
-        await flanautils.do_later(constants.ERROR_MESSAGE_DURATION, self.delete_message, bot_message)
+        flanautils.do_later(constants.ERROR_MESSAGE_DURATION, self.delete_message, bot_message)
         return bot_message
 
     @inline
