@@ -23,7 +23,7 @@ from telethon.sessions import StringSession
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, find_message, inline, parse_arguments
 from multibot.exceptions import LimitError
-from multibot.models import Button, ButtonsInfo, Chat, Message, Platform, User
+from multibot.models import Button, Chat, Message, Platform, User
 
 
 # ---------------------------------------------------- #
@@ -99,32 +99,6 @@ class TelegramBot(MultiBot[TelegramClient]):
         chat = await self.get_chat(group_)
 
         await self.client.edit_permissions(chat.original_object, user.original_object, view_messages=False)
-
-    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def _create_bot_message_from_telegram_bot_message(
-        self,
-        original_message: constants.TELEGRAM_MESSAGE,
-        media: Media,
-        chat: Chat,
-        buttons: list[list[Button]] = None,
-        buttons_key: Any = None,
-        data: dict = None
-    ) -> Message | None:
-        original_message._sender = await self.client.get_me()
-        original_message._chat = chat.original_object
-        bot_message = await self._get_message(original_message)
-        if buttons:
-            bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
-        if media and (not media.bytes_ or len(media.bytes_) <= constants.PYMONGO_MEDIA_MAX_BYTES):
-            bot_message.medias.append(media)
-        if data:
-            bot_message.data = data
-        if bot_message.buttons_info or bot_message.data:
-            self._message_cache[bot_message.id, chat.id] = bot_message
-
-        bot_message.save()
-
-        return bot_message
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _create_chat_from_telegram_chat(self, original_chat: constants.TELEGRAM_CHAT) -> Chat | None:
@@ -522,21 +496,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 ):
                     return
 
-                if media is not None:
-                    message.medias = [media]
-                try:
-                    if buttons is not None:
-                        self._message_cache[message.id, chat.id].buttons_info.buttons = buttons
-                    if buttons_key is not None:
-                        self._message_cache[message.id, chat.id].buttons_info.key = buttons_key
-                except (AttributeError, KeyError):
-                    message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
-                    self._message_cache[message.id, chat.id] = message
-                if data is not None:
-                    message.data = data
-                message.update_last_edit()
-                message.save()
-                return message
+                return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_last_edit=True)
 
         match reply_to:
             case str():
@@ -580,7 +540,11 @@ class TelegramBot(MultiBot[TelegramClient]):
                 else:
                     break
 
-        return await self._create_bot_message_from_telegram_bot_message(original_message, media, chat, buttons, buttons_key, data)
+        original_message._sender = await self.client.get_me()
+        original_message._chat = chat.original_object
+        bot_message = await self._get_message(original_message)
+
+        return self._update_message_attributes(bot_message, media, buttons, chat, buttons_key, data)
 
     @inline
     async def send_inline_results(self, message: Message):

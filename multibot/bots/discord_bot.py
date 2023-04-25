@@ -20,7 +20,7 @@ from flanautils import Media, MediaType, NotFoundError, OrderedSet, return_if_fi
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
 from multibot.exceptions import LimitError, SendError, UserDisconnectedError
-from multibot.models import Button, ButtonsInfo, Chat, Message, Mute, Platform, Role, User
+from multibot.models import Button, Chat, Message, Mute, Platform, Role, User
 
 
 # --------------------------------------------------------------------------------------------------- #
@@ -643,23 +643,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             except discord.errors.NotFound:
                 return
 
-            if media is not None:
-                message.medias = [media]
-            try:
-                if buttons is not None:
-                    self._message_cache[message.id, chat.id].buttons_info.buttons = buttons
-                if buttons_key is not None:
-                    self._message_cache[message.id, chat.id].buttons_info.key = buttons_key
-            except (AttributeError, KeyError):
-                message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
-                self._message_cache[message.id, chat.id] = message
-            if data is not None:
-                message.data = data
-
-            message.update_last_edit()
-            message.save()
-
-            return message
+            return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_last_edit=True)
 
         match reply_to:
             case int(message_id):
@@ -677,18 +661,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 return
             raise
 
-        if buttons:
-            bot_message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
-        if media:
-            bot_message.medias.append(media)
-        if data:
-            bot_message.data = data
-        if bot_message.buttons_info or bot_message.data:
-            self._message_cache[bot_message.id, chat.id] = bot_message
-
-        bot_message.save()
-
-        return bot_message
+        return self._update_message_attributes(bot_message, media, buttons, chat, buttons_key, data)
 
     async def typing(self, chat: int | str | User | Chat | Message) -> contextlib.AbstractAsyncContextManager:
         chat = await self.get_chat(chat)

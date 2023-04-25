@@ -32,7 +32,7 @@ from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, ScoreMa
 
 from multibot import constants
 from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
-from multibot.models import Ban, Button, Chat, Message, Mute, Penalty, Platform, RegisteredCallback, Role, User
+from multibot.models import Ban, Button, ButtonsInfo, Chat, Message, Mute, Penalty, Platform, RegisteredCallback, Role, User
 
 
 # ---------------------------------------------------- #
@@ -550,6 +550,36 @@ class MultiBot(Generic[T], ABC):
     async def _unpenalize_later(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
         if penalty.time and penalty.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPUNISH:
             flanautils.do_later(penalty.time, self._remove_penalty, penalty, unpenalize_method, message)
+
+    def _update_message_attributes(
+        self,
+        message: Message,
+        media: Media = None,
+        buttons: list[str | tuple[str, bool] | Button | list[str | tuple[str, bool] | Button]] | None = None,
+        chat: int | str | User | Chat | Message | None = None,
+        buttons_key: Any = None,
+        data: dict = None,
+        update_last_edit=False
+    ):
+        if media is not None and (not media.bytes_ or len(media.bytes_) <= constants.PYMONGO_MEDIA_MAX_BYTES):
+            message.medias = [media]
+        try:
+            if buttons is not None:
+                self._message_cache[message.id, chat.id].buttons_info.buttons = buttons
+            if buttons_key is not None:
+                self._message_cache[message.id, chat.id].buttons_info.key = buttons_key
+        except (AttributeError, KeyError):
+            message.buttons_info = ButtonsInfo(buttons=buttons, key=buttons_key)
+        if data is not None:
+            message.data = data
+        if message.buttons_info or message.data is not None:
+            self._message_cache[message.id, chat.id] = message
+
+        if update_last_edit:
+            message.update_last_edit()
+        message.save()
+
+        return message
 
     # ---------------------------------------------- #
     #                    HANDLERS                    #
