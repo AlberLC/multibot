@@ -4,7 +4,6 @@ __all__ = ['Message']
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Any
 
 from flanautils import Media
 
@@ -38,9 +37,6 @@ class Message(EventComponent):
     replied_message: Message = None
     original_object: constants.ORIGINAL_MESSAGE = None
     original_event: constants.MESSAGE_EVENT = None
-
-    def _mongo_repr(self) -> Any:
-        return {k: v.to_dict() if isinstance(v, Media) else v for k, v in super()._mongo_repr().items() if k not in ('buttons_info', 'data')}
 
     def update_last_edit(self):
         self.last_edit = datetime.datetime.now(datetime.timezone.utc)
