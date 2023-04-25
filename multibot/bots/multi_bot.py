@@ -374,7 +374,7 @@ class MultiBot(Generic[T], ABC):
     async def _get_message(
         self,
         event: constants.MESSAGE_EVENT,
-        pull_overwrite_fields: Iterable[str] = ('_id',)
+        pull_overwrite_fields: Iterable[str] = ('_id', 'date')
     ) -> Message:
         original_message = await self._get_original_message(event)
 
