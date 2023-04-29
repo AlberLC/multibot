@@ -596,7 +596,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
     ) -> Message | None:
         async def file_too_large():
             if random.randint(0, 10):
-                error_message = 'El archivo pesa más de 8 MB.'
+                error_message = f'El archivo pesa más de {constants.DISCORD_MEDIA_MAX_BYTES // 1000000} MB.'
             else:
                 error_message = 'El archivo pesa mas que tu madre'
             await self._manage_exceptions(SendError(error_message), chat)
