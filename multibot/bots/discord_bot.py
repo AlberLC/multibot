@@ -15,7 +15,7 @@ from typing import Any
 import discord
 import discord.ext
 import flanautils
-from flanautils import Media, MediaType, NotFoundError, OrderedSet, return_if_first_empty
+from flanautils import Media, MediaType, NotFoundError, OrderedSet, ResponseError, return_if_first_empty
 
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
@@ -234,7 +234,10 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 else:
                     return discord.File(media.url, filename=file_name)
             elif not media.bytes_:
-                media.bytes_ = await flanautils.get_request(media.url)
+                try:
+                    media.bytes_ = await flanautils.get_request(media.url)
+                except ResponseError:
+                    pass
 
         if bytes_ := media.bytes_:
             if media.type_ is MediaType.GIF:
@@ -618,6 +621,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 file = await self._prepare_media_to_send(media)
             except LimitError:
                 await file_too_large()
+                return
+            if not text and not file:
                 return
 
         view = None
