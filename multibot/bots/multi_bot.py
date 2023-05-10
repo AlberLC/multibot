@@ -861,16 +861,16 @@ class MultiBot(Generic[T], ABC):
         return self._owner_chat
 
     @overload
-    def register(self, func_: Callable = None, keywords=(), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
+    def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
     @overload
-    def register(self, keywords=(), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
+    def register(self, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
     @shift_args_if_called(exclude_self_types='MultiBot', globals_=globals())
     def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
-        def decorator(func):
+        def decorator(func: Callable):
             self._registered_callbacks.append(RegisteredCallback(func, keywords, priority, min_score, always, default))
             return func
 
@@ -886,7 +886,7 @@ class MultiBot(Generic[T], ABC):
 
     @shift_args_if_called(exclude_self_types='MultiBot', globals_=globals())
     def register_button(self, func_: Callable = None, key: Any = None):
-        def decorator(func):
+        def decorator(func: Callable):
             self._registered_button_callbacks[key].append(func)
             return func
 
