@@ -561,8 +561,15 @@ class MultiBot(Generic[T], ABC):
         data: dict = None,
         update_last_edit=False
     ):
-        if media is not None and (not media.bytes_ or len(media.bytes_) <= constants.PYMONGO_MEDIA_MAX_BYTES):
-            message.medias = [media]
+        if media is not None:
+            if len(bytes(media)) <= constants.PYMONGO_MEDIA_MAX_BYTES:
+                message.medias = [media]
+            else:
+                empty_media = Media.from_dict({k: v for k, v in media.to_dict().items() if k not in ('bytes_', 'song_info')})
+                if media.song_info:
+                    empty_song_info = Media.from_dict({k: v for k, v in media.song_info.to_dict().items() if k != 'bytes_'})
+                    empty_media.song_info = empty_song_info
+                message.medias = [empty_media]
         try:
             if buttons is not None:
                 self._message_cache[message.id, chat.id].buttons_info.buttons = buttons
