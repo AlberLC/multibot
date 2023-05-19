@@ -12,6 +12,7 @@ frozenlist==1.3.3
 hachoir==3.2.0
 idna==3.4
 iso8601==1.1.0
+jeepney==0.8.0
 jellyfish==0.9.0
 kaleido==0.2.1
 mpmath==1.2.1
