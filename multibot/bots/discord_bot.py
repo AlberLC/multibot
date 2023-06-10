@@ -622,7 +622,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             except LimitError:
                 await file_too_large()
                 return
-            if not text and not file:
+            if not text and not file and not edit:
                 return
 
         view = None
