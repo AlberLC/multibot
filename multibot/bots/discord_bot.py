@@ -606,13 +606,13 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
 
         text = self._parse_html_to_discord_markdown(text)
         if (
-                media
-                and
-                media.url
-                and
-                media.type_ is MediaType.GIF
-                and
-                any(domain.lower() in media.url for domain in constants.GIF_DOMAINS)
+            media
+            and
+            media.url
+            and
+            media.type_ is MediaType.GIF
+            and
+            any(domain.lower() in media.url for domain in constants.GIF_DOMAINS)
         ):
             text = f'{text} {media.url}' if text else media.url
             file = None

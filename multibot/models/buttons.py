@@ -47,4 +47,4 @@ class ButtonsInfo(FlanaBase):
 
     @property
     def pressed_button(self) -> Button | None:
-        return self.find_button(self.pressed_text)
+        return self[self.pressed_text]
