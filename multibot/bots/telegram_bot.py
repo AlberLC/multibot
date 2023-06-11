@@ -518,7 +518,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                     else:
                         raise
                 except telethon.errors.WebpageCurlFailedError:
-                    if bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True):
+                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True)) and isinstance(bytes_, io.BytesIO):
                         kwargs['file'] = bytes_
                     else:
                         raise
@@ -531,7 +531,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                     else:
                         raise
                 except telethon.errors.rpcerrorlist.MediaEmptyError:
-                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True)) and isinstance(bytes_, bytes):
+                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True)) and isinstance(bytes_, io.BytesIO):
                         kwargs['file'] = bytes_
                     else:
                         return
