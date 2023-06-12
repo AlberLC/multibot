@@ -70,6 +70,11 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
 
     @return_if_first_empty
     async def _create_user_from_discord_user(self, original_user: constants.DISCORD_USER) -> User | None:
+        if original_user.discriminator and original_user.discriminator != '0':
+            name = f'{original_user.name}#{original_user.discriminator}'
+        else:
+            name = original_user.name
+
         try:
             is_admin = original_user.guild_permissions.administrator
         except AttributeError:
@@ -91,7 +96,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         return self.User(
             platform=self.platform,
             id=original_user.id,
-            name=f'{original_user.name}#{original_user.discriminator}',
+            name=name,
             is_admin=is_admin,
             is_bot=original_user.bot,
             roles=list(current_roles | database_roles),
