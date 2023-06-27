@@ -257,6 +257,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             return discord.File(fp=io.BytesIO(bytes_), filename=file_name)
 
     async def _start_async(self):
+        self._add_handlers()
         async with self.client:
             await self.client.start(self.token)
 

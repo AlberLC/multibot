@@ -117,9 +117,11 @@ class TwitchBot(MultiBot[twitchio.Client]):
         return original_message.content
 
     async def _start_async(self):
+        self._add_handlers()
         await self.client.start()
 
     def _start_sync(self):
+        self._add_handlers()
         self.client.run()
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):

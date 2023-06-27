@@ -939,7 +939,6 @@ class MultiBot(Generic[T], ABC):
         return await self.send(random.choice(constants.NO_PHRASES), chat)
 
     def start(self) -> Coroutine | None:
-        self._add_handlers()
         try:
             asyncio.get_running_loop()
         except RuntimeError:

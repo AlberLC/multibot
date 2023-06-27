@@ -1,6 +1,6 @@
 from __future__ import annotations  # todo0 remove when it's by default
 
-__all__ = ['user_client', 'TelegramBot']
+__all__ = ['use_user_client', 'user_client', 'TelegramBot']
 
 import asyncio
 import contextlib
@@ -264,6 +264,7 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     async def _start_async(self):
         await self.sign_in()
+        self._add_handlers()
         await self._on_ready()
         await self.client.run_until_disconnected()
 
