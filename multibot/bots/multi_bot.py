@@ -531,9 +531,12 @@ class MultiBot(Generic[T], ABC):
             else:
                 raise e
         else:
+            penalty.pull_from_database()
             if delete:
-                penalty.pull_from_database()
                 penalty.delete()
+            else:
+                penalty.is_active = False
+                penalty.save()
 
     async def _start_async(self):
         pass
@@ -547,9 +550,9 @@ class MultiBot(Generic[T], ABC):
     async def _unmute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
 
-    async def _unpenalize_later(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
-        if penalty.time and penalty.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPUNISH:
-            flanautils.do_later(penalty.time, self._remove_penalty, penalty, unpenalize_method, message)
+    async def _unpenalize_later(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None, delete=True):
+        if penalty.time and penalty.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPENALIZE:
+            flanautils.do_later(penalty.time, self._remove_penalty, penalty, unpenalize_method, message, delete)
 
     def _update_message_attributes(
         self,
