@@ -93,7 +93,7 @@ KEYWORDS = {
                'exchange', 'modificar', 'modify', 'permutar', 'predeterminado', 'shift', 'swap', 'switch', 'turn',
                'vary'),
     'config': ('ajustar', 'ajuste', 'ajustes', 'automatico', 'automatic', 'config', 'configs', 'configuracion',
-               'configuration', 'default', 'defecto', 'setting', 'settings'),
+               'configuration', 'setting', 'settings'),
     'date': ('ayer', 'de', 'domingo', 'fin', 'finde', 'friday', 'hoy', 'jueves', 'lunes', 'martes', 'mañana',
              'miercoles', 'monday', 'pasado', 'sabado', 'saturday', 'semana', 'sunday', 'thursday', 'today', 'tomorrow',
              'tuesday', 'viernes', 'wednesday', 'week', 'weekend', 'yesterday'),
