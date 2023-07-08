@@ -522,7 +522,7 @@ class MultiBot(Generic[T], ABC):
 
         return OrderedSet(registered_callback for registered_callback in registered_callbacks if registered_callback in determined_callbacks)
 
-    async def _remove_penalty(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None, delete=True):
+    async def _remove_penalty(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
         try:
             await unpenalize_method(penalty.user_id, penalty.group_id)
         except (BadRoleError, UserDisconnectedError) as e:
@@ -532,11 +532,7 @@ class MultiBot(Generic[T], ABC):
                 raise e
         else:
             penalty.pull_from_database()
-            if delete:
-                penalty.delete()
-            else:
-                penalty.is_active = False
-                penalty.save()
+            penalty.delete()
 
     async def _start_async(self):
         pass
@@ -550,9 +546,9 @@ class MultiBot(Generic[T], ABC):
     async def _unmute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         pass
 
-    async def _unpenalize_later(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None, delete=True):
+    async def _unpenalize_later(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
         if penalty.time and penalty.time <= constants.TIME_THRESHOLD_TO_MANUAL_UNPENALIZE:
-            flanautils.do_later(penalty.time, self._remove_penalty, penalty, unpenalize_method, message, delete)
+            flanautils.do_later(penalty.time, self._remove_penalty, penalty, unpenalize_method, message)
 
     def _update_message_attributes(
         self,
