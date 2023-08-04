@@ -353,17 +353,11 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         chat: int | str | Chat | Message = None,
         raise_not_found=False
     ):
-        if isinstance(message_to_delete, self.Message) and message_to_delete.original_object:
-            original_message = message_to_delete.original_object
-        else:
-            chat = await self.get_chat(chat)
-            chat.pull_from_database()
-            if not isinstance(message_to_delete, Message):
-                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': int(message_to_delete), 'chat': chat.object_id})
-            original_message = await chat.original_object.fetch_message(message_to_delete.id)
+        if not isinstance(message_to_delete, self.Message) or not message_to_delete.original_object:
+            message_to_delete = await self.get_message(message_to_delete, chat)
 
         try:
-            await original_message.delete()
+            await message_to_delete.original_object.delete()
         except discord.errors.NotFound:
             if raise_not_found:
                 raise NotFoundError(traceback.format_exc().splitlines()[-1])

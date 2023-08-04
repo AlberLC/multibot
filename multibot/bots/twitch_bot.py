@@ -175,17 +175,22 @@ class TwitchBot(MultiBot[twitchio.Client]):
         chat: int | str | Chat | Message = None,
         raise_not_found=False
     ):
-        if isinstance(message_to_delete, self.Message) and message_to_delete.chat.original_object:
+        if isinstance(message_to_delete, self.Message) and message_to_delete.chat and message_to_delete.chat.original_object:
+            message_id = message_to_delete.id
             chat = message_to_delete.chat
         else:
             chat = await self.get_chat(chat)
             chat.pull_from_database()
-            if not isinstance(message_to_delete, Message):
-                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': int(message_to_delete), 'chat': chat.object_id})
+            if isinstance(message_to_delete, Message):
+                message_id = message_to_delete.id
+            else:
+                message_id = message_to_delete
+                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': int(message_id), 'chat': chat.object_id})
 
-        await self.send(f'/delete {message_to_delete.id}', chat)
-        message_to_delete.is_deleted = True
-        message_to_delete.save(('is_deleted',))
+        await self.send(f'/delete {message_id}', chat)
+        if message_to_delete:
+            message_to_delete.is_deleted = True
+            message_to_delete.save(('is_deleted',))
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message = None) -> Chat | None:

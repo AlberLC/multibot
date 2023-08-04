@@ -351,12 +351,16 @@ class TelegramBot(MultiBot[TelegramClient]):
         else:
             chat = await self.get_chat(chat)
             chat.pull_from_database()
-            if not isinstance(message_to_delete, Message):
-                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': int(message_to_delete), 'chat': chat.object_id})
-            await self.client.delete_messages(chat.original_object, message_to_delete.id)
+            if isinstance(message_to_delete, Message):
+                message_id = message_to_delete.id
+            else:
+                message_id = message_to_delete
+                message_to_delete = self.Message.find_one({'platform': self.platform.value, 'id': int(message_id), 'chat': chat.object_id})
+            await self.client.delete_messages(chat.original_object, message_id)  # not using self.get_message because this
 
-        message_to_delete.is_deleted = True
-        message_to_delete.save(('is_deleted',))
+        if message_to_delete:
+            message_to_delete.is_deleted = True
+            message_to_delete.save(('is_deleted',))
 
     # noinspection PyTypeChecker
     def distribute_buttons(self, texts: Sequence[str], vertically=False) -> list[list[str]]:
