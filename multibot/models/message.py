@@ -19,8 +19,8 @@ from multibot.models.user import User
 @dataclass(eq=False)
 class Message(EventComponent):
     collection_name = 'message'
-    unique_keys = ('platform', 'id', 'author')
-    nullable_unique_keys = ('platform', 'id', 'author')
+    unique_keys = ('platform', 'id', 'chat')
+    nullable_unique_keys = ('platform', 'id', 'chat')
 
     platform: Platform = None
     id: int | str = None
