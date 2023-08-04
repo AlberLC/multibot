@@ -367,6 +367,14 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def _get_date(self, original_message: constants.ORIGINAL_MESSAGE) -> datetime.datetime | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def _get_edit_date(self, original_message: constants.ORIGINAL_MESSAGE) -> datetime.datetime | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.ORIGINAL_MESSAGE) -> list[User]:
         pass
 
@@ -389,6 +397,7 @@ class MultiBot(Generic[T], ABC):
                 author=await self._get_author(original_message),
                 text=await self._get_text(original_message),
                 mentions=await self._get_mentions(original_message),
+                date=await self._get_date(original_message),
                 chat=chat,
                 replied_message=await self._get_replied_message(original_message),
                 is_inline=isinstance(event, constants.TELEGRAM_INLINE_EVENT) if isinstance(event, constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) else None,
@@ -396,12 +405,14 @@ class MultiBot(Generic[T], ABC):
                 original_event=event
             )
             message.resolve()
+            message.update_edit_date(await self._get_edit_date(original_message))
             message.save(pull_overwrite_fields=pull_overwrite_fields, pull_lazy=False)
             return message
 
         if cached_message.buttons_info:
             cached_message.buttons_info.pressed_text = await self._get_button_pressed_text(event)
             cached_message.buttons_info.presser_user = await self._get_button_presser_user(event)
+        cached_message.update_edit_date(await self._get_edit_date(original_message))
         cached_message.original_object = original_message
         cached_message.original_event = event
         return cached_message
@@ -558,7 +569,7 @@ class MultiBot(Generic[T], ABC):
         chat: int | str | User | Chat | Message | None = None,
         buttons_key: Any = None,
         data: dict = None,
-        update_last_edit=False
+        update_edit_date=False
     ):
         if media is not None:
             if len(bytes(media)) <= constants.PYMONGO_MEDIA_MAX_BYTES:
@@ -581,8 +592,8 @@ class MultiBot(Generic[T], ABC):
         if message.buttons_info or message.data is not None:
             self._message_cache[message.id, chat.id] = message
 
-        if update_last_edit:
-            message.update_last_edit()
+        if update_edit_date:
+            message.update_edit_date(datetime.datetime.now(datetime.timezone.utc))
         message.save()
 
         return message

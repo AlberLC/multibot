@@ -2,6 +2,7 @@ from __future__ import annotations  # todo0 remove when it's by default
 
 __all__ = ['TwitchBot']
 
+import datetime
 import re
 from collections import defaultdict
 from typing import Any, Iterable, Iterator
@@ -80,6 +81,10 @@ class TwitchBot(MultiBot[twitchio.Client]):
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_chat(self, original_message: constants.TWITCH_MESSAGE) -> Chat | None:
         return await self._create_chat_from_twitch_chat(original_message.channel)
+
+    @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
+    async def _get_date(self, original_message: constants.TWITCH_MESSAGE) -> datetime.datetime | None:
+        return original_message.timestamp.replace(tzinfo=datetime.timezone.utc)
 
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.TWITCH_MESSAGE) -> list[User]:

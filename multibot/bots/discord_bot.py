@@ -133,6 +133,10 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         return await self._create_chat_from_discord_chat(original_message.channel)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def _get_date(self, original_message: constants.DISCORD_MESSAGE) -> datetime.datetime | None:
+        return original_message.created_at
+
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_discord_group(self, group_: int | str | Chat | Message) -> constants.DISCORD_GROUP | None:
         match group_:
             case int(group_id):
@@ -144,6 +148,10 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 return chat.original_object.guild
             case self.Message() as message:
                 return message.chat.original_object.guild
+
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def _get_edit_date(self, original_message: constants.DISCORD_MESSAGE) -> datetime.datetime | None:
+        return original_message.edited_at
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.DISCORD_MESSAGE) -> list[User]:
@@ -654,7 +662,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             except discord.errors.NotFound:
                 return
 
-            return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_last_edit=True)
+            return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_edit_date=True)
 
         match reply_to:
             case int(message_id):

@@ -31,7 +31,7 @@ class Message(EventComponent):
     buttons_info: ButtonsInfo = None
     data: dict = field(default_factory=dict)
     date: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
-    last_edit: datetime.datetime = None
+    edit_date: datetime.datetime = None
     is_inline: bool = None
     is_deleted: bool = False
     chat: Chat = None
@@ -42,5 +42,10 @@ class Message(EventComponent):
     def _mongo_repr(self) -> Any:
         return {k: v for k, v in super()._mongo_repr().items() if k not in ('buttons_info', 'data')}
 
-    def update_last_edit(self):
-        self.last_edit = datetime.datetime.now(datetime.timezone.utc)
+    def update_edit_date(self, edit_date: datetime.datetime = None):
+        if not edit_date:
+            return
+
+        self.pull_from_database(overwrite_fields=('edit_date',))
+        if not self.edit_date or edit_date > self.edit_date:
+            self.edit_date = edit_date

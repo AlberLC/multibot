@@ -4,6 +4,7 @@ __all__ = ['use_user_client', 'user_client', 'TelegramBot']
 
 import asyncio
 import contextlib
+import datetime
 import functools
 import io
 import pathlib
@@ -154,6 +155,14 @@ class TelegramBot(MultiBot[TelegramClient]):
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_chat(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> Chat | None:
         return await self._create_chat_from_telegram_chat(await original_message.get_chat())
+
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def _get_date(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> datetime.datetime | None:
+        return original_message.date
+
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def _get_edit_date(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> datetime.datetime | None:
+        return original_message.edit_date
 
     @return_if_first_empty('', exclude_self_types='TelegramBot', globals_=globals())
     def _get_entity_name(self, entity: telethon.hints.EntityLike) -> str:
@@ -497,7 +506,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 ):
                     return
 
-                return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_last_edit=True)
+                return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_edit_date=True)
 
         match reply_to:
             case str():
