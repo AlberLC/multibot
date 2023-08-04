@@ -672,7 +672,7 @@ class MultiBot(Generic[T], ABC):
         self.Message.delete_many_raw({'platform': self.platform.value, 'date': {'$lte': before_date}})
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def clear(self, n_messages: int, chat: int | str | Chat | Message):
+    async def clear(self, chat: int | str | Chat | Message, n_messages: int = None, until_message: Message = None):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())

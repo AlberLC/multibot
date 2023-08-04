@@ -315,9 +315,13 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @user_client
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
-    async def clear(self, n_messages: int, chat: int | str | Chat | Message):
-        if n_messages > constants.DELETE_MESSAGE_LIMIT:
-            raise LimitError('El máximo es 100.')
+    async def clear(self, chat: int | str | Chat | Message, n_messages: int = None, until_message: Message = None):
+        if until_message:
+            raise NotImplementedError('until_message parameter can´t be used in telegram bot')
+        if not n_messages:
+            return
+        elif n_messages > constants.DELETE_MESSAGE_LIMIT:
+            raise LimitError(f'El máximo es {constants.DELETE_MESSAGE_LIMIT}.')
 
         n_messages = int(n_messages)
         chat = await self.get_chat(chat)

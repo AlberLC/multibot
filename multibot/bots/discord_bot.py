@@ -319,32 +319,32 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             user.save(('roles',))
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def clear(self, n_messages: int, chat: int | str | Chat | Message):
-        if n_messages > 100:
-            raise LimitError('El máximo es 100.')
+    async def clear(self, chat: int | str | Chat | Message, n_messages: int = None, until_message: Message = None):
+        if not n_messages and not until_message:
+            return
+        if n_messages is not None and n_messages > constants.DELETE_MESSAGE_LIMIT:
+            raise LimitError(f'El máximo es {constants.DELETE_MESSAGE_LIMIT}.')
+        if until_message and datetime.datetime.now(datetime.timezone.utc) - until_message.date > constants.DELETE_MESSAGE_DATE_LIMIT:
+            raise LimitError(f'El mensaje no puede tener más de {flanautils.TimeUnits(seconds=constants.DELETE_MESSAGE_DATE_LIMIT.total_seconds()).to_words()} de antigüedad.')
 
         if (chat := await self.get_chat(chat)).is_private:
             return
 
-        n_messages = int(n_messages)
+        kwargs = {}
+        if n_messages:
+            kwargs['limit'] = int(n_messages)
+        if until_message:
+            kwargs['after'] = until_message.date
 
-        while n_messages > 0:
-            if n_messages > 100:
-                n_messages_chunk = 100
-                n_messages -= 100
-            else:
-                n_messages_chunk = n_messages
-                n_messages = 0
+        try:
+            message_ids = [message.id for message in await chat.original_object.purge(**kwargs)]
+        except discord.errors.HTTPException:
+            raise LimitError(f'Solo puedo eliminar mensajes con menos de 14 días {random.choice(constants.SAD_EMOJIS)}')
 
-            try:
-                message_ids = [message.id for message in await chat.original_object.purge(limit=n_messages_chunk)]
-            except discord.errors.HTTPException:
-                raise LimitError(f'Solo puedo eliminar mensajes con menos de 14 días {random.choice(constants.SAD_EMOJIS)}')
-
-            deleted_messages_generator = self.Message.find({'platform': self.platform.value, 'id': {'$in': message_ids}, 'chat': chat.object_id}, lazy=True)
-            for deleted_message in deleted_messages_generator:
-                deleted_message.is_deleted = True
-                deleted_message.save()
+        deleted_messages_generator = self.Message.find({'platform': self.platform.value, 'id': {'$in': message_ids}, 'chat': chat.object_id}, lazy=True)
+        for deleted_message in deleted_messages_generator:
+            deleted_message.is_deleted = True
+            deleted_message.save()
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def delete_message(

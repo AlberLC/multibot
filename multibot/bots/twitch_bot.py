@@ -149,20 +149,21 @@ class TwitchBot(MultiBot[twitchio.Client]):
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
     @return_if_first_empty(exclude_self_types='TwitchBot', globals_=globals())
-    async def clear(self, n_messages: int, chat: int | str | Chat | Message):
+    async def clear(self, chat: int | str | Chat | Message, n_messages: int = None, until_message: Message = None):
+        if not n_messages and not until_message:
+            return
+
         n_messages = int(n_messages)
         chat = await self.get_chat(chat)
 
-        messages_to_delete: Iterator[Message] = self.Message.find(
-            {
-                'platform': self.platform.value,
-                'chat': chat.object_id,
-                'is_deleted': False
-            },
-            sort_keys=(('date', pymongo.DESCENDING),),
-            limit=n_messages,
-            lazy=True
-        )
+        query_database = {'platform': self.platform.value, 'chat': chat.object_id, 'is_deleted': False}
+        database_kwargs = {}
+        if n_messages:
+            database_kwargs['limit'] = int(n_messages)
+        if until_message:
+            query_database['date'] = {'$gte': until_message.date}
+
+        messages_to_delete: Iterator[Message] = self.Message.find(query_database, sort_keys=(('date', pymongo.DESCENDING),), lazy=True, **database_kwargs)
 
         for message_to_delete in messages_to_delete:
             if not message_to_delete.author.is_admin:
