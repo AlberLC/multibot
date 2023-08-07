@@ -249,9 +249,12 @@ class TelegramBot(MultiBot[TelegramClient]):
         async def bytes_file() -> io.BytesIO | None:
             if not media.bytes_:
                 try:
-                    media.bytes_ = await flanautils.get_request(media.url)
+                    result = await flanautils.get_request(media.url)
                 except ResponseError:
                     return
+                if not isinstance(result, bytes):
+                    return
+                media.bytes_ = result
 
             bytes_ = media.bytes_
             file_stem = media.title or 'bot_media'
