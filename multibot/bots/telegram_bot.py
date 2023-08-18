@@ -158,11 +158,13 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_date(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> datetime.datetime | None:
-        return original_message.date
+        if not isinstance(original_message, constants.TELEGRAM_INLINE_EVENT):
+            return original_message.date
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_edit_date(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> datetime.datetime | None:
-        return original_message.edit_date
+        if not isinstance(original_message, constants.TELEGRAM_INLINE_EVENT):
+            return original_message.edit_date
 
     @return_if_first_empty('', exclude_self_types='TelegramBot', globals_=globals())
     def _get_entity_name(self, entity: telethon.hints.EntityLike) -> str:
