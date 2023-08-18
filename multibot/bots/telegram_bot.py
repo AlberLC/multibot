@@ -585,7 +585,14 @@ class TelegramBot(MultiBot[TelegramClient]):
                     await message.original_event.answer([await create_result(media) for media in message.data['inline_medias']])
                 except telethon.errors.rpcerrorlist.WebpageCurlFailedError:
                     await message.original_event.answer([await create_result(media, prefer_bytes=True) for media in message.data['inline_medias']])
-            except (AttributeError, KeyError, telethon.errors.rpcerrorlist.QueryIdInvalidError):
+            except telethon.errors.rpcerrorlist.QueryIdInvalidError:
+                chat = await self.get_chat(message.author)
+                await self.send('Te lo envío por aquí. El proceso tardó demasiado para enviar inline.', chat)
+                bot_state_message = await self.send('Enviando...', chat)
+                for media in message.data['inline_medias']:
+                    await self.send(media, chat)
+                await self.delete_message(bot_state_message)
+            except (AttributeError, KeyError):
                 pass
 
     async def sign_in(self):
