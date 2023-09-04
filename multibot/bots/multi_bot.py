@@ -900,7 +900,7 @@ class MultiBot(Generic[T], ABC):
         if platforms:
             pipeline.append({'$match': {'platform': {'$in': [platform.value for platform in platforms]}}})
 
-        last_match: dict = {}
+        last_match_conditions = []
 
         if authors:
             pipeline.extend((
@@ -914,9 +914,9 @@ class MultiBot(Generic[T], ABC):
                 },
                 {'$unwind': '$author'}
             ))
-            last_match['author.id'] = {
+            last_match_conditions.append({'author.id': {
                 '$in': [author_ for author in authors if (author_ := self.get_user_id(author, self_platform=False))]
-            }
+            }})
 
         if chats or is_group != is_private:
             pipeline.extend((
@@ -930,17 +930,19 @@ class MultiBot(Generic[T], ABC):
                 },
                 {'$unwind': '$chat'}
             ))
-            if chats:
-                last_match['chat.id'] = {
-                    '$in': [chat_ for chat in chats if (chat_ := await self.get_chat_id(chat, self_platform=False))]
-                }
-            elif is_group is True:
-                last_match['chat.group_id'] = {'$ne': None}
-            else:
-                last_match['chat.group_id'] = None
 
-        if last_match:
-            pipeline.append({'$match': last_match})
+            if chats:
+                last_match_conditions.append({'chat.id': {
+                    '$in': [chat_ for chat in chats if (chat_ := await self.get_chat_id(chat, self_platform=False))]
+                }})
+
+            if is_group is True and is_private is False:
+                last_match_conditions.append({'chat.group_id': {'$ne': None}})
+            elif is_group is False and is_private is True:
+                last_match_conditions.append({'chat.group_id': None})
+
+        if last_match_conditions:
+            pipeline.append({'$match': {'$and': last_match_conditions}})
 
         pipeline.extend((
             {'$sort': {'date': pymongo.DESCENDING}},
