@@ -855,7 +855,8 @@ class MultiBot(Generic[T], ABC):
         n_messages: int,
         platforms: Platform | Iterable[Platform] = None,
         authors: int | str | User | Iterable[int | str | User] = None,
-        is_group: bool = None,
+        is_group=True,
+        is_private=True,
         chats: int | str | User | Chat | Message | Iterable[int | str | User | Chat | Message] = None,
         lazy: Literal[False] = False
     ) -> list[Message]:
@@ -867,7 +868,8 @@ class MultiBot(Generic[T], ABC):
         n_messages: int,
         platforms: Platform | Iterable[Platform] = None,
         authors: int | str | User | Iterable[int | str | User] = None,
-        is_group: bool = None,
+        is_group=True,
+        is_private=True,
         chats: int | str | User | Chat | Message | Iterable[int | str | User | Chat | Message] = None,
         lazy: Literal[True] = False
     ) -> Iterator[Message]:
@@ -878,10 +880,14 @@ class MultiBot(Generic[T], ABC):
         n_messages: int,
         platforms: Platform | Iterable[Platform] = None,
         authors: int | str | User | Iterable[int | str | User] = None,
-        is_group: bool = None,
+        is_group=True,
+        is_private=True,
         chats: int | str | User | Chat | Message | Iterable[int | str | User | Chat | Message] = None,
         lazy=False
     ) -> Iterator[Message] | list[Message]:
+        if not is_group and not is_private:
+            return iter([]) if lazy else []
+
         if platforms and not isinstance(platforms, Iterable):
             platforms = (platforms,)
         if authors and not isinstance(authors, Iterable):
@@ -912,7 +918,7 @@ class MultiBot(Generic[T], ABC):
                 '$in': [author_ for author in authors if (author_ := self.get_user_id(author, self_platform=False))]
             }
 
-        if chats or is_group is not None:
+        if chats or is_group != is_private:
             pipeline.extend((
                 {
                     '$lookup': {
@@ -924,13 +930,15 @@ class MultiBot(Generic[T], ABC):
                 },
                 {'$unwind': '$chat'}
             ))
+
             if chats:
                 last_match['chat.id'] = {
                     '$in': [chat_ for chat in chats if (chat_ := await self.get_chat_id(chat, self_platform=False))]
                 }
-            elif is_group is True:
+
+            if is_group is True and is_private is False:
                 last_match['chat.group_id'] = {'$ne': None}
-            else:
+            elif is_group is False and is_private is True:
                 last_match['chat.group_id'] = None
 
         if last_match:
