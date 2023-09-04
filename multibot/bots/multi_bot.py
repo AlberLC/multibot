@@ -790,6 +790,10 @@ class MultiBot(Generic[T], ABC):
             case self.Message() as message:
                 return message.chat.group_name
 
+    @return_if_first_empty([], exclude_self_types='MultiBot', globals_=globals())
+    async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
+        return []
+
     @overload
     def get_last_database_messages(self, n_messages: int, lazy: Literal[False] = False) -> list[Message]:
         pass
@@ -808,20 +812,12 @@ class MultiBot(Generic[T], ABC):
     async def get_message(self, message: int | str | Message, chat: int | str | User | Chat | Message) -> Message | None:
         pass
 
-    @return_if_first_empty([], exclude_self_types='MultiBot', globals_=globals())
-    async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
-        return []
-
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
-        pass
-
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    def get_user_id(self, user: int | str | User) -> int | None:
+    def get_user_id(self, user: int | str | User, self_platform=True) -> int | None:
         match user:
             case int(user_id):
                 return user_id
@@ -845,6 +841,10 @@ class MultiBot(Generic[T], ABC):
                 return user_name
             case self.User():
                 return user.name
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_users(self, group_: int | str | Chat | Message) -> list[User]:
+        pass
 
     def is_bot_mentioned(self, message: Message) -> bool:
         return self.id in (mention.id for mention in message.mentions)

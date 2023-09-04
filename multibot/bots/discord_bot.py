@@ -465,6 +465,14 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         except AttributeError:
             return []
 
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
+        if not (discord_group := await self._get_discord_group(group_)):
+            return []
+
+        # noinspection PyTypeChecker
+        return [Role(self.platform, discord_role.id, discord_group.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in discord_group.roles]
+
     async def get_me(self, group_: int | str | Chat | Message = None) -> User | None:
         # noinspection PyTypeChecker
         user = await self._create_user_from_discord_user(self.client.user)
@@ -492,14 +500,6 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             return await self._get_message(await chat.original_object.fetch_message(message_id))
         except discord.errors.NotFound:
             return
-
-    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def get_group_roles(self, group_: int | str | Chat | Message) -> list[Role]:
-        if not (discord_group := await self._get_discord_group(group_)):
-            return []
-
-        # noinspection PyTypeChecker
-        return [Role(self.platform, discord_role.id, discord_group.id, discord_role.name, discord_role.permissions.administrator, discord_role) for discord_role in discord_group.roles]
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def get_user(self, user: int | str | User, group_: int | str | Chat | Message = None) -> User | None:
