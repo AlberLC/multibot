@@ -930,15 +930,13 @@ class MultiBot(Generic[T], ABC):
                 },
                 {'$unwind': '$chat'}
             ))
-
             if chats:
                 last_match['chat.id'] = {
                     '$in': [chat_ for chat in chats if (chat_ := await self.get_chat_id(chat, self_platform=False))]
                 }
-
-            if is_group is True and is_private is False:
+            elif is_group is True:
                 last_match['chat.group_id'] = {'$ne': None}
-            elif is_group is False and is_private is True:
+            else:
                 last_match['chat.group_id'] = None
 
         if last_match:
