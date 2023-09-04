@@ -727,20 +727,21 @@ class MultiBot(Generic[T], ABC):
     async def find_users_by_roles(self, roles: Iterable[int | str | Role], group_: int | str | Chat | Message) -> list[User]:
         return []
 
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
-        pass
-
-    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def get_current_roles(self, user: int | str | User | constants.ORIGINAL_USER, group_: int | str | Chat | Message = None) -> list[Role]:
-        return []
-
-    def get_formatted_last_database_messages(self, n_messages: int, name_limit=10, platform_limit=10, chat_limit=10, text_limit=40, timezone=None, simple=False) -> str:
+    @staticmethod
+    def format_messages(
+        messages: Message | Iterable[Message],
+        name_limit=10,
+        platform_limit=10,
+        chat_limit=10,
+        text_limit=40,
+        timezone=None,
+        simple=False
+    ) -> str:
         if simple:
             title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<12}"
 
             def generator_():
-                for i, message in enumerate(self.get_last_database_messages(n_messages, lazy=True), start=1):
+                for i, message in enumerate(messages, start=1):
                     name = message.author.name.split('#')[0]
                     text = repr(message.text).replace('`', '').strip("'")
                     date = message.date.astimezone(timezone).strftime('%d  %H:%M')
@@ -749,7 +750,7 @@ class MultiBot(Generic[T], ABC):
             title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Plataforma'[:platform_limit]:<{platform_limit}}  {'Chat'[:chat_limit]:<{chat_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<20}"
 
             def generator_():
-                for i, message in enumerate(self.get_last_database_messages(n_messages, lazy=True), start=1):
+                for i, message in enumerate(messages, start=1):
                     name = message.author.name.split('#')[0]
                     platform = Platform(message.platform).name
                     chat = message.chat.name
@@ -761,13 +762,63 @@ class MultiBot(Generic[T], ABC):
         return f"­<code><code><code>{title}\n\n{joined_text}</code></code></code>"
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    def get_group_id(self, group_: int | str | Chat | Message) -> int | None:
+    async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_chat_id(self, chat: int | str | User | Chat | Message, self_platform=True) -> int | None:
+        match chat:
+            case int(chat_id):
+                return chat_id
+            case str(chat_name):
+                try:
+                    if self_platform:
+                        platform_kwarg = {'platform': self.platform.value}
+                    else:
+                        platform_kwarg = {}
+                    return self.Chat.find_one({**platform_kwarg, 'name': chat_name}).id
+                except AttributeError:
+                    return
+            case self.User():
+                return (await self.get_chat(chat)).id
+            case self.Chat():
+                return chat.id
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_chat_name(self, chat: int | str | User | Chat | Message, self_platform=True) -> str | None:
+        match chat:
+            case int(chat_id):
+                try:
+                    if self_platform:
+                        platform_kwarg = {'platform': self.platform.value}
+                    else:
+                        platform_kwarg = {}
+                    return self.Chat.find_one({**platform_kwarg, 'id': chat_id}).name
+                except AttributeError:
+                    return
+            case str(chat_name):
+                return chat_name
+            case self.User():
+                return (await self.get_chat(chat)).name
+            case self.Chat():
+                return chat.name
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def get_current_roles(self, user: int | str | User | constants.ORIGINAL_USER, group_: int | str | Chat | Message = None) -> list[Role]:
+        return []
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    def get_group_id(self, group_: int | str | Chat | Message, self_platform=True) -> int | None:
         match group_:
             case int(group_id):
                 return group_id
             case str(group_name):
                 try:
-                    return self.Chat.find_one({'platform': self.platform.value, 'group_name': group_name}).group_id
+                    if self_platform:
+                        platform_kwarg = {'platform': self.platform.value}
+                    else:
+                        platform_kwarg = {}
+                    return self.Chat.find_one({**platform_kwarg, 'group_name': group_name}).group_id
                 except AttributeError:
                     return
             case self.Chat() as chat:
@@ -776,11 +827,15 @@ class MultiBot(Generic[T], ABC):
                 return message.chat.group_id
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    def get_group_name(self, group_: int | str | Chat | Message) -> str | None:
+    def get_group_name(self, group_: int | str | Chat | Message, self_platform=True) -> str | None:
         match group_:
             case int(group_id):
                 try:
-                    return self.Chat.find_one({'platform': self.platform.value, 'group_id': group_id}).group_name
+                    if self_platform:
+                        platform_kwarg = {'platform': self.platform.value}
+                    else:
+                        platform_kwarg = {}
+                    return self.Chat.find_one({**platform_kwarg, 'group_id': group_id}).group_name
                 except AttributeError:
                     return
             case str(group_name):
@@ -795,15 +850,100 @@ class MultiBot(Generic[T], ABC):
         return []
 
     @overload
-    def get_last_database_messages(self, n_messages: int, lazy: Literal[False] = False) -> list[Message]:
+    async def get_last_database_messages(
+        self,
+        n_messages: int,
+        platforms: Platform | Iterable[Platform] = None,
+        authors: int | str | User | Iterable[int | str | User] = None,
+        is_group: bool = None,
+        chats: int | str | User | Chat | Message | Iterable[int | str | User | Chat | Message] = None,
+        lazy: Literal[False] = False
+    ) -> list[Message]:
         pass
 
     @overload
-    def get_last_database_messages(self, n_messages: int, lazy: Literal[True] = False) -> Iterator[Message]:
+    async def get_last_database_messages(
+        self,
+        n_messages: int,
+        platforms: Platform | Iterable[Platform] = None,
+        authors: int | str | User | Iterable[int | str | User] = None,
+        is_group: bool = None,
+        chats: int | str | User | Chat | Message | Iterable[int | str | User | Chat | Message] = None,
+        lazy: Literal[True] = False
+    ) -> Iterator[Message]:
         pass
 
-    def get_last_database_messages(self, n_messages: int, lazy=False) -> Iterator[Message] | list[Message]:
-        return self.Message.find(sort_keys=(('date', pymongo.DESCENDING),), limit=n_messages, lazy=lazy)
+    async def get_last_database_messages(
+        self,
+        n_messages: int,
+        platforms: Platform | Iterable[Platform] = None,
+        authors: int | str | User | Iterable[int | str | User] = None,
+        is_group: bool = None,
+        chats: int | str | User | Chat | Message | Iterable[int | str | User | Chat | Message] = None,
+        lazy=False
+    ) -> Iterator[Message] | list[Message]:
+        if platforms and not isinstance(platforms, Iterable):
+            platforms = (platforms,)
+        if authors and not isinstance(authors, Iterable):
+            authors = (authors,)
+        if chats and not isinstance(chats, Iterable):
+            chats = (chats,)
+
+        pipeline = []
+
+        if platforms:
+            pipeline.append({'$match': {'platform': {'$in': [platform.value for platform in platforms]}}})
+
+        last_match: dict = {}
+
+        if authors:
+            pipeline.extend((
+                {
+                    '$lookup': {
+                        'from': 'user',
+                        'localField': 'author',
+                        'foreignField': '_id',
+                        'as': 'author'
+                    }
+                },
+                {'$unwind': '$author'}
+            ))
+            last_match['author.id'] = {
+                '$in': [author_ for author in authors if (author_ := self.get_user_id(author, self_platform=False))]
+            }
+
+        if chats or is_group is not None:
+            pipeline.extend((
+                {
+                    '$lookup': {
+                        'from': 'chat',
+                        'localField': 'chat',
+                        'foreignField': '_id',
+                        'as': 'chat'
+                    }
+                },
+                {'$unwind': '$chat'}
+            ))
+            if chats:
+                last_match['chat.id'] = {
+                    '$in': [chat_ for chat in chats if (chat_ := await self.get_chat_id(chat, self_platform=False))]
+                }
+            elif is_group is True:
+                last_match['chat.group_id'] = {'$ne': None}
+            else:
+                last_match['chat.group_id'] = None
+
+        if last_match:
+            pipeline.append({'$match': last_match})
+
+        pipeline.extend((
+            {'$sort': {'date': pymongo.DESCENDING}},
+            {'$limit': n_messages}
+        ))
+
+        cursor = self.Message.collection.aggregate(pipeline)
+        generator = (self.Message.from_dict(document, lazy=False) for document in cursor)
+        return generator if lazy else list(generator)
 
     async def get_me(self, group_: int | str | Chat | Message = None) -> User | None:
         pass
@@ -823,18 +963,26 @@ class MultiBot(Generic[T], ABC):
                 return user_id
             case str(user_name):
                 try:
-                    return self.User.find_one({'platform': self.platform.value, 'name': user_name}).id
+                    if self_platform:
+                        platform_kwarg = {'platform': self.platform.value}
+                    else:
+                        platform_kwarg = {}
+                    return self.User.find_one({**platform_kwarg, 'name': user_name}).id
                 except AttributeError:
                     return
             case self.User():
                 return user.id
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    def get_user_name(self, user: int | str | User) -> str | None:
+    def get_user_name(self, user: int | str | User, self_platform=True) -> str | None:
         match user:
             case int(user_id):
                 try:
-                    return self.User.find_one({'platform': self.platform.value, 'id': user_id}).name
+                    if self_platform:
+                        platform_kwarg = {'platform': self.platform.value}
+                    else:
+                        platform_kwarg = {}
+                    return self.User.find_one({**platform_kwarg, 'id': user_id}).name
                 except AttributeError:
                     return
             case str(user_name):

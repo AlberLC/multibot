@@ -93,6 +93,7 @@ KEYWORDS = {
     'change': ('alter', 'alternar', 'alternate', 'cambiar', 'change', 'default', 'defecto', 'edit', 'editar',
                'exchange', 'modificar', 'modify', 'permutar', 'predeterminado', 'shift', 'swap', 'switch', 'turn',
                'vary'),
+    'chat': ('canal', 'channel', 'chat'),
     'config': ('ajustar', 'ajuste', 'ajustes', 'automatico', 'automatic', 'config', 'configs', 'configuracion',
                'configuration', 'setting', 'settings'),
     'date': ('ayer', 'de', 'domingo', 'fin', 'finde', 'friday', 'hoy', 'jueves', 'lunes', 'martes', 'mañana',
@@ -101,6 +102,7 @@ KEYWORDS = {
     'deactivate': ('apaga', 'apagar', 'cancel', 'cancela', 'cierra', 'close', 'deactivate', 'deactivate', 'desactivar',
                    'deshabilita', 'deshabilitar', 'disable', 'forbids', 'prohibe', 'quita', 'remove'),
     'delete': ('borra', 'borrado', 'borres', 'clear', 'delete', 'elimina', 'limpia', 'remove'),
+    'group': ('group', 'grupo', 'server', 'servidor'),
     'hello': ('alo', 'aloh', 'buenas', 'dias', 'hello', 'hey', 'hi', 'hola', 'holaaaaaa', 'ola', 'saludos', 'tardes'),
     'help': ('ayuda', 'help'),
     'last': ('last', 'ultima', 'ultimas', 'ultimo', 'ultimos'),
@@ -108,6 +110,7 @@ KEYWORDS = {
     'mute': ('calla', 'calle', 'mute', 'mutea', 'mutealo', 'noise', 'ruido', 'shut', 'silence', 'silencia'),
     'negate': ('no', 'ocurra', 'ocurre'),
     'permission': ('permiso', 'permission'),
+    'private': ('direct', 'directo', 'privado', 'private'),
     'reset': ('recover', 'recovery', 'recupera', 'reinicia', 'reset', 'resetea', 'restart'),
     'role': ('rol', 'role', 'roles'),
     'send_as_file': ('arhivo', 'calidad', 'compresion', 'compress', 'compression', 'comprimir', 'file', 'quality'),
@@ -119,7 +122,7 @@ KEYWORDS = {
     'thanks': ('gracia', 'gracias', 'grasia', 'grasias', 'grax', 'thank', 'thanks', 'ty'),
     'unban': ('desbanea', 'unban'),
     'unmute': ('desilencia', 'desmutea', 'desmutealo', 'unmute'),
-    'user': ('member', 'miembro', 'participant', 'participante', 'user', 'usuario')
+    'user': ('author', 'autor', 'member', 'miembro', 'participant', 'participante', 'user', 'usuario')
 }
 
 NO_PHRASES = ('NO', 'no', 'no.', 'nope', 'hin', 'ahora mismo', 'va a ser que no', 'claro que si', 'claro que si guapi',
