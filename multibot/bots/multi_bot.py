@@ -759,7 +759,7 @@ class MultiBot(Generic[T], ABC):
                     yield f"{i:>4}.  {name[:name_limit]:<{name_limit}}  {platform[:platform_limit]:<{platform_limit}}  {chat[:chat_limit]:<{chat_limit}}  {text[:text_limit]:<{text_limit}}  {date}"
 
         joined_text = '\n'.join(generator_())
-        return f"­<code><code><code>{title}\n\n{joined_text}</code></code></code>"
+        return f'­<code><code><code>{title}\n\n{joined_text}</code></code></code>'
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:
