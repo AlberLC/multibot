@@ -20,6 +20,7 @@ import contextlib
 import datetime
 import functools
 import random
+import shlex
 import traceback
 from abc import ABC
 from collections import defaultdict
@@ -693,7 +694,7 @@ class MultiBot(Generic[T], ABC):
 
     async def filter_mention_ids(self, text: str | Iterable[str], message: Message, delete_names=False) -> list[str]:
         if isinstance(text, str):
-            words = text.split()
+            words = shlex.split(text)
         else:
             words = text
 
