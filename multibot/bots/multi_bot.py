@@ -408,6 +408,7 @@ class MultiBot(Generic[T], ABC):
             message.resolve()
             message.update_edit_date(await self._get_edit_date(original_message))
             message.save(pull_overwrite_fields=pull_overwrite_fields, pull_lazy=False)
+            self._message_cache[message_id, chat.id] = message
             return message
 
         if cached_message.buttons_info:
