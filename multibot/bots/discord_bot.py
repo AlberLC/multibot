@@ -233,7 +233,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
 
     @staticmethod
     @return_if_first_empty
-    async def _prepare_media_to_send(media: Media) -> discord.File | None:
+    async def _prepare_media_to_send(media: Media, raise_exceptions=False) -> discord.File | None:
         if not media:
             return
 
@@ -250,7 +250,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 try:
                     media.bytes_ = await flanautils.get_request(media.url)
                 except ResponseError:
-                    pass
+                    if raise_exceptions:
+                        raise
 
         if bytes_ := media.bytes_:
             if media.type_ is MediaType.GIF:
@@ -603,6 +604,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         data: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
+        raise_exceptions=False,
         edit=False
     ) -> Message | None:
         async def file_too_large():
@@ -654,6 +656,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             try:
                 message.original_object = await message.original_object.edit(**kwargs)
             except discord.errors.NotFound:
+                if raise_exceptions:
+                    raise
                 return
 
             return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_edit_date=True)
@@ -672,7 +676,9 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             if 'too large' in str(e).lower():
                 await file_too_large()
                 return
-            raise
+            if raise_exceptions:
+                raise
+            return
 
         return self._update_message_attributes(bot_message, media, buttons, chat, buttons_key, data)
 

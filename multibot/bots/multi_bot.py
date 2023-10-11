@@ -1084,6 +1084,7 @@ class MultiBot(Generic[T], ABC):
         data: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
+        raise_exceptions=False,
         edit=False
     ) -> Message | None:
         pass

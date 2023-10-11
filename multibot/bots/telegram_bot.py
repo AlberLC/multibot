@@ -238,7 +238,12 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @staticmethod
     @return_if_first_empty
-    async def _prepare_media_to_send(media: Media, prefer_bytes=False, is_inline=False) -> str | io.BytesIO | None:
+    async def _prepare_media_to_send(
+        media: Media,
+        prefer_bytes=False,
+        is_inline=False,
+        raise_exceptions=False
+    ) -> str | io.BytesIO | None:
         def url_file() -> str | None:
             if not media.url:
                 return
@@ -253,6 +258,8 @@ class TelegramBot(MultiBot[TelegramClient]):
                 try:
                     result = await flanautils.get_request(media.url)
                 except ResponseError:
+                    if raise_exceptions:
+                        raise
                     return
                 if not isinstance(result, bytes):
                     return
@@ -472,9 +479,10 @@ class TelegramBot(MultiBot[TelegramClient]):
         data: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
+        raise_exceptions=False,
         edit=False
     ) -> Message | None:
-        file = await self._prepare_media_to_send(media)
+        file = await self._prepare_media_to_send(media, raise_exceptions=raise_exceptions)
         telegram_buttons = None
 
         if buttons:
@@ -517,6 +525,8 @@ class TelegramBot(MultiBot[TelegramClient]):
                     telethon.errors.rpcerrorlist.MessageNotModifiedError,
                     telethon.errors.rpcerrorlist.UserIsBlockedError
                 ):
+                    if raise_exceptions:
+                        raise
                     return
 
                 return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_edit_date=True)
@@ -538,27 +548,33 @@ class TelegramBot(MultiBot[TelegramClient]):
                             del kwargs['supports_streaming']
                         except KeyError:
                             pass
-                    else:
+                    elif raise_exceptions:
                         raise
+                    return
                 except telethon.errors.WebpageCurlFailedError:
-                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True)) and isinstance(bytes_, io.BytesIO):
+                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
                         kwargs['file'] = bytes_
-                    else:
+                    elif raise_exceptions:
                         raise
+                    return
                 except ValueError as e:
                     if 'parse' in str(e).lower() and attempt:
                         try:
                             del kwargs['parse_mode']
                         except KeyError:
                             pass
-                    else:
+                    elif raise_exceptions:
                         raise
+                    return
                 except telethon.errors.rpcerrorlist.MediaEmptyError:
-                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True)) and isinstance(bytes_, io.BytesIO):
+                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
                         kwargs['file'] = bytes_
-                    else:
-                        return
+                    elif raise_exceptions:
+                        raise
+                    return
                 except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
+                    if raise_exceptions:
+                        raise
                     return
                 else:
                     break

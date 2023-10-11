@@ -276,6 +276,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         data: dict = None,
         silent: bool = False,
         send_as_file: bool = None,
+        raise_exceptions=False,
         edit=False
     ):
         match reply_to:
