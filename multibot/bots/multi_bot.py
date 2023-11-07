@@ -917,7 +917,7 @@ class MultiBot(Generic[T], ABC):
                 {'$unwind': '$author'}
             ))
             last_match_conditions.append({'author.id': {
-                '$in': [author_ for author in authors if (author_ := self.get_user_id(author, self_platform=False))]
+                '$in': [author_id for author in authors if (author_id := self.get_user_id(author, self_platform=False))]
             }})
 
         if chats or is_group != is_private:
@@ -935,7 +935,7 @@ class MultiBot(Generic[T], ABC):
 
             if chats:
                 last_match_conditions.append({'chat.id': {
-                    '$in': [chat_ for chat in chats if (chat_ := await self.get_chat_id(chat, self_platform=False))]
+                    '$in': [chat_id for chat in chats if (chat_id := await self.get_chat_id(chat, self_platform=False))]
                 }})
 
             if is_group is True and is_private is False:
