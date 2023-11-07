@@ -119,6 +119,7 @@ KEYWORDS = {
     'sound': ('hablar', 'hable', 'micro', 'microfono', 'microphone', 'sonido', 'sound', 'talk', 'volumen'),
     'stop': ('acabar', 'caducar', 'detener', 'end', 'expirar', 'expire', 'finalizar', 'finish', 'parar', 'stop',
              'suspend', 'suspender', 'terminar', 'terminate'),
+    'text': ('text', 'texto'),
     'thanks': ('gracia', 'gracias', 'grasia', 'grasias', 'grax', 'thank', 'thanks', 'ty'),
     'unban': ('desbanea', 'unban'),
     'unmute': ('desilencia', 'desmutea', 'desmutealo', 'unmute'),
