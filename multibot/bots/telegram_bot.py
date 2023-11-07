@@ -542,6 +542,21 @@ class TelegramBot(MultiBot[TelegramClient]):
             for attempt in range(attempts - 1, -1, -1):
                 try:
                     original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
+                except telethon.errors.rpcerrorlist.MediaEmptyError:
+                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
+                        kwargs['file'] = bytes_
+                    elif raise_exceptions:
+                        raise
+                    return
+                except ValueError as e:
+                    if 'parse' in str(e).lower() and attempt:
+                        try:
+                            del kwargs['parse_mode']
+                        except KeyError:
+                            pass
+                    elif raise_exceptions:
+                        raise
+                    return
                 except telethon.errors.VideoContentTypeInvalidError:
                     if attempt:
                         try:
@@ -557,22 +572,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                     elif raise_exceptions:
                         raise
                     return
-                except ValueError as e:
-                    if 'parse' in str(e).lower() and attempt:
-                        try:
-                            del kwargs['parse_mode']
-                        except KeyError:
-                            pass
-                    elif raise_exceptions:
-                        raise
-                    return
-                except telethon.errors.rpcerrorlist.MediaEmptyError:
-                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
-                        kwargs['file'] = bytes_
-                    elif raise_exceptions:
-                        raise
-                    return
-                except (telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
+                except (telethon.errors.rpcerrorlist.MessageTooLongError, telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                     if raise_exceptions:
                         raise
                     return

@@ -33,7 +33,7 @@ from flanautils import AmbiguityError, Media, NotFoundError, OrderedSet, ScoreMa
 
 from multibot import constants
 from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
-from multibot.models import Ban, Button, ButtonsInfo, Chat, Message, Mute, Penalty, Platform, RegisteredCallback, Role, User
+from multibot.models import Ban, Button, ButtonsInfo, Chat, Message, MessagesFormat, Mute, Penalty, Platform, RegisteredCallback, Role, User
 
 
 # ---------------------------------------------------- #
@@ -737,31 +737,65 @@ class MultiBot(Generic[T], ABC):
         chat_limit=10,
         text_limit=40,
         timezone=None,
-        simple=False
+        format=MessagesFormat.NORMAL
     ) -> str:
-        if simple:
-            title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<12}"
+        def get_name(message: Message) -> str:
+            return message.author.name.split('#')[0]
 
-            def generator_():
-                for i, message in enumerate(messages, start=1):
-                    name = message.author.name.split('#')[0]
-                    text = repr(message.text).replace('`', '').strip("'")
-                    date = message.date.astimezone(timezone).strftime('%d  %H:%M')
-                    yield f"{i:>4}.  {name[:name_limit]:<{name_limit}}  {text[:text_limit]:<{text_limit}}  {date}"
-        else:
-            title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Plataforma'[:platform_limit]:<{platform_limit}}  {'Chat'[:chat_limit]:<{chat_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<20}"
+        def get_platform(message: Message) -> str:
+            return Platform(message.platform).name
 
-            def generator_():
-                for i, message in enumerate(messages, start=1):
-                    name = message.author.name.split('#')[0]
-                    platform = Platform(message.platform).name
-                    chat = message.chat.name
-                    text = repr(message.text).replace('`', '').strip("'")
-                    date = message.date.astimezone(timezone).strftime('%d/%m/%Y  %H:%M:%S')
-                    yield f"{i:>4}.  {name[:name_limit]:<{name_limit}}  {platform[:platform_limit]:<{platform_limit}}  {chat[:chat_limit]:<{chat_limit}}  {text[:text_limit]:<{text_limit}}  {date}"
+        def get_chat(message: Message) -> str:
+            return message.chat.name
+
+        def get_text(message: Message) -> str:
+            return repr(message.text).replace('`', '').strip("'")
+
+        def get_date(message: Message, simple=False) -> str:
+            if simple:
+                return message.date.astimezone(timezone).strftime('%d  %H:%M')
+            else:
+                return message.date.astimezone(timezone).strftime('%d/%m/%Y  %H:%M:%S')
+
+        match format:
+            case MessagesFormat.SIMPLE:
+                title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<12}"
+
+                def generator_():
+                    for i, message in enumerate(messages, start=1):
+                        name = get_name(message)
+                        text = get_text(message)
+                        date = get_date(message, simple=True)
+                        yield f"{i:>4}.  {name[:name_limit]:<{name_limit}}  {text[:text_limit]:<{text_limit}}  {date}"
+            case MessagesFormat.COMPLETE:
+                title = ''
+
+                def generator_():
+                    for i, message in enumerate(messages, start=1):
+                        yield (
+                            f'{i}.\n'
+                            f'Usuario: {get_name(message)}\n'
+                            f'Plataforma: {get_platform(message)}\n'
+                            f'Chat: {get_chat(message)}\n'
+                            f'Texto: {get_text(message)}\n'
+                            f'Fecha: {get_date(message)}\n'
+                        )
+
+            case _:
+                title = f"       {'Usuario'[:name_limit]:<{name_limit}}  {'Plataforma'[:platform_limit]:<{platform_limit}}  {'Chat'[:chat_limit]:<{chat_limit}}  {'Texto'[:text_limit]:<{text_limit}}  {'Fecha':<20}"
+
+                def generator_():
+                    for i, message in enumerate(messages, start=1):
+                        name = get_name(message)
+                        platform = get_platform(message)
+                        chat = get_chat(message)
+                        text = get_text(message)
+                        date = get_date(message)
+                        yield f"{i:>4}.  {name[:name_limit]:<{name_limit}}  {platform[:platform_limit]:<{platform_limit}}  {chat[:chat_limit]:<{chat_limit}}  {text[:text_limit]:<{text_limit}}  {date}"
 
         joined_text = '\n'.join(generator_())
-        return f'­<code><code><code>{title}\n\n{joined_text}</code></code></code>'
+        header = f'{title}\n\n' if title else ''
+        return f'­<code><code><code>{header}­{joined_text}</code></code></code>'
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def get_chat(self, chat: int | str | User | Chat | Message) -> Chat | None:

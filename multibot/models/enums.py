@@ -1,8 +1,14 @@
-__all__ = ['Platform']
+__all__ = ['MessagesFormat', 'Platform']
 
 from enum import auto
 
 from flanautils import FlanaEnum
+
+
+class MessagesFormat(FlanaEnum):
+    SIMPLE = auto()
+    NORMAL = auto()
+    COMPLETE = auto()
 
 
 class Platform(FlanaEnum):
