@@ -218,18 +218,19 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         if not text:
             return text
 
-        return flanautils.replace(text, {
-            '<b>': '**',
-            '</b>': '**',
-            '<i>': '*',
-            '</i>': '*',
-            '<u>': '__',
-            '</u>': '__',
-            '<del>': '~~',
-            '</del>': '~~',
-            '<code>': '`',
-            '</code>': '`'
-        })
+        return (
+            text
+            .replace('<b>', '**')
+            .replace('</b>', '**')
+            .replace('<i>', '*')
+            .replace('</i>', '*')
+            .replace('<u>', '__')
+            .replace('</u>', '__')
+            .replace('<del>', '~~')
+            .replace('</del>', '~~')
+            .replace('<code>', '`')
+            .replace('</code>', '`')
+        )
 
     @staticmethod
     @return_if_first_empty
