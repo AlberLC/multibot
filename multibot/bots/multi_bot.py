@@ -695,7 +695,10 @@ class MultiBot(Generic[T], ABC):
 
     async def filter_mention_ids(self, text: str | Iterable[str], message: Message, delete_names=False) -> list[str]:
         if isinstance(text, str):
-            words = shlex.split(text)
+            try:
+                words = shlex.split(text)
+            except ValueError:
+                words = text
         else:
             words = text
 
