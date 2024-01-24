@@ -338,8 +338,6 @@ class MultiBot(Generic[T], ABC):
     async def _find_users_to_punish(self, message: Message) -> OrderedSet[User]:
         bot_user = await self.get_me(message.chat.group_id)
         users: OrderedSet[User] = OrderedSet(message.mentions)
-        if message.replied_message:
-            users.add(message.replied_message.author)
 
         match users:
             case []:
