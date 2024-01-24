@@ -488,7 +488,7 @@ class MultiBot(Generic[T], ABC):
                 original_words.add(word)
         important_words = original_words - flanautils.CommonWords.get()
 
-        matched_callbacks: set[tuple[int, ScoreMatch[RegisteredCallback]]] = set()
+        matched_callbacks: set[ScoreMatch[RegisteredCallback]] = set()
         always_callbacks: set[RegisteredCallback] = set()
         default_callbacks: set[RegisteredCallback] = set()
         for registered_callback in registered_callbacks:
@@ -512,22 +512,22 @@ class MultiBot(Generic[T], ABC):
                         mached_keywords_groups += 1
 
                 if mached_keywords_groups and mached_keywords_groups == len(registered_callback.keywords):
-                    for priority, matched_callback in matched_callbacks:  # If the callback has been matched before but with less score it is overwritten, otherwise it is added
+                    for matched_callback in matched_callbacks:  # If the callback has been matched before but with less score it is overwritten, otherwise it is added
                         if matched_callback.element.callback == registered_callback.callback:
                             if total_score > matched_callback.score:
-                                matched_callbacks.discard((priority, matched_callback))
-                                matched_callbacks.add((registered_callback.priority, ScoreMatch(registered_callback, total_score)))
+                                matched_callbacks.discard(matched_callback)
+                                matched_callbacks.add(ScoreMatch(registered_callback, total_score))
                             break
                     else:
-                        matched_callbacks.add((registered_callback.priority, ScoreMatch(registered_callback, total_score)))
+                        matched_callbacks.add(ScoreMatch(registered_callback, total_score))
 
-        sorted_matched_callbacks = sorted(matched_callbacks, key=lambda e: e[1])
-        sorted_matched_callbacks = sorted(sorted_matched_callbacks, key=lambda e: e[0], reverse=True)
+        sorted_matched_callbacks = sorted(matched_callbacks)
+        sorted_matched_callbacks = sorted(sorted_matched_callbacks, key=lambda e: e.element.priority, reverse=True)
         match sorted_matched_callbacks:
-            case [(_priority, single)]:
+            case [single]:
                 determined_callbacks = always_callbacks | {single.element}
-            case [(first_priority, first), (second_priority, second), *_] if first.score >= minimum_score_to_match:
-                if first_priority == second_priority and first.score == second.score:
+            case [first, second, *_] if first.score >= minimum_score_to_match:
+                if first.element.priority == second.element.priority and first.score == second.score:
                     raise AmbiguityError(f'\n{first.element.callback}\n{second.element.callback}')
                 determined_callbacks = always_callbacks | {first.element}
             case _:
