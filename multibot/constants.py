@@ -44,8 +44,8 @@ CHECK_OLD_DATABASE_MESSAGES_EVERY_SECONDS = datetime.timedelta(days=1).total_sec
 CHECK_PENALTIES_EVERY_SECONDS = datetime.timedelta(hours=1).total_seconds()
 COMMAND_MESSAGE_DURATION = 5
 DATABASE_MESSAGE_EXPIRATION_TIME = datetime.timedelta(weeks=flanautils.WEEKS_IN_A_MONTH)
-DELETE_MESSAGE_DATE_LIMIT = datetime.timedelta(hours=12)
 DELETE_MESSAGE_LIMIT = 100
+DELETE_UNTIL_MESSAGE_DATE_LIMIT = datetime.timedelta(hours=12)
 DISCORD_BUTTON_MAX_CHARACTERS = 80
 DISCORD_BUTTONS_MAX = 5
 DISCORD_COMMAND_PREFIX = flanautils.random_string()
