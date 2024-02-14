@@ -326,8 +326,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             return
         if n_messages is not None and n_messages > constants.DELETE_MESSAGE_LIMIT:
             raise LimitError(f'El máximo es {constants.DELETE_MESSAGE_LIMIT}.')
-        if until_message and datetime.datetime.now(datetime.timezone.utc) - until_message.date > constants.DELETE_MESSAGE_DATE_LIMIT:
-            raise LimitError(f'El mensaje no puede tener más de {flanautils.TimeUnits(seconds=constants.DELETE_MESSAGE_DATE_LIMIT.total_seconds()).to_words()} de antigüedad.')
+        if until_message and datetime.datetime.now(datetime.timezone.utc) - until_message.date > constants.DELETE_UNTIL_MESSAGE_DATE_LIMIT:
+            raise LimitError(f'El mensaje no puede tener más de {flanautils.TimeUnits(seconds=constants.DELETE_UNTIL_MESSAGE_DATE_LIMIT.total_seconds()).to_words()} de antigüedad.')
 
         if (chat := await self.get_chat(chat)).is_private:
             return
