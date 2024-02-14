@@ -332,7 +332,7 @@ class MultiBot(Generic[T], ABC):
             if penalty.until and penalty.until <= datetime.datetime.now(datetime.timezone.utc):
                 try:
                     await self._remove_penalty(penalty, unpenalize_method)
-                except UserDisconnectedError:
+                except (PermissionError, UserDisconnectedError):
                     pass
 
     async def _find_users_to_punish(self, message: Message) -> OrderedSet[User]:
@@ -448,6 +448,8 @@ class MultiBot(Generic[T], ABC):
             # noinspection PyBroadException
             try:
                 raise exception
+            except PermissionError:
+                await self.delete_message(context)
             except LimitError as e:
                 await self.delete_message(context)
                 await self.send_error(str(e), context)
@@ -536,7 +538,7 @@ class MultiBot(Generic[T], ABC):
     async def _remove_penalty(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
         try:
             await unpenalize_method(penalty.user_id, penalty.group_id)
-        except (BadRoleError, UserDisconnectedError) as e:
+        except (BadRoleError, PermissionError, UserDisconnectedError) as e:
             if message and message.chat.original_object:
                 await self._manage_exceptions(e, message)
             else:

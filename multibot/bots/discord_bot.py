@@ -210,6 +210,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         user = await self.get_user(user, group_)
         try:
             await user.original_object.edit(mute=True)
+        except discord.errors.Forbidden:
+            raise PermissionError
         except discord.errors.HTTPException:
             raise UserDisconnectedError(user.name)
 
@@ -280,6 +282,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         user = await self.get_user(user, group_)
         try:
             await user.original_object.edit(mute=False)
+        except discord.errors.Forbidden:
+            raise PermissionError
         except discord.errors.HTTPException:
             raise UserDisconnectedError(user.name)
 
@@ -340,6 +344,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
 
         try:
             message_ids = [message.id for message in await chat.original_object.purge(**kwargs)]
+        except discord.errors.Forbidden:
+            raise PermissionError
         except discord.errors.HTTPException:
             raise LimitError(f'Solo puedo eliminar mensajes con menos de 14 días {random.choice(constants.SAD_EMOJIS)}')
 
