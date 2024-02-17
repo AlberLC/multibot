@@ -449,7 +449,7 @@ class MultiBot(Generic[T], ABC):
             try:
                 raise exception
             except PermissionError:
-                await self.delete_message(context)
+                await self.send_error('No tengo permisos.', context)
             except LimitError as e:
                 await self.delete_message(context)
                 await self.send_error(str(e), context)
