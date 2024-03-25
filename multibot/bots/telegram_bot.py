@@ -547,7 +547,8 @@ class TelegramBot(MultiBot[TelegramClient]):
                         kwargs['file'] = bytes_
                     elif raise_exceptions:
                         raise
-                    return
+                    else:
+                        return
                 except ValueError as e:
                     if 'parse' in str(e).lower() and attempt:
                         try:
@@ -556,7 +557,8 @@ class TelegramBot(MultiBot[TelegramClient]):
                             pass
                     elif raise_exceptions:
                         raise
-                    return
+                    else:
+                        return
                 except telethon.errors.VideoContentTypeInvalidError:
                     if attempt:
                         try:
@@ -565,13 +567,15 @@ class TelegramBot(MultiBot[TelegramClient]):
                             pass
                     elif raise_exceptions:
                         raise
-                    return
+                    else:
+                        return
                 except telethon.errors.WebpageCurlFailedError:
                     if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
                         kwargs['file'] = bytes_
                     elif raise_exceptions:
                         raise
-                    return
+                    else:
+                        return
                 except (telethon.errors.rpcerrorlist.MessageTooLongError, telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
                     if raise_exceptions:
                         raise
