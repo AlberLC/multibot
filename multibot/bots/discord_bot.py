@@ -682,8 +682,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         except discord.errors.HTTPException as e:
             if 'too large' in str(e).lower():
                 await file_too_large()
-                return
-            if raise_exceptions:
+            elif raise_exceptions:
                 raise
             return
 
