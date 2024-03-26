@@ -615,13 +615,25 @@ class MultiBot(Generic[T], ABC):
                 await self._manage_exceptions(e, message, reraise=True)
 
     @ignore_self_message
-    async def _on_new_message_raw(self, message: Message):
+    async def _on_new_message_raw(
+        self,
+        message: Message,
+        whitelist_callbacks: set[RegisteredCallback] | None = None,
+        blacklist_callbacks: set[RegisteredCallback] | None = None
+    ):
         try:
             registered_callbacks = self._parse_callbacks(message.text, self._registered_callbacks)
         except AmbiguityError as e:
             await self._manage_exceptions(e, message, reraise=True)
         else:
             for registered_callback in registered_callbacks:
+                if (
+                    whitelist_callbacks is not None and registered_callback not in whitelist_callbacks
+                    or
+                    blacklist_callbacks is not None and registered_callback in blacklist_callbacks
+                ):
+                    continue
+
                 try:
                     await registered_callback(message)
                 except Exception as e:
