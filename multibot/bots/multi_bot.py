@@ -24,7 +24,7 @@ import shlex
 import traceback
 from abc import ABC
 from collections import defaultdict
-from collections.abc import Callable, Coroutine, Iterable, Iterator, Sequence
+from collections.abc import Callable, Coroutine, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Generic, Literal, TypeVar, overload
 
 import flanautils
@@ -311,7 +311,7 @@ class MultiBot(Generic[T], ABC):
         self.token: str = token
         self.client: T = client
         self._registered_callbacks: list[RegisteredCallback] = []
-        self._registered_button_callbacks: dict[Any, list[Callable]] = defaultdict(list)
+        self._registered_button_callbacks: dict[Any, list[RegisteredCallback]] = defaultdict(list)
         # noinspection PyPep8Naming
         MessageType = self.Message
         self._message_cache: dict[tuple[int, int], MessageType] = {}
@@ -488,9 +488,9 @@ class MultiBot(Generic[T], ABC):
                 original_words.add(word)
         important_words = original_words - flanautils.CommonWords.get()
 
-        matched_callbacks: set[ScoreMatch[RegisteredCallback]] = set()
-        always_callbacks: set[RegisteredCallback] = set()
-        default_callbacks: set[RegisteredCallback] = set()
+        matched_callbacks: OrderedSet[ScoreMatch[RegisteredCallback]] = OrderedSet()
+        always_callbacks: OrderedSet[RegisteredCallback] = OrderedSet()
+        default_callbacks: OrderedSet[RegisteredCallback] = OrderedSet()
         for registered_callback in registered_callbacks:
             if registered_callback.always:
                 always_callbacks.add(registered_callback)
@@ -533,7 +533,7 @@ class MultiBot(Generic[T], ABC):
             case _:
                 determined_callbacks = always_callbacks | default_callbacks
 
-        return OrderedSet(registered_callback for registered_callback in registered_callbacks if registered_callback in determined_callbacks)
+        return determined_callbacks
 
     async def _remove_penalty(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
         try:
@@ -608,9 +608,9 @@ class MultiBot(Generic[T], ABC):
         if not message.buttons_info:
             return
 
-        for callback in self._registered_button_callbacks[message.buttons_info.key]:
+        for registered_callback in self._registered_button_callbacks[message.buttons_info.key]:
             try:
-                await callback(message)
+                await registered_callback(message, *registered_callback.extra_args, **registered_callback.extra_kwargs)
             except Exception as e:
                 await self._manage_exceptions(e, message, reraise=True)
 
@@ -635,7 +635,7 @@ class MultiBot(Generic[T], ABC):
                     continue
 
                 try:
-                    await registered_callback(message)
+                    await registered_callback(message, *registered_callback.extra_args, **registered_callback.extra_kwargs)
                 except Exception as e:
                     await self._manage_exceptions(e, message, reraise=True)
 
@@ -1085,33 +1085,33 @@ class MultiBot(Generic[T], ABC):
         return self._owner_chat
 
     @overload
-    def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
+    def register(self, func_: Callable = None, extra_args: Iterable = (), extra_kwargs: Mapping = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
     @overload
     def register(self, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
-    @shift_args_if_called(exclude_self_types='MultiBot', globals_=globals())
-    def register(self, func_: Callable = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
+    @shift_args_if_called(n_positions=3, exclude_self_types='MultiBot', globals_=globals())
+    def register(self, func_: Callable = None, extra_args: Iterable = (), extra_kwargs: Mapping = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         def decorator(func: Callable):
-            self._registered_callbacks.append(RegisteredCallback(func, keywords, priority, min_score, always, default))
+            self._registered_callbacks.append(RegisteredCallback(func, extra_args, extra_kwargs, keywords, priority, min_score, always, default))
             return func
 
         return decorator(func_) if func_ else decorator
 
     @overload
-    def register_button(self, func_: Callable = None, key: Any = None):
+    def register_button(self, func_: Callable = None, extra_args: Iterable = (), extra_kwargs: Mapping = None, key: Any = None):
         pass
 
     @overload
     def register_button(self, key: Any = None):
         pass
 
-    @shift_args_if_called(exclude_self_types='MultiBot', globals_=globals())
-    def register_button(self, func_: Callable = None, key: Any = None):
+    @shift_args_if_called(n_positions=3, exclude_self_types='MultiBot', globals_=globals())
+    def register_button(self, func_: Callable = None, extra_args: Iterable = (), extra_kwargs: Mapping = None, key: Any = None):
         def decorator(func: Callable):
-            self._registered_button_callbacks[key].append(func)
+            self._registered_button_callbacks[key].append(RegisteredCallback(func, extra_args, extra_kwargs))
             return func
 
         return decorator(func_) if func_ else decorator

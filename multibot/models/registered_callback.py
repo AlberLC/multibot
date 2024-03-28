@@ -1,6 +1,6 @@
 __all__ = ['RegisteredCallback']
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 
 import flanautils
 from flanautils import FlanaBase
@@ -10,6 +10,8 @@ from multibot import constants
 
 class RegisteredCallback(FlanaBase):
     callback: Callable
+    extra_args: Iterable = ()
+    extra_kwargs: Mapping = None
     keywords: tuple[tuple[str, ...], ...]
     priority: int | float
     min_score: float
@@ -19,6 +21,8 @@ class RegisteredCallback(FlanaBase):
     def __init__(
         self,
         callback: Callable,
+        extra_args: Iterable = (),
+        extra_kwargs: Mapping = None,
         keywords: str | Iterable[str | Iterable[str]] = (),
         priority: int | float = 1,
         min_score: float = constants.PARSER_MIN_SCORE_DEFAULT,
@@ -26,6 +30,8 @@ class RegisteredCallback(FlanaBase):
         default=False
     ):
         self.callback = callback
+        self.extra_args = extra_args
+        self.extra_kwargs = extra_kwargs or {}
 
         if not keywords:
             keywords = ()

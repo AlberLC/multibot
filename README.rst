@@ -324,11 +324,11 @@ B) Extensible form
 
         def _add_handlers(self):
             super()._add_handlers()
-            self.register(self.function_name_1, 'hello')
-            self.register(self.function_name_2, 'multibot', min_score=1)
-            self.register(self.function_name_3, 'house home')
-            self.register(self.function_name_4, [['hello', 'hi'], ['world']])  # <-- note that is Iterable[Iterable[str]]
-            self.register(self.function_name_5, 'troll')
+            self.register(self.function_name_1, keywords='hello')
+            self.register(self.function_name_2, keywords='multibot', min_score=1)
+            self.register(self.function_name_3, keywords='house home')
+            self.register(self.function_name_4, keywords=[['hello', 'hi'], ['world']])  # <-- note that is Iterable[Iterable[str]]
+            self.register(self.function_name_5, keywords='troll')
             self.register(self.function_name_6, always=True)
             self.register(self.function_name_7, default=True)
 
@@ -440,8 +440,8 @@ B) Extensible form example
 
         def _add_handlers(self):
             super()._add_handlers()
-            self.register(self.function_name_1, 'hello')
-            self.register_button(self.function_name_2, 'a_key')
+            self.register(self.function_name_1, keywords='hello')
+            self.register_button(self.function_name_2, key='a_key')
 
         async def function_name_1(self, message: Message):
             await self.send('Hi!', ['A button', 'Other button'], message, buttons_key='a_key')
