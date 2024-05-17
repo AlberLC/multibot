@@ -289,14 +289,28 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     async def _start_async(self):
         await self.sign_in()
-        self._add_handlers()
+
         while True:
+            self._add_handlers()
             try:
-                await self.sign_in()
+                await self.client.connect()
                 await self._on_ready()
                 await self.client.run_until_disconnected()
             except OSError:
                 await asyncio.sleep(constants.TELEGRAM_RECONNECT_SLEEP_SECONDS)
+
+                self._owner_chat = None
+                self._registered_callbacks.clear()
+                self._registered_button_callbacks.clear()
+                self._message_cache.clear()
+
+                if self.user_session:
+                    self.user_client = TelegramClient(StringSession(self.user_session), self.api_id, self.api_hash)
+
+                if self.bot_session:
+                    self.client = TelegramClient(StringSession(self.bot_session), self.api_id, self.api_hash)
+                else:
+                    self.client = self.user_client
 
     async def _unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user = await self.get_user(user, group_)
@@ -627,15 +641,15 @@ class TelegramBot(MultiBot[TelegramClient]):
                 pass
 
     async def sign_in(self):
-        if self.user_client:
-            await self.user_client.connect()
-            if not self.user_session:
+        if self.user_client and not self.user_session:
+            async with self.user_client:
                 print('----- User client -----')
                 if not await self.user_client.is_user_authorized():
                     await self.user_client.sign_in(self.phone)
                     code = input('Enter the login code: ')
                     await self.user_client.sign_in(self.phone, code)
                 print('Done.')
+                self.user_session = StringSession.save(self.user_client.session)
 
         if self.client:
             await self.client.connect()
@@ -643,6 +657,7 @@ class TelegramBot(MultiBot[TelegramClient]):
                 print('----- Bot client -----')
                 await self.client.sign_in(bot_token=self.token)
                 print('Done.')
+                self.bot_session = StringSession.save(self.client.session)
         else:
             self.client = self.user_client
 
@@ -650,10 +665,7 @@ class TelegramBot(MultiBot[TelegramClient]):
     def string_sessions(self) -> dict[str, str] | Coroutine:
         async def string_session_() -> dict[str, str]:
             await self.sign_in()
-            return {
-                'bot_session': StringSession.save(self.client.session) if self.client else None,
-                'user_session': StringSession.save(self.user_client.session) if self.user_client else None
-            }
+            return {'bot_session': self.bot_session, 'user_session': self.user_session}
 
         try:
             asyncio.get_running_loop()
