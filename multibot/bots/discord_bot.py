@@ -1,5 +1,3 @@
-from __future__ import annotations  # todo0 remove when it's by default
-
 __all__ = ['DiscordBot']
 
 import contextlib
@@ -291,11 +289,13 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
     #                    HANDLERS                    #
     # ---------------------------------------------- #
     async def _on_ready(self):
-        self.platform = Platform.DISCORD
-        self.id = self.client.user.id
-        self.name = self.client.user.name
-        self.owner_id = (await self.client.application_info()).owner.id
-        discord.utils.setup_logging(level=logging.ERROR)
+        if not self._is_initialized:
+            self.platform = Platform.DISCORD
+            self.id = self.client.user.id
+            self.name = self.client.user.name
+            self.owner_id = (await self.client.application_info()).owner.id
+            discord.utils.setup_logging(level=logging.ERROR)
+
         await super()._on_ready()
 
     # -------------------------------------------------------- #

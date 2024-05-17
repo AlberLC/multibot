@@ -310,10 +310,11 @@ class MultiBot(Generic[T], ABC):
         self._owner_chat: Chat | None = None
         self.token: str = token
         self.client: T = client
+        self._is_initialized: bool = False
         self._registered_callbacks: list[RegisteredCallback] = []
         self._registered_button_callbacks: dict[Any, list[RegisteredCallback]] = defaultdict(list)
         # noinspection PyPep8Naming
-        MessageType = self.Message
+        MessageType: type = self.Message
         self._message_cache: dict[tuple[int, int], MessageType] = {}
 
     # -------------------------------------------------------- #
@@ -374,6 +375,10 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def _get_is_inline(self, event: constants.ORIGINAL_MESSAGE) -> bool | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_mentions(self, original_message: constants.ORIGINAL_MESSAGE) -> list[User]:
         pass
 
@@ -399,7 +404,7 @@ class MultiBot(Generic[T], ABC):
                 date=await self._get_date(original_message),
                 chat=chat,
                 replied_message=await self._get_replied_message(original_message),
-                is_inline=isinstance(event, constants.TELEGRAM_INLINE_EVENT) if isinstance(event, constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) else None,
+                is_inline=await self._get_is_inline(event),
                 original_object=original_message,
                 original_event=event
             )
@@ -640,13 +645,16 @@ class MultiBot(Generic[T], ABC):
                     await self._manage_exceptions(e, message, reraise=True)
 
     async def _on_ready(self):
-        constants.load_environment()
-        flanautils.init_database()
+        if not self._is_initialized:
+            self._is_initialized = True
+            constants.load_environment()
+            flanautils.init_database()
+            flanautils.do_every(constants.CHECK_OLD_CACHE_MESSAGES_EVERY_SECONDS, self.check_old_cache_messages)
+            flanautils.do_every(constants.CHECK_OLD_DATABASE_MESSAGES_EVERY_SECONDS, self.check_old_database_messages)
+            flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_bans)
+            flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_mutes)
+
         print(f'{self.name} activado en {self.platform.name} (id: {self.id})')
-        flanautils.do_every(constants.CHECK_OLD_CACHE_MESSAGES_EVERY_SECONDS, self.check_old_cache_messages)
-        flanautils.do_every(constants.CHECK_OLD_DATABASE_MESSAGES_EVERY_SECONDS, self.check_old_database_messages)
-        flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_bans)
-        flanautils.do_every(constants.CHECK_PENALTIES_EVERY_SECONDS, self.check_mutes)
 
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
@@ -1168,11 +1176,9 @@ class MultiBot(Generic[T], ABC):
         pass
 
     async def unban(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
-        # noinspection PyTypeChecker
         ban = Ban(self.platform, self.get_user_id(user), self.get_group_id(group_))
         await self._remove_penalty(ban, self._unban, message)
 
     async def unmute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
-        # noinspection PyTypeChecker
         mute = Mute(self.platform, self.get_user_id(user), self.get_group_id(group_))
         await self._remove_penalty(mute, self._unmute, message)

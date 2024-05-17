@@ -1,5 +1,3 @@
-from __future__ import annotations  # todo0 remove when it's by default
-
 __all__ = ['TwitchBot']
 
 import datetime
@@ -138,11 +136,13 @@ class TwitchBot(MultiBot[twitchio.Client]):
     #                    HANDLERS                    #
     # ---------------------------------------------- #
     async def _on_ready(self):
-        self.platform = Platform.TWITCH
-        self.id = (await self.client.fetch_users([self.client.nick]))[0].id
-        self.name = self.client.nick
-        if self.owner_name:
-            self.owner_id = (await self.client.fetch_users([self.owner_name]))[0].id
+        if not self._is_initialized:
+            self.platform = Platform.TWITCH
+            self.id = (await self.client.fetch_users([self.client.nick]))[0].id
+            self.name = self.client.nick
+            if self.owner_name:
+                self.owner_id = (await self.client.fetch_users([self.owner_name]))[0].id
+
         await super()._on_ready()
 
     # -------------------------------------------------------- #
