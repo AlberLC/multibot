@@ -24,7 +24,7 @@ import shlex
 import traceback
 from abc import ABC
 from collections import defaultdict
-from collections.abc import Callable, Coroutine, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Coroutine, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Generic, Literal, TypeVar, overload
 
 import flanautils
@@ -696,6 +696,23 @@ class MultiBot(Generic[T], ABC):
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def clear(self, chat: int | str | Chat | Message, n_messages: int = None, until_message: Message = None):
         pass
+
+    def create_message_updater(self, message: Message, delete_user_message=False) -> Callable[[str], Awaitable[Message]]:
+        async def update_state(state: str) -> Message:
+            nonlocal bot_state_message
+
+            if bot_state_message:
+                bot_state_message = await self.edit(state, bot_state_message)
+            else:
+                bot_state_message = await self.send(state, message)
+                if delete_user_message:
+                    await self.delete_message(message)
+
+            return bot_state_message
+
+        bot_state_message: Message | None = None
+
+        return update_state
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def delete_message(
