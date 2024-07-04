@@ -2,11 +2,9 @@ from __future__ import annotations  # todo0 remove when it's by default
 
 __all__ = ['EventComponent']
 
-from typing import Any, TypeVar
+from typing import Any
 
 from flanautils import DCMongoBase, FlanaBase
-
-T = TypeVar('T', bound='EventComponent')
 
 
 class EventComponent(DCMongoBase, FlanaBase):
