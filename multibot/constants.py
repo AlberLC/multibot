@@ -112,7 +112,9 @@ KEYWORDS = {
     'negate': ('no', 'ocurra', 'ocurre'),
     'permission': ('permiso', 'permission'),
     'private': ('direct', 'directo', 'privado', 'private'),
-    'reset': ('recover', 'recovery', 'recupera', 'reinicia', 'reset', 'resetea', 'restart', 'restaura', 'restore'),
+    'random': ('aleatorio', 'aleatorios', 'azar', 'random'),
+    'reset': ('recover', 'recovery', 'recupera', 'reinicia', 'reset', 'resetea', 'restablece', 'restart', 'restaura',
+              'restore'),
     'role': ('rol', 'role', 'roles'),
     'send_as_file': ('arhivo', 'calidad', 'compresion', 'compress', 'compression', 'comprimir', 'file', 'quality'),
     'show': ('actual', 'enseña', 'estado', 'how', 'muestra', 'show', 'como'),
@@ -124,6 +126,7 @@ KEYWORDS = {
     'thanks': ('gracia', 'gracias', 'grasia', 'grasias', 'grax', 'thank', 'thanks', 'ty'),
     'unban': ('desbanea', 'unban'),
     'unmute': ('desilencia', 'desmutea', 'desmutealo', 'unmute'),
+    'update': ('actualiza', 'refresca', 'update'),
     'user': ('author', 'autor', 'member', 'miembro', 'participant', 'participante', 'user', 'usuario')
 }
 
