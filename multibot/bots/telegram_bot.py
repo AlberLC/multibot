@@ -526,9 +526,13 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         if message:
             if send_as_file is None:
-                word_matches = flanautils.cartesian_product_string_matching(message.text, constants.KEYWORDS['send_as_file'], min_score=constants.TELEGRAM_SEND_AS_FILE_MIN_SCORE)
-                send_as_file_score = sum(max(matches.values()) for text_word, matches in word_matches.items())
-                kwargs['force_document'] = bool(send_as_file_score)
+                kwargs['force_document'] = bool(
+                    flanautils.cartesian_product_string_matching(
+                        message.text,
+                        constants.KEYWORDS['send_as_file'],
+                        constants.TELEGRAM_SEND_AS_FILE_MIN_SCORE
+                    )
+                )
             else:
                 kwargs['force_document'] = send_as_file
 
