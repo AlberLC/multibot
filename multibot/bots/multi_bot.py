@@ -302,7 +302,7 @@ class MultiBot(Generic[T], ABC):
     Message = Message
     User = User
 
-    def __init__(self, token: str, client: T):
+    def __init__(self, token: str, client: T, message_max_characters: int | None = None):
         self.platform: Platform | None = None
         self.id: int | None = None
         self.name: str | None = None
@@ -316,6 +316,7 @@ class MultiBot(Generic[T], ABC):
         # noinspection PyPep8Naming
         MessageType: type = self.Message
         self._message_cache: dict[tuple[int, int], MessageType] = {}
+        self._message_max_characters = message_max_characters
 
     # -------------------------------------------------------- #
     # ------------------- PROTECTED METHODS ------------------ #

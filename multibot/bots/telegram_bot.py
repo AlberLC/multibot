@@ -82,8 +82,11 @@ class TelegramBot(MultiBot[TelegramClient]):
         else:
             self.user_client = None
 
-        super().__init__(token=bot_token,
-                         client=client)
+        super().__init__(
+            token=bot_token,
+            client=client,
+            message_max_characters=constants.TELEGRAM_MESSAGE_MAX_CHARACTERS
+        )
 
     # -------------------------------------------------------- #
     # ------------------- PROTECTED METHODS ------------------ #
@@ -566,57 +569,65 @@ class TelegramBot(MultiBot[TelegramClient]):
             case self.Message() as message_to_reply:
                 reply_to = message_to_reply.original_object
 
-        with flanautils.suppress_stderr():
-            attempts = 2
-            for attempt in range(attempts - 1, -1, -1):
-                try:
-                    original_message = await self.client.send_message(chat.original_object, text, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
-                except telethon.errors.rpcerrorlist.MediaEmptyError:
-                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
-                        kwargs['file'] = bytes_
-                    elif raise_exceptions:
-                        raise
-                    else:
-                        return
-                except ValueError as e:
-                    if 'parse' in str(e).lower() and attempt:
-                        try:
-                            del kwargs['parse_mode']
-                        except KeyError:
-                            pass
-                    elif raise_exceptions:
-                        raise
-                    else:
-                        return
-                except telethon.errors.VideoContentTypeInvalidError:
-                    if attempt:
-                        try:
-                            del kwargs['supports_streaming']
-                        except KeyError:
-                            pass
-                    elif raise_exceptions:
-                        raise
-                    else:
-                        return
-                except telethon.errors.WebpageCurlFailedError:
-                    if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
-                        kwargs['file'] = bytes_
-                    elif raise_exceptions:
-                        raise
-                    else:
-                        return
-                except (telethon.errors.rpcerrorlist.MessageTooLongError, telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
-                    if raise_exceptions:
-                        raise
-                    return
-                else:
-                    break
+        if text:
+            text_parts = flanautils.chunks(text, constants.TELEGRAM_MESSAGE_MAX_CHARACTERS)
+        else:
+            text_parts = (None,)
 
-        original_message._sender = await self.client.get_me()
-        original_message._chat = chat.original_object
-        bot_message = await self._get_message(original_message)
+        for text_part in text_parts:
+            with flanautils.suppress_stderr():
+                attempts = 2
+                for attempt in range(attempts - 1, -1, -1):
+                    try:
+                        original_message = await self.client.send_message(chat.original_object, text_part, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
+                    except telethon.errors.rpcerrorlist.MediaEmptyError:
+                        if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
+                            kwargs['file'] = bytes_
+                        elif raise_exceptions:
+                            raise
+                        else:
+                            return
+                    except ValueError as e:
+                        if 'parse' in str(e).lower() and attempt:
+                            try:
+                                del kwargs['parse_mode']
+                            except KeyError:
+                                pass
+                        elif raise_exceptions:
+                            raise
+                        else:
+                            return
+                    except telethon.errors.VideoContentTypeInvalidError:
+                        if attempt:
+                            try:
+                                del kwargs['supports_streaming']
+                            except KeyError:
+                                pass
+                        elif raise_exceptions:
+                            raise
+                        else:
+                            return
+                    except telethon.errors.WebpageCurlFailedError:
+                        if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
+                            kwargs['file'] = bytes_
+                        elif raise_exceptions:
+                            raise
+                        else:
+                            return
+                    except (telethon.errors.rpcerrorlist.MessageTooLongError, telethon.errors.rpcerrorlist.PeerIdInvalidError, telethon.errors.rpcerrorlist.UserIsBlockedError):
+                        if raise_exceptions:
+                            raise
+                        return
+                    else:
+                        break
 
-        return self._update_message_attributes(bot_message, media, buttons, chat, buttons_key, data)
+            original_message._sender = await self.client.get_me()
+            original_message._chat = chat.original_object
+            bot_message = await self._get_message(original_message)
+            self._update_message_attributes(bot_message, media, buttons, chat, buttons_key, data)
+
+        # noinspection PyUnboundLocalVariable
+        return bot_message
 
     @inline
     async def send_inline_results(self, message: Message):

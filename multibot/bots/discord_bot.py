@@ -21,13 +21,16 @@ from multibot.exceptions import LimitError, SendError, UserDisconnectedError
 from multibot.models import Button, Chat, Message, Mute, Platform, Role, User
 
 
-# --------------------------------------------------------------------------------------------------- #
-# ------------------------------------------- DISCORD_BOT ------------------------------------------- #
-# --------------------------------------------------------------------------------------------------- #
+# ----------------------------------------------------------------------------------------------------- #
+# -------------------------------------------- DISCORD_BOT -------------------------------------------- #
+# ----------------------------------------------------------------------------------------------------- #
 class DiscordBot(MultiBot[discord.ext.commands.Bot]):
     def __init__(self, token: str):
-        super().__init__(token=token,
-                         client=discord.ext.commands.Bot(command_prefix=constants.DISCORD_COMMAND_PREFIX, intents=discord.Intents.all()))
+        super().__init__(
+            token=token,
+            client=discord.ext.commands.Bot(command_prefix=constants.DISCORD_COMMAND_PREFIX, intents=discord.Intents.all()),
+            message_max_characters=constants.DISCORD_MESSAGE_MAX_CHARACTERS
+        )
 
     # -------------------------------------------------------- #
     # ------------------- PROTECTED METHODS ------------------ #
@@ -677,16 +680,25 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             case self.Message() as message_to_reply:
                 reply_to = message_to_reply.original_object
 
-        try:
-            bot_message = await self._get_message(await chat.original_object.send(text, file=file, view=view, reference=reply_to, silent=silent))
-        except discord.errors.HTTPException as e:
-            if 'too large' in str(e).lower():
-                await file_too_large()
-            elif raise_exceptions:
-                raise
-            return
+        if text:
+            text_parts = flanautils.chunks(text, constants.DISCORD_MESSAGE_MAX_CHARACTERS)
+        else:
+            text_parts = (None,)
 
-        return self._update_message_attributes(bot_message, media, buttons, chat, buttons_key, data)
+        for text_part in text_parts:
+            try:
+                bot_message = await self._get_message(await chat.original_object.send(text_part, file=file, view=view, reference=reply_to, silent=silent))
+            except discord.errors.HTTPException as e:
+                if 'too large' in str(e).lower():
+                    await file_too_large()
+                elif raise_exceptions:
+                    raise
+                return
+
+            self._update_message_attributes(bot_message, media, buttons, chat, buttons_key, data)
+
+        # noinspection PyUnboundLocalVariable
+        return bot_message
 
     async def typing(self, chat: int | str | User | Chat | Message) -> contextlib.AbstractAsyncContextManager:
         chat = await self.get_chat(chat)
