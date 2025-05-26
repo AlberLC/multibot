@@ -161,7 +161,9 @@ class TelegramBot(MultiBot[TelegramClient]):
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_date(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> datetime.datetime | None:
-        if not isinstance(original_message, constants.TELEGRAM_INLINE_EVENT):
+        if isinstance(original_message, constants.TELEGRAM_INLINE_EVENT):
+            return datetime.datetime.now(datetime.timezone.utc)
+        else:
             return original_message.date
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
@@ -552,10 +554,10 @@ class TelegramBot(MultiBot[TelegramClient]):
                 try:
                     message.original_object = await message.original_object.edit(text, **kwargs)
                 except (
-                    telethon.errors.rpcerrorlist.PeerIdInvalidError,
-                    telethon.errors.rpcerrorlist.MessageIdInvalidError,
-                    telethon.errors.rpcerrorlist.MessageNotModifiedError,
-                    telethon.errors.rpcerrorlist.UserIsBlockedError
+                        telethon.errors.rpcerrorlist.PeerIdInvalidError,
+                        telethon.errors.rpcerrorlist.MessageIdInvalidError,
+                        telethon.errors.rpcerrorlist.MessageNotModifiedError,
+                        telethon.errors.rpcerrorlist.UserIsBlockedError
                 ):
                     if raise_exceptions:
                         raise
