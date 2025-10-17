@@ -698,7 +698,11 @@ class MultiBot(Generic[T], ABC):
     async def clear(self, chat: int | str | Chat | Message, n_messages: int = None, until_message: Message = None):
         pass
 
-    def create_message_updater(self, message: Message, delete_user_message=False) -> Callable[[str], Awaitable[Message]]:
+    def create_message_updater(
+        self,
+        message: Message,
+        delete_user_message=False
+    ) -> Callable[[str], Awaitable[Message]]:
         async def update_state(state: str) -> Message:
             nonlocal bot_state_message
 
