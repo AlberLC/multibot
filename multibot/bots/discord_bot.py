@@ -638,10 +638,14 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             file = None
         else:
             try:
-                file = await self._prepare_media_to_send(media)
+                file = await self._prepare_media_to_send(media, raise_exceptions)
             except LimitError:
+                if raise_exceptions:
+                    raise
+
                 await file_too_large()
                 return
+
             if not any((text, file, buttons, edit)):
                 return
 
@@ -689,10 +693,12 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             try:
                 bot_message = await self._get_message(await chat.original_object.send(text_part, file=file, view=view, reference=reply_to, silent=silent))
             except discord.errors.HTTPException as e:
+                if raise_exceptions:
+                    raise
+
                 if 'too large' in str(e).lower():
                     await file_too_large()
-                elif raise_exceptions:
-                    raise
+
                 return
 
             self._update_message_attributes(bot_message, media, buttons, chat, buttons_key, data)
