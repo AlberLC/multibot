@@ -454,9 +454,8 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 raise TypeError('bad arguments')
 
         try:
-            # noinspection PyTypeChecker
             return await self._create_chat_from_discord_chat(self.client.get_channel(chat_id) or await self.client.fetch_channel(chat_id))
-        except discord.errors.NotFound:
+        except (discord.errors.Forbidden, discord.errors.NotFound):
             pass
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
