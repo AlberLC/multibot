@@ -1,6 +1,7 @@
 __all__ = ['User']
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from multibot import constants
 from multibot.models.enums import Platform
@@ -20,6 +21,9 @@ class User(EventComponent):
     is_bot: bool = None
     roles: list[Role] = field(default_factory=list)
     original_object: constants.ORIGINAL_USER = None
+
+    def _mongo_repr(self) -> Any:
+        return {k: v for k, v in super()._mongo_repr().items() if k != 'is_admin'}
 
     def group_roles(self, group_id: int) -> list[Role]:
         return [role for role in self.roles if role.group_id == group_id]
