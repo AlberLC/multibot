@@ -17,7 +17,7 @@ from flanautils import Media, MediaType, NotFoundError, OrderedSet, ResponseErro
 
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
-from multibot.exceptions import LimitError, SendError, UserDisconnectedError
+from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
 from multibot.models import Button, Chat, Message, Mute, Platform, Role, User
 
 
@@ -321,7 +321,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         try:
             await user.original_object.add_roles(role.original_object)
         except (AttributeError, discord.errors.NotFound):
-            raise NotFoundError('role not found')
+            raise BadRoleError
 
         if role not in user.roles:
             user.roles.append(role)
@@ -590,7 +590,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         try:
             await user.original_object.remove_roles(role.original_object)
         except (AttributeError, discord.errors.NotFound):
-            raise NotFoundError('role not found')
+            raise BadRoleError
 
         try:
             user.roles.remove(role)
