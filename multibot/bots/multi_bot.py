@@ -1161,6 +1161,7 @@ class MultiBot(Generic[T], ABC):
         buttons_key: Any = None,
         reply_to: int | str | Message = None,
         data: dict = None,
+        enable_link_previews: bool = True,
         silent: bool = False,
         send_as_file: bool = None,
         raise_exceptions=False,

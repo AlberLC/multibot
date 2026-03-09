@@ -507,6 +507,7 @@ class TelegramBot(MultiBot[TelegramClient]):
         buttons_key: Any = None,
         reply_to: int | str | Message = None,
         data: dict = None,
+        enable_link_previews: bool = True,
         silent: bool = False,
         send_as_file: bool = None,
         raise_exceptions=False,
@@ -563,7 +564,15 @@ class TelegramBot(MultiBot[TelegramClient]):
                         raise
                     return
 
-                return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_edit_date=True)
+                return self._update_message_attributes(
+                    message,
+                    media,
+                    buttons,
+                    chat,
+                    buttons_key,
+                    data,
+                    update_edit_date=True
+                )
 
         match reply_to:
             case str():
@@ -581,9 +590,27 @@ class TelegramBot(MultiBot[TelegramClient]):
                 attempts = 2
                 for attempt in range(attempts - 1, -1, -1):
                     try:
-                        original_message = await self.client.send_message(chat.original_object, text_part, buttons=telegram_buttons, reply_to=reply_to, silent=silent, **kwargs)
+                        original_message = await self.client.send_message(
+                            chat.original_object,
+                            text_part,
+                            buttons=telegram_buttons,
+                            reply_to=reply_to,
+                            link_preview=enable_link_previews,
+                            silent=silent,
+                            **kwargs
+                        )
                     except telethon.errors.rpcerrorlist.MediaEmptyError:
-                        if (bytes_ := await self._prepare_media_to_send(media, prefer_bytes=True, raise_exceptions=raise_exceptions)) and isinstance(bytes_, io.BytesIO):
+                        if (
+                            (
+                                bytes_ := await self._prepare_media_to_send(
+                                    media,
+                                    prefer_bytes=True,
+                                    raise_exceptions=raise_exceptions
+                                )
+                            )
+                            and
+                            isinstance(bytes_, io.BytesIO)
+                        ):
                             kwargs['file'] = bytes_
                         elif raise_exceptions:
                             raise

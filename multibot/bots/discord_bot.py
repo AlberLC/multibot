@@ -615,6 +615,7 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         buttons_key: Any = None,
         reply_to: int | str | Message = None,
         data: dict = None,
+        enable_link_previews: bool = True,
         silent: bool = False,
         send_as_file: bool = None,
         raise_exceptions=False,
@@ -677,7 +678,15 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                     raise
                 return
 
-            return self._update_message_attributes(message, media, buttons, chat, buttons_key, data, update_edit_date=True)
+            return self._update_message_attributes(
+                message,
+                media,
+                buttons,
+                chat,
+                buttons_key,
+                data,
+                update_edit_date=True
+            )
 
         match reply_to:
             case int(message_id):
@@ -694,7 +703,16 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
 
         for text_part in text_parts:
             try:
-                bot_message = await self._get_message(await chat.original_object.send(text_part, file=file, view=view, reference=reply_to, silent=silent))
+                bot_message = await self._get_message(
+                    await chat.original_object.send(
+                        text_part,
+                        file=file,
+                        view=view,
+                        reference=reply_to,
+                        suppress_embeds=not enable_link_previews,
+                        silent=silent
+                    )
+                )
             except discord.errors.HTTPException as e:
                 if raise_exceptions:
                     raise

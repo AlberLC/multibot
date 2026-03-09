@@ -274,6 +274,7 @@ class TwitchBot(MultiBot[twitchio.Client]):
         buttons_key: Any = None,
         reply_to: str | Message = None,
         data: dict = None,
+        enable_link_previews: bool = True,
         silent: bool = False,
         send_as_file: bool = None,
         raise_exceptions=False,
