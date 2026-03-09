@@ -6,6 +6,7 @@ import io
 import logging
 import pathlib
 import random
+import re
 import traceback
 from collections.abc import Iterable, Sequence
 from typing import Any
@@ -218,11 +219,14 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
 
     @staticmethod
     def _parse_html_to_discord_markdown(text: str | None) -> str | None:
+        def parse_blockquote(match: re.Match[str]) -> str:
+            return '\n'.join(f'> {line}' for line in match.group(1).splitlines())
+
         if not text:
             return text
 
         return (
-            text
+            re.sub('<blockquote>(.*?)</blockquote>', parse_blockquote, text, flags=re.DOTALL)
             .replace('<b>', '**')
             .replace('</b>', '**')
             .replace('<i>', '*')
