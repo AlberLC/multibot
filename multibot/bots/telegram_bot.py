@@ -1,5 +1,3 @@
-from __future__ import annotations  # todo0 remove when it's by default
-
 __all__ = ['use_user_client', 'user_client', 'TelegramBot']
 
 import asyncio

@@ -1,5 +1,3 @@
-from __future__ import annotations  # todo0 remove when it's by default
-
 __all__ = ['EventComponent']
 
 from typing import Any
