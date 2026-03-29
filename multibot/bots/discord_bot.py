@@ -8,7 +8,7 @@ import pathlib
 import random
 import re
 import traceback
-from collections.abc import Iterable, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from typing import Any
 
 import discord
@@ -19,7 +19,7 @@ from flanautils import Media, MediaType, NotFoundError, OrderedSet, ResponseErro
 from multibot import constants
 from multibot.bots.multi_bot import MultiBot, parse_arguments
 from multibot.exceptions import BadRoleError, LimitError, SendError, UserDisconnectedError
-from multibot.models import Button, Chat, Message, Mute, Platform, Role, User
+from multibot.models import Button, Chat, Message, Mute, Platform, RegisteredCallback, Role, User
 
 
 # ----------------------------------------------------------------------------------------------------- #
@@ -106,8 +106,13 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         )
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_author(self, original_message: constants.DISCORD_MESSAGE) -> User | None:
-        return await self._create_user_from_discord_user(original_message.author)
+    async def _get_author(self, original_message: constants.DISCORD_EVENT) -> User | None:
+        if isinstance(original_message, constants.DISCORD_INTERACTION_EVENT):
+            author = original_message.user
+        else:
+            author = original_message.author
+
+        return await self._create_user_from_discord_user(author)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_button_pressed_text(self, event: constants.DISCORD_EVENT) -> str | None:
@@ -135,7 +140,12 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         return await self._create_chat_from_discord_chat(original_message.channel)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_date(self, original_message: constants.DISCORD_MESSAGE) -> datetime.datetime | None:
+    async def _get_command_text(self, original_message: constants.DISCORD_EVENT) -> str | None:
+        if isinstance(original_message, constants.DISCORD_INTERACTION_EVENT) and original_message.type is discord.InteractionType.application_command:
+            return ' '.join(option['value'] for option in original_message.data.get('options', ()))
+
+    @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
+    async def _get_date(self, original_message: constants.DISCORD_EVENT) -> datetime.datetime | None:
         return original_message.created_at
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
@@ -152,12 +162,16 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 return message.chat.original_object.guild
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_edit_date(self, original_message: constants.DISCORD_MESSAGE) -> datetime.datetime | None:
-        return original_message.edited_at
+    async def _get_edit_date(self, original_message: constants.DISCORD_EVENT) -> datetime.datetime | None:
+        if not isinstance(original_message, constants.DISCORD_INTERACTION_EVENT):
+            return original_message.edited_at
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_mentions(self, original_message: constants.DISCORD_MESSAGE) -> list[User]:
-        mentions = OrderedSet([await self._create_user_from_discord_user(user) for user in original_message.mentions])
+    async def _get_mentions(self, original_message: constants.DISCORD_EVENT) -> list[User]:
+        mentions = OrderedSet()
+
+        if isinstance(original_message, constants.DISCORD_MESSAGE):
+            mentions += [await self._create_user_from_discord_user(user) for user in original_message.mentions]
 
         chat = await self._get_chat(original_message)
         text = await self._get_text(original_message)
@@ -184,18 +198,18 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
         return list(mentions - None)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_message_id(self, original_message: constants.DISCORD_MESSAGE) -> int:
+    async def _get_message_id(self, original_message: constants.DISCORD_EVENT) -> int:
         return original_message.id
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
     async def _get_original_message(self, event: constants.DISCORD_EVENT) -> constants.DISCORD_MESSAGE:
-        if isinstance(event, constants.DISCORD_BUTTON_EVENT):
+        if isinstance(event, constants.DISCORD_INTERACTION_EVENT) and event.type is discord.InteractionType.component:
             return event.message
         else:
             return event
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_replied_message(self, original_message: constants.DISCORD_MESSAGE) -> Message | None:
+    async def _get_replied_message(self, original_message: constants.DISCORD_EVENT) -> Message | None:
         try:
             replied_original_message = original_message.reference.resolved
         except AttributeError:
@@ -205,8 +219,11 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             return await self._get_message(replied_original_message)
 
     @return_if_first_empty(exclude_self_types='DiscordBot', globals_=globals())
-    async def _get_text(self, original_message: constants.DISCORD_MESSAGE) -> str:
-        return original_message.content
+    async def _get_text(self, original_message: constants.DISCORD_EVENT) -> str:
+        if (command_text := await self._get_command_text(original_message)) is None:
+            return original_message.content
+        else:
+            return f'/{original_message.command.name}{f' {command_text}' if command_text else ''}'
 
     async def _mute(self, user: int | str | User, group_: int | str | Chat | Message, message: Message = None):
         user = await self.get_user(user, group_)
@@ -273,6 +290,45 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
                 raise LimitError
             return discord.File(fp=io.BytesIO(bytes_), filename=file_name)
 
+    async def _register_commands(self) -> None:
+        def create_wrapper(
+            registered_callback_: RegisteredCallback
+        ) -> Callable[[discord.Interaction, str | None], Awaitable[None]]:
+            # noinspection PyUnusedLocal
+            async def wrapper(interaction: discord.Interaction, text: str | None = None) -> None:
+                await self.accept_button_event(interaction)
+
+                try:
+                    message = await self._get_message(interaction)
+
+                    await self._on_new_message_raw(message)
+                    await registered_callback_.callback(
+                        message,
+                        *registered_callback_.extra_args,
+                        **registered_callback_.extra_kwargs
+                    )
+                except Exception:
+                    await interaction.followup.send('✖')
+                    raise
+
+                await interaction.followup.send('✔')
+
+            return wrapper
+
+        for registered_callback in self._registered_callbacks:
+            if not registered_callback.command_name:
+                continue
+
+            self.client.tree.add_command(
+                discord.app_commands.Command(
+                    name=registered_callback.command_name,
+                    description=registered_callback.command_description,
+                    callback=create_wrapper(registered_callback)
+                )
+            )
+
+        await self.client.tree.sync()
+
     async def _start_async(self):
         self._add_handlers()
         async with self.client:
@@ -301,6 +357,9 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
             self.id = self.client.user.id
             self.name = self.client.user.name
             self.owner_id = (await self.client.application_info()).owner.id
+
+            await self._register_commands()
+
             discord.utils.setup_logging(level=logging.ERROR)
 
         await super()._on_ready()
@@ -308,12 +367,15 @@ class DiscordBot(MultiBot[discord.ext.commands.Bot]):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def accept_button_event(self, event: constants.DISCORD_EVENT | Message):
+    async def accept_button_event(self, event: constants.DISCORD_EVENT | Message) -> None:
         match event:
             case self.Message():
                 event = event.original_event
 
         try:
+            if event.response.is_done():
+                return
+
             await event.response.defer()
         except AttributeError:
             pass

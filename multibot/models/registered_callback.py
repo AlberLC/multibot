@@ -9,20 +9,13 @@ from multibot import constants
 
 
 class RegisteredCallback(FlanaBase):
-    callback: Callable
-    extra_args: Iterable = ()
-    extra_kwargs: Mapping = None
-    keywords: tuple[tuple[str, ...], ...]
-    priority: int | float
-    min_score: float
-    always: bool
-    default: bool
-
     def __init__(
         self,
         callback: Callable,
         extra_args: Iterable = (),
         extra_kwargs: Mapping = None,
+        command_name: str | None = None,
+        command_description: str = '',
         keywords: str | Iterable[str | Iterable[str]] = (),
         priority: int | float = 1,
         min_score: float = constants.PARSER_MIN_SCORE_DEFAULT,
@@ -32,9 +25,11 @@ class RegisteredCallback(FlanaBase):
         self.callback = callback
         self.extra_args = extra_args
         self.extra_kwargs = extra_kwargs or {}
+        self.command_name = command_name
+        self.command_description = command_description
 
         if not keywords:
-            keywords = ()
+            self.keywords = ()
         elif isinstance(keywords, str):
             text = flanautils.remove_accents(keywords.strip().lower())
             self.keywords = (tuple(text.split()),)

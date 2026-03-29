@@ -6,6 +6,7 @@ import datetime
 import functools
 import io
 import pathlib
+import re
 import struct
 from collections.abc import Coroutine
 from typing import Any, Callable, Sequence
@@ -14,6 +15,7 @@ import flanautils
 import pymongo
 import telethon
 import telethon.hints
+import telethon.tl.functions.bots
 import telethon.tl.types
 from flanautils import Media, MediaType, OrderedSet, ResponseError, Source, return_if_first_empty, shift_args_if_called
 from telethon import TelegramClient
@@ -158,6 +160,18 @@ class TelegramBot(MultiBot[TelegramClient]):
         return await self._create_chat_from_telegram_chat(await original_message.get_chat())
 
     @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
+    async def _get_command_text(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> str | None:
+        text = await self._get_text(original_message)
+
+        for registered_callback in self._registered_callbacks:
+            if (
+                registered_callback.command_name
+                and
+                (match := re.match(fr'/{registered_callback.command_name}(?:@{re.escape(self.name)})?\s*(.*)', text))
+            ):
+                return match.group(1).strip()
+
+    @return_if_first_empty(exclude_self_types='TelegramBot', globals_=globals())
     async def _get_date(self, original_message: constants.TELEGRAM_EVENT | constants.TELEGRAM_MESSAGE) -> datetime.datetime | None:
         if isinstance(original_message, constants.TELEGRAM_INLINE_EVENT):
             return datetime.datetime.now(datetime.timezone.utc)
@@ -290,6 +304,33 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         return file
 
+    async def _register_commands(self) -> None:
+        commands = []
+
+        for registered_callback in self._registered_callbacks:
+            if not registered_callback.command_name:
+                continue
+
+            self.client.add_event_handler(
+                find_message(
+                    functools.partial(
+                        registered_callback.callback,
+                        *registered_callback.extra_args,
+                        **registered_callback.extra_kwargs
+                    )
+                ),
+                telethon.events.NewMessage(pattern=f'/{registered_callback.command_name}')
+            )
+            commands.append(
+                telethon.tl.types.BotCommand(registered_callback.command_name, registered_callback.command_description)
+            )
+
+        await self.client(
+            telethon.tl.functions.bots.SetBotCommandsRequest(
+                telethon.tl.types.BotCommandScopeDefault(), lang_code='', commands=commands
+            )
+        )
+
     async def _start_async(self):
         await self.sign_in()
 
@@ -334,16 +375,19 @@ class TelegramBot(MultiBot[TelegramClient]):
             me = await self.client.get_me()
             self.id = me.id
             self.name = me.username
+
             if self.user_client:
                 async with use_user_client(self):
                     self.owner_id = (await self.user_client.get_me()).id
+
+            await self._register_commands()
 
         await super()._on_ready()
 
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def accept_button_event(self, event: constants.TELEGRAM_EVENT | Message):
+    async def accept_button_event(self, event: constants.TELEGRAM_EVENT | Message) -> None:
         match event:
             case self.Message():
                 event = event.original_event

@@ -17,9 +17,11 @@ import asyncio
 import contextlib
 import datetime
 import functools
+import inspect
 import random
 import shlex
 import traceback
+import types
 from abc import ABC
 from collections import defaultdict
 from collections.abc import Awaitable, Callable, Coroutine, Iterable, Iterator, Mapping, Sequence
@@ -41,7 +43,7 @@ from multibot.models import Ban, Button, ButtonsInfo, Chat, Message, MessagesFor
 def find_message(func_: Callable = None, /, return_if_not_found=False) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        async def wrapper(self: MultiBot, *args, **kwargs):
+        async def wrapper(*args, **kwargs):
             def take_arg(type_: type, args_, kwargs_):
                 object_ = None
                 new_args = []
@@ -58,6 +60,20 @@ def find_message(func_: Callable = None, /, return_if_not_found=False) -> Callab
                         new_kwargs[k] = v
                 return object_, new_args, new_kwargs
 
+            if isinstance(func, functools.partial):
+                resolved_func = func.func
+                args += func.args
+                kwargs |= func.keywords
+            else:
+                resolved_func = func
+
+            if inspect.ismethod(resolved_func):
+                self = resolved_func.__self__
+                method = resolved_func
+            else:
+                self, *args = args
+                method = types.MethodType(resolved_func, self)
+
             message, args, kwargs = take_arg(Message, args, kwargs)
             if not message:
                 event, args, kwargs = take_arg(constants.MESSAGE_EVENT, args, kwargs)
@@ -68,7 +84,7 @@ def find_message(func_: Callable = None, /, return_if_not_found=False) -> Callab
                 else:
                     raise NotFoundError('No message object')
 
-            return await func(self, message, *args, **kwargs)
+            return await method(message, *args, **kwargs)
 
         return wrapper
 
@@ -109,6 +125,21 @@ def bot_mentioned(func_: Callable = None, /, is_=True) -> Callable:
         @find_message
         async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
             if is_ is self.is_bot_mentioned(message):
+                return await func(self, message, *args, **kwargs)
+            await self.accept_button_event(message)
+
+        return wrapper
+
+    return decorator(func_) if func_ else decorator
+
+
+@shift_args_if_called
+def command(func_: Callable = None, /, is_=True) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        @find_message
+        async def wrapper(self: MultiBot, message: Message, *args, **kwargs):
+            if is_ is message.is_command:
                 return await func(self, message, *args, **kwargs)
             await self.accept_button_event(message)
 
@@ -366,6 +397,10 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
+    async def _get_command_text(self, original_message: constants.ORIGINAL_MESSAGE) -> str | None:
+        pass
+
+    @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
     async def _get_date(self, original_message: constants.ORIGINAL_MESSAGE) -> datetime.datetime | None:
         pass
 
@@ -374,7 +409,7 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
-    async def _get_is_inline(self, event: constants.ORIGINAL_MESSAGE) -> bool | None:
+    async def _get_is_inline(self, event: constants.MESSAGE_EVENT) -> bool | None:
         pass
 
     @return_if_first_empty(exclude_self_types='MultiBot', globals_=globals())
@@ -387,7 +422,7 @@ class MultiBot(Generic[T], ABC):
         event: constants.MESSAGE_EVENT,
         pull_overwrite_fields: Iterable[str] = ('_id', 'date')
     ) -> Message:
-        original_message = await self._get_original_message(event)
+        original_message = await self._get_original_message(event)  # todo usar event en vez de original_message y raw_event para el otro?
 
         message_id = await self._get_message_id(original_message)
         chat = await self._get_chat(original_message)
@@ -399,10 +434,12 @@ class MultiBot(Generic[T], ABC):
                 id=message_id,
                 author=await self._get_author(original_message),
                 text=await self._get_text(original_message),
+                command_text=(command_text := await self._get_command_text(original_message)),
                 mentions=await self._get_mentions(original_message),
                 date=await self._get_date(original_message),
                 chat=chat,
                 replied_message=await self._get_replied_message(original_message),
+                is_command=command_text is not None,
                 is_inline=await self._get_is_inline(event),
                 original_object=original_message,
                 original_event=event
@@ -478,13 +515,16 @@ class MultiBot(Generic[T], ABC):
 
     @staticmethod
     def _parse_callbacks(
-        text: str,
+        message: Message,
         registered_callbacks: list[RegisteredCallback],
         score_reward_exponent: float = constants.PARSER_SCORE_REWARD_EXPONENT,
         keywords_lenght_penalty: float = constants.PARSER_KEYWORDS_LENGHT_PENALTY,
         minimum_score_to_match: float = constants.PARSER_MIN_SCORE_TO_MATCH
     ) -> OrderedSet[RegisteredCallback]:
-        text = flanautils.remove_accents(text.lower())
+        if message.is_command:
+            return OrderedSet(registered_callback for registered_callback in registered_callbacks if registered_callback.always)
+
+        text = flanautils.remove_accents(message.text.lower())
 
         original_words = OrderedSet()
         for word in text.split():
@@ -533,11 +573,15 @@ class MultiBot(Generic[T], ABC):
             case [first, second, *_] if first.score >= minimum_score_to_match:
                 if first.element.priority == second.element.priority and first.score == second.score:
                     raise AmbiguityError(f'\n{first.element.callback}\n{second.element.callback}')
+
                 determined_callbacks = always_callbacks | {first.element}
             case _:
                 determined_callbacks = always_callbacks | default_callbacks
 
         return determined_callbacks
+
+    async def _register_commands(self) -> None:
+        pass
 
     async def _remove_penalty(self, penalty: Penalty, unpenalize_method: Callable, message: Message = None):
         try:
@@ -626,7 +670,7 @@ class MultiBot(Generic[T], ABC):
         blacklist_callbacks: set[RegisteredCallback] | None = None
     ):
         try:
-            registered_callbacks = self._parse_callbacks(message.text, self._registered_callbacks)
+            registered_callbacks = self._parse_callbacks(message, self._registered_callbacks)
         except AmbiguityError as e:
             await self._manage_exceptions(e, message, reraise=True)
         else:
@@ -658,7 +702,7 @@ class MultiBot(Generic[T], ABC):
     # -------------------------------------------------------- #
     # -------------------- PUBLIC METHODS -------------------- #
     # -------------------------------------------------------- #
-    async def accept_button_event(self, event: constants.MESSAGE_EVENT | Message):
+    async def accept_button_event(self, event: constants.MESSAGE_EVENT | Message) -> None:
         pass
 
     async def add_role(self, user: int | str | User, group_: int | str | Chat | Message, role: int | str | Role):
@@ -1113,17 +1157,17 @@ class MultiBot(Generic[T], ABC):
         return self._owner_chat
 
     @overload
-    def register(self, func_: Callable = None, extra_args: Iterable = (), extra_kwargs: Mapping = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
+    def register(self, func_: Callable = None, extra_args: Iterable = (), extra_kwargs: Mapping = None, command_name: str | None = None, command_description: str | None = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
     @overload
-    def register(self, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
+    def register(self, extra_args: Iterable = (), extra_kwargs: Mapping = None, command_name: str | None = None, command_description: str | None = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         pass
 
-    @shift_args_if_called(n_positions=3, exclude_self_types='MultiBot', globals_=globals())
-    def register(self, func_: Callable = None, extra_args: Iterable = (), extra_kwargs: Mapping = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
+    @shift_args_if_called(n_positions=5, exclude_self_types='MultiBot', globals_=globals())
+    def register(self, func_: Callable = None, extra_args: Iterable = (), extra_kwargs: Mapping = None, command_name: str | None = None, command_description: str | None = None, keywords: str | Iterable[str | Iterable[str]] = (), priority: int | float = 1, min_score=constants.PARSER_MIN_SCORE_DEFAULT, always=False, default=False):
         def decorator(func: Callable):
-            self._registered_callbacks.append(RegisteredCallback(func, extra_args, extra_kwargs, keywords, priority, min_score, always, default))
+            self._registered_callbacks.append(RegisteredCallback(func, extra_args, extra_kwargs, command_name, command_description, keywords, priority, min_score, always, default))
             return func
 
         return decorator(func_) if func_ else decorator
@@ -1133,7 +1177,7 @@ class MultiBot(Generic[T], ABC):
         pass
 
     @overload
-    def register_button(self, key: Any = None):
+    def register_button(self, extra_args: Iterable = (), extra_kwargs: Mapping = None, key: Any = None):
         pass
 
     @shift_args_if_called(n_positions=3, exclude_self_types='MultiBot', globals_=globals())

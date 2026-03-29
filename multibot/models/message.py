@@ -24,12 +24,14 @@ class Message(EventComponent):
     id: int | str = None
     author: User = None
     text: str = None
+    command_text: str = None
     mentions: list[User] = field(default_factory=list)
     medias: list[Media] = field(default_factory=list)
     buttons_info: ButtonsInfo = None
     data: dict = field(default_factory=dict)
     date: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
     edit_date: datetime.datetime = None
+    is_command: bool = False
     is_inline: bool = None
     is_deleted: bool = False
     chat: Chat = None
