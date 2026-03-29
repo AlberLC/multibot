@@ -215,6 +215,8 @@ class TelegramBot(MultiBot[TelegramClient]):
 
             try:
                 mentions.add(await self.get_user(text[entity.offset:entity.offset + entity.length], chat.group_id))
+            except telethon.errors.rpcerrorlist.UserNotParticipantError:
+                pass
             except ValueError:
                 if getattr(entity, 'user_id', None):
                     # noinspection PyUnresolvedReferences
