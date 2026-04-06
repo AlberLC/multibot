@@ -475,8 +475,27 @@ class TelegramBot(MultiBot[TelegramClient]):
 
         try:
             return await self._create_chat_from_telegram_chat(await self.client.get_entity(chat_id_or_name))
-        except (ValueError, telethon.errors.rpcerrorlist.UsernameInvalidError):
-            pass
+        except (
+                KeyError,
+                ValueError,
+                telethon.errors.rpcerrorlist.ChatIdInvalidError,
+                telethon.errors.rpcerrorlist.UsernameInvalidError
+        ):
+            if isinstance(chat_id_or_name, str):
+                return
+
+            for chat_peer_class in constants.TELEGRAM_CHAT_PEER_CLASSES:
+                try:
+                    return await self._create_chat_from_telegram_chat(
+                        await self.client.get_entity(chat_peer_class(chat_id_or_name))
+                    )
+                except (
+                        KeyError,
+                        ValueError,
+                        telethon.errors.rpcerrorlist.ChatIdInvalidError,
+                        telethon.errors.rpcerrorlist.UsernameInvalidError
+                ):
+                    pass
 
     async def get_me(self, group_: int | str | Chat = None):
         return await self._create_user_from_telegram_user(await self.client.get_me(), group_)

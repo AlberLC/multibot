@@ -3,7 +3,7 @@ import os
 
 import discord.ext.commands
 import flanautils
-import telethon.events.common
+import telethon.tl.types
 
 DISCORD_USER = discord.User | discord.Member | discord.ClientUser
 DISCORD_CHAT = discord.abc.Messageable | discord.ext.commands.Context | discord.channel.DMChannel | discord.channel.GroupChannel | discord.Member | discord.channel.TextChannel | discord.abc.User
@@ -63,6 +63,7 @@ RAISE_AMBIGUITY_ERROR = False
 SEND_EXCEPTION_MESSAGE_LINES = 0
 TELEGRAM_BUTTONS_MAX_PER_LINE = 8
 TELEGRAM_MESSAGE_MAX_CHARACTERS = 4096
+TELEGRAM_CHAT_PEER_CLASSES = (telethon.tl.types.PeerUser, telethon.tl.types.PeerChat, telethon.tl.types.PeerChannel)
 TELEGRAM_RECONNECT_SLEEP_SECONDS = datetime.timedelta(minutes=5).total_seconds()
 TELEGRAM_SEND_AS_FILE_MIN_SCORE = 0.85
 TIME_THRESHOLD_TO_MANUAL_UNPENALIZE = datetime.timedelta(days=3)
