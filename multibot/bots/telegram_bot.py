@@ -545,16 +545,10 @@ class TelegramBot(MultiBot[TelegramClient]):
         return [await self._create_user_from_telegram_user(participant, chat.id) for participant in await self.client.get_participants(chat.original_object)]
 
     async def make_mention(self, user: int | str | User, group_: int | str | Chat | Message = None) -> str:
-        if isinstance(user, int):
-            id = user
-            text = str(id)
-            prefix = ''
-        else:
-            if isinstance(user, str):
-                user = await self.get_user(user, group_)
-            id = user.id
-            text = user.name
-            prefix = '@' if user.original_object.username else ''
+        user = await self.get_user(user, group_)
+        id = user.id
+        text = user.name
+        prefix = '@' if user.original_object.username else ''
 
         return f'<a href="tg://user?id={id}">{prefix}{text}</a>'
 
